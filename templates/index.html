@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Oxygen Cylinder Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-speedometer2 me-3"></i>Dashboard
+            </h1>
+            <p class="lead">Overview of your oxygen cylinder tracking system</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-people display-4 text-primary mb-3"></i>
+                    <h3 class="card-title">{{ stats.total_customers }}</h3>
+                    <p class="card-text text-muted">Total Customers</p>
+                    <a href="{{ url_for('customers') }}" class="btn btn-outline-primary">View Customers</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-cylinder display-4 text-info mb-3"></i>
+                    <h3 class="card-title">{{ stats.total_cylinders }}</h3>
+                    <p class="card-text text-muted">Total Cylinders</p>
+                    <a href="{{ url_for('cylinders') }}" class="btn btn-outline-info">View Cylinders</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-check-circle display-4 text-success mb-3"></i>
+                    <h3 class="card-title">{{ stats.available_cylinders }}</h3>
+                    <p class="card-text text-muted">Available Cylinders</p>
+                    <a href="{{ url_for('cylinders', status='available') }}" class="btn btn-outline-success">View Available</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-arrow-right-circle display-4 text-warning mb-3"></i>
+                    <h3 class="card-title">{{ stats.rented_cylinders }}</h3>
+                    <p class="card-text text-muted">Rented Cylinders</p>
+                    <a href="{{ url_for('cylinders', status='rented') }}" class="btn btn-outline-warning">View Rented</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col">
+            <h2 class="mb-4">
+                <i class="bi bi-lightning me-2"></i>Quick Actions
+            </h2>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-plus display-4 text-primary mb-3"></i>
+                    <h4 class="card-title">Add New Customer</h4>
+                    <p class="card-text">Register a new customer in the system</p>
+                    <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-2"></i>Add Customer
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-plus-circle display-4 text-info mb-3"></i>
+                    <h4 class="card-title">Add New Cylinder</h4>
+                    <p class="card-text">Register a new oxygen cylinder</p>
+                    <a href="{{ url_for('add_cylinder') }}" class="btn btn-info">
+                        <i class="bi bi-plus-lg me-2"></i>Add Cylinder
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Overview -->
+    {% if stats.maintenance_cylinders > 0 %}
+    <div class="row mt-5">
+        <div class="col">
+            <div class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Maintenance Alert:</strong> You have {{ stats.maintenance_cylinders }} cylinder(s) in maintenance.
+                <a href="{{ url_for('cylinders', status='maintenance') }}" class="alert-link">View maintenance cylinders</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
