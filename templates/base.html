@@ -48,6 +48,19 @@
                         </ul>
                     </li>
                 </ul>
+                
+                <!-- Global Search Form -->
+                <form class="d-flex" method="GET" action="{{ url_for('global_search') }}">
+                    <div class="input-group">
+                        <input class="form-control" type="search" name="q" 
+                               placeholder="Search customers & cylinders..." 
+                               value="{{ request.args.get('q', '') }}"
+                               style="min-width: 250px;">
+                        <button class="btn btn-outline-light" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </nav>

@@ -407,3 +407,29 @@ def cancel_import():
     
     flash('Import cancelled', 'info')
     return redirect(url_for('import_data'))
+
+# Global Search route
+@app.route('/search')
+def global_search():
+    """Global search across customers and cylinders"""
+    query = request.args.get('q', '').strip()
+    
+    results = {
+        'customers': [],
+        'cylinders': [],
+        'query': query,
+        'total_results': 0
+    }
+    
+    if query:
+        # Search customers
+        customer_results = customer_model.search(query)
+        results['customers'] = customer_results
+        
+        # Search cylinders
+        cylinder_results = cylinder_model.search(query)
+        results['cylinders'] = cylinder_results
+        
+        results['total_results'] = len(customer_results) + len(cylinder_results)
+    
+    return render_template('search_results.html', **results)

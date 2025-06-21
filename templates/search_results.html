@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results - Oxygen Cylinder Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-search me-3"></i>Search Results
+            </h1>
+            {% if query %}
+            <p class="lead">
+                Results for: <strong>"{{ query }}"</strong>
+                <span class="badge bg-secondary ms-2">{{ total_results }} result(s)</span>
+            </p>
+            {% else %}
+            <p class="lead">Enter a search term to find customers and cylinders</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Enhanced Search Form -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('global_search') }}">
+                        <div class="input-group input-group-lg">
+                            <input type="text" class="form-control" name="q" value="{{ query }}" 
+                                   placeholder="Search customers and cylinders..." autofocus>
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-search me-2"></i>Search
+                            </button>
+                        </div>
+                        <div class="form-text mt-2">
+                            Search across customer names, emails, phone numbers, cylinder serial numbers, types, statuses, and locations.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if query and total_results == 0 %}
+    <!-- No Results -->
+    <div class="row">
+        <div class="col">
+            <div class="text-center py-5">
+                <i class="bi bi-search display-1 text-muted mb-3"></i>
+                <h3 class="text-muted">No results found</h3>
+                <p class="text-muted">
+                    No customers or cylinders match your search for "{{ query }}".
+                    <br>Try different keywords or check your spelling.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('customers') }}" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-people me-2"></i>Browse Customers
+                    </a>
+                    <a href="{{ url_for('cylinders') }}" class="btn btn-outline-info">
+                        <i class="bi bi-cylinder me-2"></i>Browse Cylinders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if customers %}
+    <!-- Customer Results -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people me-2"></i>Customers
+                        <span class="badge bg-primary ms-2">{{ customers|length }} found</span>
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Company</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers %}
+                            <tr>
+                                <td>
+                                    <code class="text-info">{{ customer.id }}</code>
+                                </td>
+                                <td>
+                                    <strong>{{ customer.name }}</strong>
+                                </td>
+                                <td>{{ customer.email }}</td>
+                                <td>{{ customer.phone }}</td>
+                                <td>{{ customer.company or '-' }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
+                                           class="btn btn-outline-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('customers') }}" 
+                                           class="btn btn-outline-secondary" title="View All">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if cylinders %}
+    <!-- Cylinder Results -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cylinder me-2"></i>Cylinders
+                        <span class="badge bg-info ms-2">{{ cylinders|length }} found</span>
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Serial Number</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cylinder in cylinders %}
+                            <tr>
+                                <td>
+                                    <code class="text-info">{{ cylinder.id }}</code>
+                                </td>
+                                <td>
+                                    <strong>{{ cylinder.serial_number }}</strong>
+                                </td>
+                                <td>{{ cylinder.type }}</td>
+                                <td>{{ cylinder.size }}</td>
+                                <td>
+                                    {% set status = cylinder.status.lower() %}
+                                    {% if status == 'available' %}
+                                    <span class="badge bg-success">{{ cylinder.status }}</span>
+                                    {% elif status == 'rented' %}
+                                    <span class="badge bg-warning">{{ cylinder.status }}</span>
+                                    {% elif status == 'maintenance' %}
+                                    <span class="badge bg-danger">{{ cylinder.status }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ cylinder.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cylinder.location }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" 
+                                           class="btn btn-outline-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('cylinders') }}" 
+                                           class="btn btn-outline-secondary" title="View All">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if query and total_results > 0 %}
+    <!-- Search Summary and Actions -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle me-2"></i>Search Summary
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Total Results:</strong> {{ total_results }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Customers Found:</strong> {{ customers|length }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Cylinders Found:</strong> {{ cylinders|length }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2 flex-wrap">
+                                {% if customers %}
+                                <a href="{{ url_for('customers', search=query) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-people me-1"></i>View in Customers
+                                </a>
+                                {% endif %}
+                                {% if cylinders %}
+                                <a href="{{ url_for('cylinders', search=query) }}" class="btn btn-sm btn-outline-info">
+                                    <i class="bi bi-cylinder me-1"></i>View in Cylinders
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+// Auto-focus search input and highlight search terms
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+    
+    // Highlight search terms in results
+    const query = "{{ query|e }}";
+    if (query && query.length > 2) {
+        const regex = new RegExp(`(${query})`, 'gi');
+        const elements = document.querySelectorAll('table td');
+        
+        elements.forEach(element => {
+            if (element.textContent.toLowerCase().includes(query.toLowerCase())) {
+                element.innerHTML = element.innerHTML.replace(regex, '<mark>$1</mark>');
+            }
+        });
+    }
+});
+
+// Handle enter key for search
+document.querySelector('form').addEventListener('submit', function(e) {
+    const input = document.querySelector('input[name="q"]');
+    if (!input.value.trim()) {
+        e.preventDefault();
+        input.focus();
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

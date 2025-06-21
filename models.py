@@ -104,16 +104,28 @@ class Customer:
         return False
     
     def search(self, query: str) -> List[Dict]:
-        """Search customers by name, email, or phone"""
+        """Search customers by name, email, phone, address, company, and other fields"""
         customers = self.db.load_data()
         query = query.lower()
         
         results = []
         for customer in customers:
-            if (query in customer.get('name', '').lower() or 
-                query in customer.get('email', '').lower() or 
-                query in customer.get('phone', '').lower()):
-                results.append(customer)
+            # Search across multiple fields
+            searchable_fields = [
+                customer.get('name', ''),
+                customer.get('email', ''),
+                customer.get('phone', ''),
+                customer.get('address', ''),
+                customer.get('company', ''),
+                customer.get('notes', ''),
+                customer.get('id', '')
+            ]
+            
+            # Check if query matches any field
+            for field_value in searchable_fields:
+                if query in str(field_value).lower():
+                    results.append(customer)
+                    break  # Avoid duplicates
         
         return results
 
@@ -183,17 +195,29 @@ class Cylinder:
         return False
     
     def search(self, query: str) -> List[Dict]:
-        """Search cylinders by serial number, type, or status"""
+        """Search cylinders by serial number, type, status, location, and other fields"""
         cylinders = self.db.load_data()
         query = query.lower()
         
         results = []
         for cylinder in cylinders:
-            if (query in cylinder.get('serial_number', '').lower() or 
-                query in cylinder.get('type', '').lower() or 
-                query in cylinder.get('status', '').lower() or 
-                query in cylinder.get('location', '').lower()):
-                results.append(cylinder)
+            # Search across multiple fields
+            searchable_fields = [
+                cylinder.get('serial_number', ''),
+                cylinder.get('type', ''),
+                cylinder.get('status', ''),
+                cylinder.get('location', ''),
+                cylinder.get('size', ''),
+                cylinder.get('pressure', ''),
+                cylinder.get('notes', ''),
+                cylinder.get('id', '')
+            ]
+            
+            # Check if query matches any field
+            for field_value in searchable_fields:
+                if query in str(field_value).lower():
+                    results.append(cylinder)
+                    break  # Avoid duplicates
         
         return results
     
