@@ -1,6 +1,17 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from app import app
 from models import Customer, Cylinder
+import os
+import tempfile
+
+# Try to import Access functionality
+try:
+    from data_importer import DataImporter
+    ACCESS_AVAILABLE = True
+except ImportError as e:
+    ACCESS_AVAILABLE = False
+    import logging
+    logging.warning(f"MS Access functionality not available: {e}")
 
 # Initialize models
 customer_model = Customer()
@@ -216,3 +227,183 @@ def delete_cylinder(cylinder_id):
         flash(f'Error deleting cylinder: {str(e)}', 'error')
     
     return redirect(url_for('cylinders'))
+
+# Data Import routes
+@app.route('/import')
+def import_data():
+    """Data import dashboard"""
+    if not ACCESS_AVAILABLE:
+        flash('MS Access import functionality is not available on this system', 'error')
+        return redirect(url_for('index'))
+    return render_template('import_data.html')
+
+@app.route('/import/upload', methods=['POST'])
+def upload_access_file():
+    """Upload and connect to Access database"""
+    if not ACCESS_AVAILABLE:
+        flash('MS Access import functionality is not available', 'error')
+        return redirect(url_for('index'))
+    
+    if 'access_file' not in request.files:
+        flash('No file selected', 'error')
+        return redirect(url_for('import_data'))
+    
+    file = request.files['access_file']
+    if file.filename == '':
+        flash('No file selected', 'error')
+        return redirect(url_for('import_data'))
+    
+    if not file.filename.lower().endswith(('.mdb', '.accdb')):
+        flash('Please select a valid Access database file (.mdb or .accdb)', 'error')
+        return redirect(url_for('import_data'))
+    
+    try:
+        # Save uploaded file temporarily
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, f"temp_access_{file.filename}")
+        file.save(temp_path)
+        
+        # Try to connect
+        importer = DataImporter()
+        if importer.connect_to_access(temp_path):
+            # Store file path in session
+            session['access_file_path'] = temp_path
+            session['access_file_name'] = file.filename
+            
+            # Get available tables
+            tables = importer.get_available_tables()
+            importer.close_connection()
+            
+            if tables:
+                flash(f'Successfully connected to {file.filename}. Found {len(tables)} tables.', 'success')
+                return render_template('select_tables.html', tables=tables, filename=file.filename)
+            else:
+                flash('No tables found in the database', 'error')
+                os.remove(temp_path)
+                return redirect(url_for('import_data'))
+        else:
+            flash('Failed to connect to Access database. Please check the file format and try again.', 'error')
+            os.remove(temp_path)
+            return redirect(url_for('import_data'))
+            
+    except Exception as e:
+        flash(f'Error processing file: {str(e)}', 'error')
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
+        return redirect(url_for('import_data'))
+
+@app.route('/import/preview/<table_name>')
+def preview_table(table_name):
+    """Preview table data and set up field mapping"""
+    if 'access_file_path' not in session:
+        flash('No Access file connected. Please upload a file first.', 'error')
+        return redirect(url_for('import_data'))
+    
+    try:
+        importer = DataImporter()
+        if not importer.connect_to_access(session['access_file_path']):
+            flash('Failed to reconnect to Access database', 'error')
+            return redirect(url_for('import_data'))
+        
+        # Get table structure and preview data
+        columns, preview_data = importer.preview_table(table_name)
+        
+        # Determine import type based on user selection
+        import_type = request.args.get('type', 'customer')
+        
+        # Get suggested field mapping
+        suggested_mapping = importer.suggest_field_mapping(table_name, import_type)
+        
+        importer.close_connection()
+        
+        return render_template('map_fields.html', 
+                             table_name=table_name,
+                             columns=columns,
+                             preview_data=preview_data,
+                             import_type=import_type,
+                             suggested_mapping=suggested_mapping,
+                             filename=session.get('access_file_name', 'Unknown'))
+        
+    except Exception as e:
+        flash(f'Error previewing table: {str(e)}', 'error')
+        return redirect(url_for('import_data'))
+
+@app.route('/import/execute', methods=['POST'])
+def execute_import():
+    """Execute the data import"""
+    if 'access_file_path' not in session:
+        flash('No Access file connected. Please upload a file first.', 'error')
+        return redirect(url_for('import_data'))
+    
+    try:
+        table_name = request.form.get('table_name')
+        import_type = request.form.get('import_type')
+        skip_duplicates = request.form.get('skip_duplicates') == 'on'
+        
+        # Build field mapping from form data
+        field_mapping = {}
+        for key, value in request.form.items():
+            if key.startswith('mapping_') and value:
+                target_field = key.replace('mapping_', '')
+                field_mapping[target_field] = value
+        
+        if not field_mapping:
+            flash('Please map at least one field', 'error')
+            return redirect(url_for('preview_table', table_name=table_name, type=import_type))
+        
+        # Execute import
+        importer = DataImporter()
+        if not importer.connect_to_access(session['access_file_path']):
+            flash('Failed to reconnect to Access database', 'error')
+            return redirect(url_for('import_data'))
+        
+        if import_type == 'customer':
+            imported, skipped, errors = importer.import_customers(table_name, field_mapping, skip_duplicates)
+            item_type = 'customers'
+        elif import_type == 'cylinder':
+            imported, skipped, errors = importer.import_cylinders(table_name, field_mapping, skip_duplicates)
+            item_type = 'cylinders'
+        else:
+            flash('Invalid import type', 'error')
+            return redirect(url_for('import_data'))
+        
+        importer.close_connection()
+        
+        # Show results
+        if imported > 0:
+            flash(f'Successfully imported {imported} {item_type}', 'success')
+        if skipped > 0:
+            flash(f'Skipped {skipped} records (duplicates or missing data)', 'warning')
+        if errors:
+            for error in errors[:5]:  # Show first 5 errors
+                flash(error, 'error')
+            if len(errors) > 5:
+                flash(f'... and {len(errors) - 5} more errors', 'error')
+        
+        # Clean up
+        if os.path.exists(session['access_file_path']):
+            os.remove(session['access_file_path'])
+        session.pop('access_file_path', None)
+        session.pop('access_file_name', None)
+        
+        # Redirect to appropriate page
+        if import_type == 'customer':
+            return redirect(url_for('customers'))
+        else:
+            return redirect(url_for('cylinders'))
+        
+    except Exception as e:
+        flash(f'Error during import: {str(e)}', 'error')
+        return redirect(url_for('import_data'))
+
+@app.route('/import/cancel')
+def cancel_import():
+    """Cancel import and clean up"""
+    if 'access_file_path' in session:
+        if os.path.exists(session['access_file_path']):
+            os.remove(session['access_file_path'])
+        session.pop('access_file_path', None)
+        session.pop('access_file_name', None)
+    
+    flash('Import cancelled', 'info')
+    return redirect(url_for('import_data'))

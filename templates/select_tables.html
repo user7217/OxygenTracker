@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Select Tables - Import Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-table me-3"></i>Select Tables
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('import_data') }}">Import Data</a></li>
+                    <li class="breadcrumb-item active">Select Tables</li>
+                </ol>
+            </nav>
+            <p class="lead">Database: <strong>{{ filename }}</strong></p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('cancel_import') }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle me-2"></i>Cancel Import
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            {% if tables %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Available Tables
+                        <span class="badge bg-secondary ms-2">{{ tables|length }} table(s) found</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Select a table and choose what type of data to import. You can preview the data before importing.
+                    </p>
+                    
+                    <div class="row g-3">
+                        {% for table in tables %}
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-table me-2"></i>{{ table }}
+                                    </h6>
+                                    <p class="card-text text-muted">
+                                        Choose the type of data this table contains:
+                                    </p>
+                                    <div class="btn-group w-100" role="group">
+                                        <a href="{{ url_for('preview_table', table_name=table, type='customer') }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-people me-1"></i>Customers
+                                        </a>
+                                        <a href="{{ url_for('preview_table', table_name=table, type='cylinder') }}" 
+                                           class="btn btn-outline-info">
+                                            <i class="bi bi-cylinder me-1"></i>Cylinders
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-exclamation-triangle display-1 text-warning mb-3"></i>
+                    <h3 class="text-muted">No Tables Found</h3>
+                    <p class="text-muted">
+                        The database doesn't contain any accessible tables, or they might be system tables.
+                    </p>
+                    <a href="{{ url_for('import_data') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left me-2"></i>Try Another File
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

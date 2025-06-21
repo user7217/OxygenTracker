@@ -97,6 +97,30 @@
         </div>
     </div>
 
+    <!-- Import Data Section -->
+    <div class="row mt-5">
+        <div class="col">
+            <h2 class="mb-4">
+                <i class="bi bi-download me-2"></i>Data Import
+            </h2>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-arrow-up display-4 text-warning mb-3"></i>
+                    <h4 class="card-title">Import from MS Access</h4>
+                    <p class="card-text">Import existing customer and cylinder data from Access databases</p>
+                    <a href="{{ url_for('import_data') }}" class="btn btn-warning">
+                        <i class="bi bi-download me-2"></i>Import Data
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Status Overview -->
     {% if stats.maintenance_cylinders > 0 %}
     <div class="row mt-5">

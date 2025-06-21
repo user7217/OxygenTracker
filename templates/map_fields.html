@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Map Fields - Import Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-arrow-left-right me-3"></i>Map Fields
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('import_data') }}">Import Data</a></li>
+                    <li class="breadcrumb-item active">Map Fields</li>
+                </ol>
+            </nav>
+            <p class="lead">
+                Table: <strong>{{ table_name }}</strong> → 
+                <span class="badge bg-{{ 'primary' if import_type == 'customer' else 'info' }}">
+                    {{ import_type.title() }} Data
+                </span>
+            </p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('cancel_import') }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle me-2"></i>Cancel Import
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Field Mapping Form -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear me-2"></i>Field Mapping
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('execute_import') }}">
+                        <input type="hidden" name="table_name" value="{{ table_name }}">
+                        <input type="hidden" name="import_type" value="{{ import_type }}">
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="skip_duplicates" id="skip_duplicates" checked>
+                                <label class="form-check-label" for="skip_duplicates">
+                                    Skip duplicate records
+                                </label>
+                                <div class="form-text">
+                                    {% if import_type == 'customer' %}
+                                    Skip customers with duplicate email addresses
+                                    {% else %}
+                                    Skip cylinders with duplicate serial numbers
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        {% if import_type == 'customer' %}
+                        {% set target_fields = [
+                            ('name', 'Name', true),
+                            ('email', 'Email', true),
+                            ('phone', 'Phone', true),
+                            ('address', 'Address', true),
+                            ('company', 'Company', false),
+                            ('notes', 'Notes', false)
+                        ] %}
+                        {% else %}
+                        {% set target_fields = [
+                            ('serial_number', 'Serial Number', true),
+                            ('type', 'Type', true),
+                            ('size', 'Size', true),
+                            ('status', 'Status', true),
+                            ('location', 'Location', true),
+                            ('pressure', 'Pressure', false),
+                            ('last_inspection', 'Last Inspection', false),
+                            ('next_inspection', 'Next Inspection', false),
+                            ('notes', 'Notes', false)
+                        ] %}
+                        {% endif %}
+
+                        {% for field_name, field_label, required in target_fields %}
+                        <div class="mb-3">
+                            <label for="mapping_{{ field_name }}" class="form-label">
+                                {{ field_label }}
+                                {% if required %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+                            <select class="form-select" name="mapping_{{ field_name }}" id="mapping_{{ field_name }}">
+                                <option value="">-- Select Source Field --</option>
+                                {% for column in columns %}
+                                <option value="{{ column.name }}" 
+                                        {% if suggested_mapping.get(field_name) == column.name %}selected{% endif %}>
+                                    {{ column.name }} ({{ column.type }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-download me-2"></i>Import Data
+                            </button>
+                            <a href="{{ url_for('import_data') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Data -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-eye me-2"></i>Data Preview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if preview_data %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    {% for column in columns %}
+                                    <th>{{ column.name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview_data %}
+                                <tr>
+                                    {% for column in columns %}
+                                    <td>
+                                        {% set value = row.get(column.name) %}
+                                        {% if value is not none %}
+                                        {{ value|string|truncate(20) }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">Showing first {{ preview_data|length }} rows</small>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-circle text-muted"></i>
+                        <p class="text-muted mb-0">No preview data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Column Information -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Table Structure
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for column in columns %}
+                        <div class="col-md-6 mb-2">
+                            <small>
+                                <strong>{{ column.name }}</strong><br>
+                                <span class="text-muted">{{ column.type }}</span>
+                                {% if not column.nullable %}
+                                <span class="badge badge-sm bg-warning">Required</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+// Auto-select suggested mappings and highlight required fields
+document.addEventListener('DOMContentLoaded', function() {
+    // Highlight required fields
+    const requiredFields = document.querySelectorAll('select[name^="mapping_"]');
+    requiredFields.forEach(select => {
+        const label = select.previousElementSibling;
+        if (label && label.querySelector('.text-danger')) {
+            select.classList.add('border-warning');
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
