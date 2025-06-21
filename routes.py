@@ -1,6 +1,8 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from app import app
 from models import Customer, Cylinder
+from auth_models import UserManager
+from functools import wraps
 import os
 import tempfile
 
@@ -13,11 +15,119 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
+# Initialize user manager
+user_manager = UserManager()
+
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    """Decorator to require admin role"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'error')
+            return redirect(url_for('login'))
+        
+        user = user_manager.get_user_by_id(session['user_id'])
+        if not user or user.get('role') != 'admin':
+            flash('Admin access required', 'error')
+            return redirect(url_for('index'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Initialize models
 customer_model = Customer()
 cylinder_model = Cylinder()
 
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not username or not password:
+            flash('Please enter both username and password', 'error')
+            return render_template('login.html')
+        
+        user = user_manager.authenticate_user(username, password)
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['role'] = user.get('role', 'user')
+            
+            flash(f'Welcome back, {user["username"]}!', 'success')
+            
+            # Redirect to next page if specified
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """User logout"""
+    username = session.get('username', 'User')
+    session.clear()
+    flash(f'Goodbye, {username}!', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+@admin_required
+def register():
+    """User registration (admin only)"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        role = request.form.get('role', 'user')
+        
+        # Validation
+        if not all([username, email, password, confirm_password]):
+            flash('All fields are required', 'error')
+            return render_template('register.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return render_template('register.html')
+        
+        try:
+            new_user = user_manager.create_user(username, email, password, role)
+            flash(f'User {username} created successfully', 'success')
+            return redirect(url_for('users'))
+        except ValueError as e:
+            flash(str(e), 'error')
+    
+    return render_template('register.html')
+
+@app.route('/users')
+@admin_required
+def users():
+    """List all users (admin only)"""
+    all_users = user_manager.get_all_users()
+    return render_template('users.html', users=all_users)
+
 @app.route('/')
+@login_required
 def index():
     """Dashboard showing overview"""
     customers = customer_model.get_all()
@@ -40,6 +150,7 @@ def index():
 
 # Customer routes
 @app.route('/customers')
+@login_required
 def customers():
     """List all customers with search functionality"""
     search_query = request.args.get('search', '')
@@ -52,6 +163,7 @@ def customers():
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
+@login_required
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
@@ -80,6 +192,7 @@ def add_customer():
     return render_template('add_customer.html')
 
 @app.route('/customers/edit/<customer_id>', methods=['GET', 'POST'])
+@login_required
 def edit_customer(customer_id):
     """Edit existing customer"""
     customer = customer_model.get_by_id(customer_id)
@@ -116,6 +229,7 @@ def edit_customer(customer_id):
     return render_template('edit_customer.html', customer=customer)
 
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
+@login_required
 def delete_customer(customer_id):
     """Delete customer"""
     try:
@@ -130,6 +244,7 @@ def delete_customer(customer_id):
 
 # Cylinder routes
 @app.route('/cylinders')
+@login_required
 def cylinders():
     """List all cylinders with search and filter functionality"""
     search_query = request.args.get('search', '')
@@ -148,6 +263,7 @@ def cylinders():
                          status_filter=status_filter)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
+@login_required
 def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
@@ -178,6 +294,7 @@ def add_cylinder():
     return render_template('add_cylinder.html')
 
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
+@login_required
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
     cylinder = cylinder_model.get_by_id(cylinder_id)
@@ -216,6 +333,7 @@ def edit_cylinder(cylinder_id):
     return render_template('edit_cylinder.html', cylinder=cylinder)
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
+@login_required
 def delete_cylinder(cylinder_id):
     """Delete cylinder"""
     try:
@@ -230,6 +348,7 @@ def delete_cylinder(cylinder_id):
 
 # Data Import routes
 @app.route('/import')
+@login_required
 def import_data():
     """Data import dashboard"""
     if not ACCESS_AVAILABLE:
@@ -410,6 +529,7 @@ def cancel_import():
 
 # Global Search route
 @app.route('/search')
+@login_required
 def global_search():
     """Global search across customers and cylinders"""
     query = request.args.get('q', '').strip()
@@ -433,3 +553,19 @@ def global_search():
         results['total_results'] = len(customer_results) + len(cylinder_results)
     
     return render_template('search_results.html', **results)
+
+@app.route('/users/delete/<user_id>', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    """Delete user (admin only)"""
+    try:
+        if user_manager.delete_user(user_id):
+            flash('User deleted successfully', 'success')
+        else:
+            flash('User not found', 'error')
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        flash(f'Error deleting user: {str(e)}', 'error')
+    
+    return redirect(url_for('users'))

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Users - Oxygen Cylinder Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-people me-3"></i>Users
+            </h1>
+            <p class="lead">Manage system users and permissions</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('register') }}" class="btn btn-primary">
+                <i class="bi bi-person-plus me-2"></i>Add User
+            </a>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    {% if users %}
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>System Users
+                        <span class="badge bg-secondary ms-2">{{ users|length }} user(s)</span>
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <code class="text-info">{{ user.id }}</code>
+                                </td>
+                                <td>
+                                    <strong>{{ user.username }}</strong>
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.role == 'admin' %}
+                                    <span class="badge bg-warning text-dark">Admin</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">User</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ user.created_at[:10] if user.created_at else '-' }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if user.last_login %}
+                                        {{ user.last_login[:10] }}
+                                        {% else %}
+                                        Never
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if user.username != 'admin' or users|selectattr('role', 'equalto', 'admin')|list|length > 1 %}
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Delete Confirmation Modal -->
+                                    <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete user <strong>{{ user.username }}</strong>?
+                                                    <br><small class="text-muted">This action cannot be undone.</small>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col">
+            <div class="text-center py-5">
+                <i class="bi bi-people-fill display-1 text-muted mb-3"></i>
+                <h3 class="text-muted">No users found</h3>
+                <p class="text-muted">Start by adding your first user to the system.</p>
+                <a href="{{ url_for('register') }}" class="btn btn-primary">
+                    <i class="bi bi-person-plus me-2"></i>Add First User
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Information Card -->
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle me-2"></i>User Management Information
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">User Roles:</h6>
+                            <ul class="mb-3">
+                                <li><strong>Admin:</strong> Full system access, can manage users</li>
+                                <li><strong>User:</strong> Can manage customers and cylinders</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Security Notes:</h6>
+                            <ul class="mb-3">
+                                <li>Change default admin password immediately</li>
+                                <li>Use strong passwords (minimum 6 characters)</li>
+                                <li>Cannot delete the last admin user</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

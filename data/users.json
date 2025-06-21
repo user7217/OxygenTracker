@@ -1,0 +1,12 @@
+[
+  {
+    "id": "USER-F86B1351",
+    "username": "admin",
+    "email": "admin@oxygentracker.com",
+    "password_hash": "scrypt:32768:8:1$RE8xwNdmchVYPGjP$0d36a9f290b9e6b06f72d5ccf75227ce38d2e56892304b377c79c94288973c999bb4d5347c1bbe41d04501e33add9947788c857e6328f30bc980df52dd2ccf1b",
+    "role": "admin",
+    "is_active": true,
+    "created_at": "2025-06-21T14:58:43.631127",
+    "last_login": null
+  }
+]
