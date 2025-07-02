@@ -4,27 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Oxygen Cylinder Tracker</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #1e2124 0%, #2c2f33 100%);
+            background: linear-gradient(135deg, #2F4F4F 0%, #556B2F 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #F5F5DC;
+            font-weight: 500;
         }
         .login-card {
-            max-width: 400px;
+            max-width: 450px;
             width: 100%;
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            background: rgba(47, 79, 79, 0.9);
+            border: 3px solid #8FBC8F;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
         }
         .brand-logo {
-            font-size: 3rem;
-            color: #7289da;
+            font-size: 3.5rem;
+            color: #FFD700;
             margin-bottom: 1rem;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #2E8B57 0%, #32CD32 100%);
+            border: 2px solid #FFD700;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #32CD32 0%, #2E8B57 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .form-control {
+            background: rgba(245, 245, 220, 0.9);
+            border: 2px solid #8FBC8F;
+            color: #1C1C1C;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        .form-control:focus {
+            border-color: #FFD700;
+            box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+        }
+        .card {
+            background: rgba(47, 79, 79, 0.9);
+            border: 2px solid #8FBC8F;
+        }
+        h2, h6 {
+            color: #F5F5DC;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .text-muted {
+            color: #D3D3D3 !important;
         }
     </style>
 </head>

@@ -569,3 +569,39 @@ def delete_user(user_id):
         flash(f'Error deleting user: {str(e)}', 'error')
     
     return redirect(url_for('users'))
+
+@app.route('/cylinders/rent/<cylinder_id>', methods=['POST'])
+@login_required
+def rent_cylinder(cylinder_id):
+    """Rent a cylinder to a customer"""
+    customer_id = request.form.get('customer_id')
+    rental_notes = request.form.get('rental_notes', '').strip()
+    
+    if not customer_id:
+        flash('Please select a customer', 'error')
+        return redirect(url_for('cylinders'))
+    
+    # Verify customer exists
+    customer = customer_model.get_by_id(customer_id)
+    if not customer:
+        flash('Customer not found', 'error')
+        return redirect(url_for('cylinders'))
+    
+    # Rent the cylinder
+    if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_notes):
+        flash(f'Cylinder rented to {customer["name"]} successfully', 'success')
+    else:
+        flash('Error renting cylinder', 'error')
+    
+    return redirect(url_for('cylinders'))
+
+@app.route('/cylinders/return/<cylinder_id>', methods=['POST'])
+@login_required
+def return_cylinder(cylinder_id):
+    """Return a cylinder from rental"""
+    if cylinder_model.return_cylinder(cylinder_id):
+        flash('Cylinder returned successfully', 'success')
+    else:
+        flash('Error returning cylinder', 'error')
+    
+    return redirect(url_for('cylinders'))

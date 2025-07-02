@@ -133,6 +133,74 @@
                                         </button>
                                     </div>
                                     
+                                    <!-- Rent Out Modal -->
+                                    {% if cylinder.status == 'available' %}
+                                    <div class="modal fade" id="rentModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Rent Cylinder</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form method="POST" action="{{ url_for('rent_cylinder', cylinder_id=cylinder.id) }}">
+                                                    <div class="modal-body">
+                                                        <p>Rent cylinder <strong>{{ cylinder.serial_number }}</strong> to:</p>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Customer:</label>
+                                                            <select name="customer_id" class="form-select" required>
+                                                                <option value="">Select Customer</option>
+                                                                {% for customer in all_customers %}
+                                                                <option value="{{ customer.id }}">{{ customer.name }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Notes (optional):</label>
+                                                            <textarea name="rental_notes" class="form-control" rows="2"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-success">Rent Out</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Return Modal -->
+                                    {% if cylinder.status == 'rented' %}
+                                    <div class="modal fade" id="returnModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Return Cylinder</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Return cylinder <strong>{{ cylinder.serial_number }}</strong>?</p>
+                                                    {% if cylinder.rented_to %}
+                                                        {% set customer = all_customers | selectattr('id', 'equalto', cylinder.rented_to) | first %}
+                                                        {% if customer %}
+                                                            <p>Currently rented to: <strong>{{ customer.name }}</strong></p>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if cylinder.rental_date %}
+                                                        <p>Rental date: {{ cylinder.rental_date[:10] }}</p>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form method="POST" action="{{ url_for('return_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-warning">Return Cylinder</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
                                     <!-- Delete Confirmation Modal -->
                                     <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
                                         <div class="modal-dialog">
