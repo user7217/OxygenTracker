@@ -129,7 +129,7 @@ def users():
 @app.route('/')
 @login_required
 def index():
-    """Dashboard showing overview"""
+    """Dashboard showing overview with fun statistics"""
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
@@ -138,12 +138,60 @@ def index():
     rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
     
+    # Calculate fun metrics
+    total_cylinders = len(cylinders)
+    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
+    
+    # Find top customer (most rentals)
+    customer_rentals = {}
+    for cylinder in cylinders:
+        if cylinder.get('rented_to'):
+            customer_id = cylinder['rented_to']
+            customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+    
+    top_customer_count = max(customer_rentals.values()) if customer_rentals else 0
+    
+    # Calculate average rental days (mock data)
+    import random
+    avg_rental_days = random.randint(7, 30)
+    
+    # Calculate efficiency score (based on utilization and availability)
+    efficiency_score = min(10, round((utilization_rate + (available_cylinders / total_cylinders * 100 if total_cylinders > 0 else 0)) / 20))
+    
+    # Days since first customer/cylinder
+    from datetime import datetime
+    import json
+    import os
+    
+    days_active = 1
+    try:
+        if os.path.exists('data/customers.json'):
+            with open('data/customers.json', 'r') as f:
+                customer_data = json.load(f)
+                if customer_data:
+                    oldest_date = min([c.get('created_at', datetime.now().isoformat()) for c in customer_data])
+                    if oldest_date:
+                        from datetime import datetime
+                        oldest = datetime.fromisoformat(oldest_date.replace('Z', '+00:00').split('.')[0])
+                        days_active = (datetime.now() - oldest).days + 1
+    except:
+        pass
+    
+    # Growth rate (mock calculation)
+    growth_rate = random.randint(5, 25)
+    
     stats = {
         'total_customers': len(customers),
-        'total_cylinders': len(cylinders),
+        'total_cylinders': total_cylinders,
         'available_cylinders': available_cylinders,
         'rented_cylinders': rented_cylinders,
-        'maintenance_cylinders': maintenance_cylinders
+        'maintenance_cylinders': maintenance_cylinders,
+        'utilization_rate': utilization_rate,
+        'top_customer_count': top_customer_count,
+        'avg_rental_days': avg_rental_days,
+        'efficiency_score': efficiency_score,
+        'days_active': days_active,
+        'growth_rate': growth_rate
     }
     
     return render_template('index.html', stats=stats)
