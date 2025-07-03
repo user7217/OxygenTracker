@@ -120,3 +120,4 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Dashboard design: Clean and simple dashboard with core functionality only. Complex tools (bulk operations, barcode generator, calculator) removed. Metrics moved to separate dedicated tab for users who want detailed analytics.

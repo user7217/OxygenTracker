@@ -10,117 +10,48 @@
                 <i class="bi bi-speedometer2 me-3"></i>Dashboard
             </h1>
             <p class="lead">Welcome to your oxygen cylinder management system</p>
-            <div class="d-flex gap-2 mb-3">
-                <button onclick="refreshStats()" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                </button>
-                <button onclick="exportReport()" class="btn btn-outline-success btn-sm">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export Report
-                </button>
-                <button onclick="showSystemInfo()" class="btn btn-outline-info btn-sm">
-                    <i class="bi bi-info-circle me-1"></i>System Info
-                </button>
-            </div>
         </div>
     </div>
 
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card text-center stat-card" data-bs-toggle="tooltip" title="Total registered customers">
+            <div class="card text-center">
                 <div class="card-body">
                     <i class="bi bi-people-fill display-4 text-primary mb-3"></i>
-                    <h3 class="card-title counter" data-target="{{ stats.total_customers }}">0</h3>
+                    <h3 class="card-title">{{ stats.total_customers }}</h3>
                     <p class="card-text">Total Customers</p>
                     <a href="{{ url_for('customers') }}" class="btn btn-outline-primary btn-sm">View All</a>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center stat-card" data-bs-toggle="tooltip" title="Total cylinders in inventory">
+            <div class="card text-center">
                 <div class="card-body">
                     <i class="bi bi-cylinder display-4 text-info mb-3"></i>
-                    <h3 class="card-title counter" data-target="{{ stats.total_cylinders }}">0</h3>
+                    <h3 class="card-title">{{ stats.total_cylinders }}</h3>
                     <p class="card-text">Total Cylinders</p>
                     <a href="{{ url_for('cylinders') }}" class="btn btn-outline-info btn-sm">View All</a>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center stat-card" data-bs-toggle="tooltip" title="Cylinders ready for rental">
+            <div class="card text-center">
                 <div class="card-body">
                     <i class="bi bi-check-circle-fill display-4 text-success mb-3"></i>
-                    <h3 class="card-title counter" data-target="{{ stats.available_cylinders }}">0</h3>
+                    <h3 class="card-title">{{ stats.available_cylinders }}</h3>
                     <p class="card-text">Available</p>
                     <a href="{{ url_for('cylinders', status='available') }}" class="btn btn-outline-success btn-sm">View</a>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center stat-card" data-bs-toggle="tooltip" title="Cylinders currently with customers">
+            <div class="card text-center">
                 <div class="card-body">
                     <i class="bi bi-arrow-right-circle-fill display-4 text-warning mb-3"></i>
-                    <h3 class="card-title counter" data-target="{{ stats.rented_cylinders }}">0</h3>
+                    <h3 class="card-title">{{ stats.rented_cylinders }}</h3>
                     <p class="card-text">Rented Out</p>
                     <a href="{{ url_for('cylinders', status='rented') }}" class="btn btn-outline-warning btn-sm">View</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fun Metrics Row -->
-    <div class="row mb-4">
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-speedometer2 text-primary mb-2"></i>
-                    <h6 class="card-title">{{ stats.utilization_rate }}%</h6>
-                    <small class="text-muted">Utilization</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-trophy text-warning mb-2"></i>
-                    <h6 class="card-title">{{ stats.top_customer_count }}</h6>
-                    <small class="text-muted">Top Renter</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-lightning text-danger mb-2"></i>
-                    <h6 class="card-title">{{ stats.avg_rental_days }}</h6>
-                    <small class="text-muted">Avg Days</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-star text-success mb-2"></i>
-                    <h6 class="card-title">{{ stats.efficiency_score }}/10</h6>
-                    <small class="text-muted">Efficiency</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-calendar text-info mb-2"></i>
-                    <h6 class="card-title">{{ stats.days_active }}</h6>
-                    <small class="text-muted">Days Active</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center fun-stat">
-                <div class="card-body">
-                    <i class="bi bi-graph-up text-primary mb-2"></i>
-                    <h6 class="card-title">{{ stats.growth_rate }}%</h6>
-                    <small class="text-muted">Growth</small>
                 </div>
             </div>
         </div>
@@ -137,35 +68,25 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-2 mb-3">
-                            <a href="{{ url_for('add_customer') }}" class="btn btn-primary w-100 action-btn">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('add_customer') }}" class="btn btn-primary w-100">
                                 <i class="bi bi-person-plus me-2"></i>Add Customer
                             </a>
                         </div>
-                        <div class="col-md-2 mb-3">
-                            <a href="{{ url_for('add_cylinder') }}" class="btn btn-info w-100 action-btn">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('add_cylinder') }}" class="btn btn-info w-100">
                                 <i class="bi bi-plus-circle me-2"></i>Add Cylinder
                             </a>
                         </div>
-                        <div class="col-md-2 mb-3">
-                            <a href="{{ url_for('import_data') }}" class="btn btn-warning w-100 action-btn">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('import_data') }}" class="btn btn-warning w-100">
                                 <i class="bi bi-upload me-2"></i>Import Data
                             </a>
                         </div>
-                        <div class="col-md-2 mb-3">
-                            <button onclick="bulkRentReturn()" class="btn btn-success w-100 action-btn">
-                                <i class="bi bi-arrow-repeat me-2"></i>Bulk Rent
-                            </button>
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <button onclick="generateBarcode()" class="btn btn-secondary w-100 action-btn">
-                                <i class="bi bi-upc-scan me-2"></i>Barcode
-                            </button>
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <button onclick="showCalculator()" class="btn btn-dark w-100 action-btn">
-                                <i class="bi bi-calculator me-2"></i>Calculator
-                            </button>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('global_search') }}" class="btn btn-secondary w-100">
+                                <i class="bi bi-search me-2"></i>Search All
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -173,42 +94,41 @@
         </div>
     </div>
 
-    <!-- Charts and Fun Tools Row -->
+    <!-- Additional Stats -->
     <div class="row">
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-pie-chart me-2"></i>Cylinder Distribution
+                        <i class="bi bi-graph-up me-2"></i>Cylinder Status
                     </h5>
-                    <button onclick="animateChart()" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-play-circle"></i>
-                    </button>
                 </div>
                 <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="cylinderChart" width="400" height="200"></canvas>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Available</span>
+                            <span class="badge bg-success">{{ stats.available_cylinders }}</span>
+                        </div>
+                        <div class="progress mt-1">
+                            <div class="progress-bar bg-success" style="width: {{ (stats.available_cylinders / stats.total_cylinders * 100) if stats.total_cylinders > 0 else 0 }}%"></div>
+                        </div>
                     </div>
-                    <div class="mt-3">
-                        <div class="row text-center">
-                            <div class="col-4">
-                                <div class="stat-box bg-success-subtle p-2 rounded">
-                                    <strong>{{ stats.available_cylinders }}</strong><br>
-                                    <small>Available</small>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-box bg-warning-subtle p-2 rounded">
-                                    <strong>{{ stats.rented_cylinders }}</strong><br>
-                                    <small>Rented</small>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="stat-box bg-danger-subtle p-2 rounded">
-                                    <strong>{{ stats.maintenance_cylinders }}</strong><br>
-                                    <small>Maintenance</small>
-                                </div>
-                            </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Rented</span>
+                            <span class="badge bg-warning">{{ stats.rented_cylinders }}</span>
+                        </div>
+                        <div class="progress mt-1">
+                            <div class="progress-bar bg-warning" style="width: {{ (stats.rented_cylinders / stats.total_cylinders * 100) if stats.total_cylinders > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between">
+                            <span>Maintenance</span>
+                            <span class="badge bg-danger">{{ stats.maintenance_cylinders }}</span>
+                        </div>
+                        <div class="progress mt-1">
+                            <div class="progress-bar bg-danger" style="width: {{ (stats.maintenance_cylinders / stats.total_cylinders * 100) if stats.total_cylinders > 0 else 0 }}%"></div>
                         </div>
                     </div>
                 </div>
@@ -216,412 +136,17 @@
         </div>
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-tools me-2"></i>Fun Tools
-                    </h5>
-                    <div class="btn-group btn-group-sm">
-                        <button onclick="randomCylinder()" class="btn btn-outline-warning">
-                            <i class="bi bi-shuffle"></i>
-                        </button>
-                        <button onclick="playSound()" class="btn btn-outline-info">
-                            <i class="bi bi-volume-up"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="tool-grid">
-                        <button onclick="showWeather()" class="tool-btn btn btn-outline-primary">
-                            <i class="bi bi-cloud-sun"></i><br>Weather
-                        </button>
-                        <button onclick="showTime()" class="tool-btn btn btn-outline-success">
-                            <i class="bi bi-clock"></i><br>Time
-                        </button>
-                        <button onclick="colorPicker()" class="tool-btn btn btn-outline-warning">
-                            <i class="bi bi-palette"></i><br>Colors
-                        </button>
-                        <button onclick="showJoke()" class="tool-btn btn btn-outline-danger">
-                            <i class="bi bi-emoji-smile"></i><br>Joke
-                        </button>
-                        <button onclick="showQuote()" class="tool-btn btn btn-outline-info">
-                            <i class="bi bi-quote"></i><br>Quote
-                        </button>
-                        <button onclick="showTip()" class="tool-btn btn btn-outline-dark">
-                            <i class="bi bi-lightbulb"></i><br>Tip
-                        </button>
-                    </div>
-                    <div id="funOutput" class="mt-3 p-3 bg-light rounded" style="min-height: 60px; display: none;">
-                        <div id="funContent"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- System Status Row -->
-    <div class="row mt-4">
-        <div class="col">
-            <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-activity me-2"></i>System Health
+                        <i class="bi bi-clock-history me-2"></i>Recent Activity
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 text-center">
-                            <div class="system-status">
-                                <div class="status-indicator bg-success"></div>
-                                <strong>Database</strong><br>
-                                <small class="text-success">Operational</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-center">
-                            <div class="system-status">
-                                <div class="status-indicator bg-success"></div>
-                                <strong>Authentication</strong><br>
-                                <small class="text-success">Active</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-center">
-                            <div class="system-status">
-                                <div class="status-indicator bg-warning"></div>
-                                <strong>Import Service</strong><br>
-                                <small class="text-warning">Limited</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-center">
-                            <div class="system-status">
-                                <div class="status-indicator bg-success"></div>
-                                <strong>Web Interface</strong><br>
-                                <small class="text-success">Online</small>
-                            </div>
-                        </div>
-                    </div>
+                    <p class="text-muted">Recent activity tracking coming soon...</p>
+                    <small class="text-muted">This will show recent customer additions, cylinder rentals, and returns.</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Calculator Modal -->
-<div class="modal fade" id="calculatorModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Quick Calculator</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="calculator">
-                    <input type="text" id="calcDisplay" class="form-control form-control-lg mb-3" readonly>
-                    <div class="row g-2">
-                        <div class="col-3"><button onclick="calcInput('7')" class="btn btn-outline-dark w-100">7</button></div>
-                        <div class="col-3"><button onclick="calcInput('8')" class="btn btn-outline-dark w-100">8</button></div>
-                        <div class="col-3"><button onclick="calcInput('9')" class="btn btn-outline-dark w-100">9</button></div>
-                        <div class="col-3"><button onclick="calcInput('/')" class="btn btn-warning w-100">÷</button></div>
-                        <div class="col-3"><button onclick="calcInput('4')" class="btn btn-outline-dark w-100">4</button></div>
-                        <div class="col-3"><button onclick="calcInput('5')" class="btn btn-outline-dark w-100">5</button></div>
-                        <div class="col-3"><button onclick="calcInput('6')" class="btn btn-outline-dark w-100">6</button></div>
-                        <div class="col-3"><button onclick="calcInput('*')" class="btn btn-warning w-100">×</button></div>
-                        <div class="col-3"><button onclick="calcInput('1')" class="btn btn-outline-dark w-100">1</button></div>
-                        <div class="col-3"><button onclick="calcInput('2')" class="btn btn-outline-dark w-100">2</button></div>
-                        <div class="col-3"><button onclick="calcInput('3')" class="btn btn-outline-dark w-100">3</button></div>
-                        <div class="col-3"><button onclick="calcInput('-')" class="btn btn-warning w-100">-</button></div>
-                        <div class="col-3"><button onclick="calcInput('0')" class="btn btn-outline-dark w-100">0</button></div>
-                        <div class="col-3"><button onclick="calcInput('.')" class="btn btn-outline-dark w-100">.</button></div>
-                        <div class="col-3"><button onclick="calcClear()" class="btn btn-danger w-100">C</button></div>
-                        <div class="col-3"><button onclick="calcInput('+')" class="btn btn-warning w-100">+</button></div>
-                        <div class="col-12"><button onclick="calcEquals()" class="btn btn-success w-100">=</button></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-<style>
-.stat-card {
-    transition: transform 0.2s ease;
-    cursor: pointer;
-}
-.stat-card:hover {
-    transform: translateY(-5px);
-}
-.fun-stat {
-    transition: all 0.2s ease;
-}
-.fun-stat:hover {
-    transform: scale(1.05);
-}
-.action-btn {
-    transition: all 0.2s ease;
-}
-.action-btn:hover {
-    transform: translateY(-2px);
-}
-.tool-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-.tool-btn {
-    aspect-ratio: 1;
-    font-size: 0.8rem;
-}
-.system-status {
-    position: relative;
-    padding: 10px;
-}
-.status-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-    animation: pulse 2s infinite;
-}
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-.chart-container {
-    position: relative;
-    height: 200px;
-}
-.calculator {
-    max-width: 300px;
-    margin: 0 auto;
-}
-.bg-success-subtle {
-    background-color: rgba(25, 135, 84, 0.1) !important;
-}
-.bg-warning-subtle {
-    background-color: rgba(255, 193, 7, 0.1) !important;
-}
-.bg-danger-subtle {
-    background-color: rgba(220, 53, 69, 0.1) !important;
-}
-</style>
-
-<script>
-// Counter Animation
-function animateCounters() {
-    document.querySelectorAll('.counter').forEach(counter => {
-        const target = parseInt(counter.getAttribute('data-target'));
-        const increment = target / 100;
-        let current = 0;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                counter.textContent = target;
-                clearInterval(timer);
-            } else {
-                counter.textContent = Math.ceil(current);
-            }
-        }, 20);
-    });
-}
-
-// Fun Tools Functions
-function showWeather() {
-    const weather = ['☀️ Sunny', '⛅ Cloudy', '🌧️ Rainy', '❄️ Snowy', '🌤️ Partly Cloudy'];
-    const temp = Math.floor(Math.random() * 30) + 10;
-    showFunOutput(`${weather[Math.floor(Math.random() * weather.length)]} ${temp}°C`);
-}
-
-function showTime() {
-    const now = new Date();
-    showFunOutput(`🕒 ${now.toLocaleTimeString()}<br>📅 ${now.toLocaleDateString()}`);
-}
-
-function colorPicker() {
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    showFunOutput(`<div style="background: ${color}; padding: 20px; border-radius: 8px; color: white; text-align: center;">${color}</div>`);
-}
-
-function showJoke() {
-    const jokes = [
-        "Why don't oxygen cylinders ever feel lonely? Because they're always under pressure!",
-        "What did one oxygen cylinder say to another? 'You take my breath away!'",
-        "Why are oxygen cylinders great at parties? They really know how to breathe life into the room!",
-        "What's an oxygen cylinder's favorite type of music? Heavy metal!",
-        "Why don't oxygen cylinders make good comedians? Their jokes are too pressurized!"
-    ];
-    showFunOutput(`😄 ${jokes[Math.floor(Math.random() * jokes.length)]}`);
-}
-
-function showQuote() {
-    const quotes = [
-        "Quality is not an act, it is a habit. - Aristotle",
-        "Excellence is doing ordinary things extraordinarily well. - John W. Gardner",
-        "The way to get started is to quit talking and begin doing. - Walt Disney",
-        "Success is not final, failure is not fatal: it is the courage to continue that counts. - Winston Churchill",
-        "Innovation distinguishes between a leader and a follower. - Steve Jobs"
-    ];
-    showFunOutput(`💡 "${quotes[Math.floor(Math.random() * quotes.length)]}"`);
-}
-
-function showTip() {
-    const tips = [
-        "💡 Regular cylinder inspections prevent safety issues",
-        "📋 Keep detailed rental records for better tracking",
-        "🔍 Use the search function to quickly find customers",
-        "📊 Check the dashboard daily for inventory updates",
-        "🏷️ Label cylinders clearly for easy identification",
-        "📱 Export reports for external analysis"
-    ];
-    showFunOutput(tips[Math.floor(Math.random() * tips.length)]);
-}
-
-function showFunOutput(content) {
-    document.getElementById('funContent').innerHTML = content;
-    document.getElementById('funOutput').style.display = 'block';
-}
-
-function randomCylinder() {
-    const types = ['Oxygen', 'Nitrogen', 'Argon', 'CO2', 'Helium'];
-    const sizes = ['Small', 'Medium', 'Large', 'Extra Large'];
-    const randomType = types[Math.floor(Math.random() * types.length)];
-    const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
-    showFunOutput(`🎲 Random Cylinder: ${randomSize} ${randomType} cylinder`);
-}
-
-function playSound() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 800;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-        
-        showFunOutput('🔊 Beep! System notification sound played');
-    } catch (e) {
-        showFunOutput('🔇 Sound not available in this browser');
-    }
-}
-
-// Calculator Functions
-let calcValue = '';
-function showCalculator() {
-    new bootstrap.Modal(document.getElementById('calculatorModal')).show();
-}
-
-function calcInput(value) {
-    calcValue += value;
-    document.getElementById('calcDisplay').value = calcValue;
-}
-
-function calcClear() {
-    calcValue = '';
-    document.getElementById('calcDisplay').value = '';
-}
-
-function calcEquals() {
-    try {
-        const result = eval(calcValue);
-        document.getElementById('calcDisplay').value = result;
-        calcValue = result.toString();
-    } catch (e) {
-        document.getElementById('calcDisplay').value = 'Error';
-        calcValue = '';
-    }
-}
-
-// Other Functions
-function refreshStats() {
-    location.reload();
-}
-
-function exportReport() {
-    alert('📊 Export functionality coming soon!\nThis will generate Excel/PDF reports of your cylinder inventory.');
-}
-
-function showSystemInfo() {
-    const info = `
-        🖥️ System Information:
-        • Version: 2.0.0
-        • Database: JSON Files
-        • Users: Active
-        • Uptime: ${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m
-        • Memory: ${Math.floor(Math.random() * 100)}% free
-    `;
-    showFunOutput(info);
-}
-
-function bulkRentReturn() {
-    alert('🔄 Bulk operations coming soon!\nThis will allow you to rent/return multiple cylinders at once.');
-}
-
-function generateBarcode() {
-    const barcodeNum = Math.floor(Math.random() * 1000000000);
-    showFunOutput(`📊 Generated Barcode:<br><div style="font-family: monospace; font-size: 24px; text-align: center; padding: 10px; background: black; color: white;">||||| ${barcodeNum} |||||</div>`);
-}
-
-function animateChart() {
-    const canvas = document.getElementById('cylinderChart');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw simple pie chart
-    const data = [{{ stats.available_cylinders }}, {{ stats.rented_cylinders }}, {{ stats.maintenance_cylinders }}];
-    const colors = ['#28A745', '#FFC107', '#DC3545'];
-    const total = data.reduce((a, b) => a + b, 0);
-    
-    if (total > 0) {
-        let currentAngle = 0;
-        data.forEach((value, index) => {
-            const sliceAngle = (value / total) * 2 * Math.PI;
-            
-            ctx.beginPath();
-            ctx.arc(200, 100, 80, currentAngle, currentAngle + sliceAngle);
-            ctx.lineTo(200, 100);
-            ctx.fillStyle = colors[index];
-            ctx.fill();
-            
-            currentAngle += sliceAngle;
-        });
-        
-        // Add center text
-        ctx.fillStyle = '#000';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Cylinders', 200, 105);
-    } else {
-        // No data message
-        ctx.fillStyle = '#666';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('No Data Available', 200, 105);
-    }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    animateCounters();
-    animateChart();
-    
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
-</script>
 {% endblock %}
