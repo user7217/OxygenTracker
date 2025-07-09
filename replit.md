@@ -115,7 +115,13 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
-- June 30, 2025. Initial setup
+- July 9, 2025: Added bulk cylinder management with text box input, enhanced touch-screen optimization
+- June 30, 2025: Initial setup
+
+## GitHub Integration
+- Repository: github.com/user7217/OxygenTracker
+- Setup script: `./setup_git.sh` - Initial connection to GitHub
+- Push script: `./push_to_github.sh` - Quick updates to repository
 
 ## User Preferences
 
