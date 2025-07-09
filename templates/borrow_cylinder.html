@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Borrow Cylinder - Oxygen Cylinder Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-arrow-down-circle"></i>
+                        Borrow Cylinder
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Cylinder Information -->
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> Cylinder Details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Serial Number:</strong> {{ cylinder.serial_number }}<br>
+                                <strong>Type:</strong> {{ cylinder.type }}<br>
+                                <strong>Size:</strong> {{ cylinder.size }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong> 
+                                <span class="badge bg-success">{{ cylinder.status }}</span><br>
+                                <strong>Location:</strong> {{ cylinder.location }}<br>
+                                <strong>Pressure:</strong> {{ cylinder.pressure or 'N/A' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('borrow_cylinder', cylinder_id=cylinder.id) }}">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="customer_id" class="form-label">
+                                    <i class="bi bi-person"></i>
+                                    Select Customer <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select form-select-lg" id="customer_id" name="customer_id" required>
+                                    <option value="">Choose customer...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.id }}">
+                                        {{ customer.name }} - {{ customer.email }}
+                                        {% if customer.company %} ({{ customer.company }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Select the customer who is borrowing this cylinder</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="borrow_date" class="form-label">
+                                    <i class="bi bi-calendar"></i>
+                                    Borrow Date & Time
+                                </label>
+                                <input type="datetime-local" class="form-control form-control-lg" id="borrow_date" name="borrow_date">
+                                <small class="form-text text-muted">Leave empty to use current date/time</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="notes" class="form-label">
+                                    <i class="bi bi-sticky"></i>
+                                    Borrowing Notes
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="notes" name="notes" 
+                                       placeholder="Optional notes about this borrowing...">
+                                <small class="form-text text-muted">Any special notes for this rental</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    <strong>Important:</strong> This action will change the cylinder status to "Rented" and record the borrowing date automatically.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i>
+                                Confirm Borrowing
+                            </button>
+                            <a href="{{ url_for('cylinders') }}" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set current date/time as default
+document.addEventListener('DOMContentLoaded', function() {
+    const borrowDateInput = document.getElementById('borrow_date');
+    if (!borrowDateInput.value) {
+        const now = new Date();
+        // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        borrowDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+});
+</script>
+{% endblock %}
