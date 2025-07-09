@@ -479,8 +479,8 @@ def cylinders():
     """List all cylinders with search and filter functionality"""
     search_query = request.args.get('search', '')
     status_filter = request.args.get('status', '')
-    
     customer_filter = request.args.get('customer', '')
+    rental_duration_filter = request.args.get('rental_duration', '')
     
     cylinders_list = cylinder_model.get_all()
     
@@ -495,6 +495,23 @@ def cylinders():
     # Apply customer filter
     if customer_filter:
         cylinders_list = [c for c in cylinders_list if c.get('rented_to') == customer_filter]
+    
+    # Apply rental duration filter
+    if rental_duration_filter:
+        try:
+            duration_months = int(rental_duration_filter)
+            duration_days = duration_months * 30
+            filtered_cylinders = []
+            
+            for cylinder in cylinders_list:
+                if cylinder.get('status', '').lower() == 'rented':
+                    rental_days = cylinder_model.get_rental_days(cylinder)
+                    if rental_days >= duration_days:
+                        filtered_cylinders.append(cylinder)
+            
+            cylinders_list = filtered_cylinders
+        except ValueError:
+            pass  # Ignore invalid duration values
     
     # Add rental days calculation for each cylinder
     for cylinder in cylinders_list:
@@ -514,7 +531,8 @@ def cylinders():
                          customers=customers,
                          search_query=search_query,
                          status_filter=status_filter,
-                         customer_filter=customer_filter)
+                         customer_filter=customer_filter,
+                         rental_duration_filter=rental_duration_filter)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
@@ -958,3 +976,49 @@ def get_customer_rentals(customer_id):
         rental['rental_days'] = cylinder_model.get_rental_days(rental)
     
     return jsonify({'rentals': rentals})
+
+@app.route('/archive_data', methods=['POST'])
+@login_required
+@admin_required
+def archive_data():
+    """Archive old data (admin only)"""
+    try:
+        months_old = int(request.form.get('months', 6))
+        if months_old < 1:
+            months_old = 6
+        
+        # Archive both cylinder and customer data
+        cylinder_result = cylinder_model.archive_old_data(months_old)
+        customer_result = customer_model.archive_old_data(months_old)
+        
+        # Combine results
+        total_archived = cylinder_result.get('archived_count', 0) + customer_result.get('archived_count', 0)
+        total_remaining = cylinder_result.get('remaining_count', 0) + customer_result.get('remaining_count', 0)
+        
+        # Check for errors
+        if 'error' in cylinder_result or 'error' in customer_result:
+            errors = []
+            if 'error' in cylinder_result:
+                errors.append(f"Cylinders: {cylinder_result['error']}")
+            if 'error' in customer_result:
+                errors.append(f"Customers: {customer_result['error']}")
+            flash(f'Archive failed: {"; ".join(errors)}', 'error')
+        elif total_archived > 0:
+            archive_files = []
+            if cylinder_result.get('archived_count', 0) > 0:
+                archive_files.append(cylinder_result.get('archive_file', ''))
+            if customer_result.get('archived_count', 0) > 0:
+                archive_files.append(customer_result.get('archive_file', ''))
+            
+            flash(f'Successfully archived {total_archived} old records ({cylinder_result.get("archived_count", 0)} cylinders, {customer_result.get("archived_count", 0)} customers). Archives saved.', 'success')
+        else:
+            flash('No old data found to archive', 'info')
+        
+
+        
+    except ValueError:
+        flash('Invalid months value provided', 'error')
+    except Exception as e:
+        flash(f'Error during archiving: {str(e)}', 'error')
+    
+    return redirect(url_for('cylinders'))

@@ -44,7 +44,7 @@
                                 <option value="maintenance" {% if status_filter == 'maintenance' %}selected{% endif %}>Maintenance</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="customer" class="form-label fs-5">Filter by Customer</label>
                             <select class="form-select form-select-lg" id="customer" name="customer" style="font-size: 1.1rem;">
                                 <option value="">All Customers</option>
@@ -53,6 +53,15 @@
                                         {{ customer.name }}
                                     </option>
                                 {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="rental_duration" class="form-label fs-5">Rented For</label>
+                            <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
+                                <option value="">Any Duration</option>
+                                <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month</option>
+                                <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months</option>
+                                <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -72,6 +81,49 @@
         </div>
     </div>
 
+    <!-- Admin Archive Section -->
+    {% if session.user_role == 'admin' %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0 fs-4">
+                        <i class="bi bi-archive me-2"></i>Data Archive (Admin Only)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3 fs-5">Archive old cylinder data to improve performance and organize records. This will move old cylinder records to a backup file.</p>
+                    <form method="POST" action="{{ url_for('archive_data') }}" class="row g-3" onsubmit="return confirm('Are you sure you want to archive old data? This action cannot be undone.')">
+                        <div class="col-md-3">
+                            <label for="months" class="form-label fs-5">Archive data older than:</label>
+                            <select class="form-select form-select-lg" id="months" name="months" style="font-size: 1.1rem;">
+                                <option value="6" selected>6 months</option>
+                                <option value="12">12 months</option>
+                                <option value="3">3 months</option>
+                                <option value="1">1 month</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
+                                    <i class="bi bi-archive me-2"></i>Archive Old Data
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted fs-6">
+                                <strong>Note:</strong> Only available cylinders and those returned long ago will be archived. 
+                                Currently rented cylinders and recent activity will remain active.
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Results Summary -->
     {% if cylinders %}
     <div class="row mb-3">
@@ -89,6 +141,9 @@
                 {% endif %}
                 {% if customer_filter %}
                 <span class="badge bg-success fs-6">Customer Filter Active</span>
+                {% endif %}
+                {% if rental_duration_filter %}
+                <span class="badge bg-danger fs-6">Rented {{ rental_duration_filter }}+ Months</span>
                 {% endif %}
             </div>
         </div>

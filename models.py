@@ -128,6 +128,67 @@ class Customer:
                     break  # Avoid duplicates
         
         return results
+    
+    def archive_old_data(self, months_old: int = 6) -> Dict[str, int]:
+        """Archive customer data older than specified months and create backup"""
+        from datetime import datetime, timedelta
+        import json
+        import os
+        
+        cutoff_date = datetime.now() - timedelta(days=months_old * 30)
+        customers = self.db.load_data()
+        
+        active_customers = []
+        archived_customers = []
+        
+        for customer in customers:
+            # Check if customer has old data and no recent activity
+            created_at = customer.get('created_at')
+            should_archive = False
+            
+            if created_at:
+                try:
+                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00').split('.')[0])
+                    if created_date < cutoff_date:
+                        # Only archive customers without active rentals (checked by caller)
+                        should_archive = True
+                except:
+                    pass
+            
+            if should_archive:
+                archived_customers.append(customer)
+            else:
+                active_customers.append(customer)
+        
+        # Create archived data backup
+        if archived_customers:
+            self._ensure_data_directory()
+            archive_filename = f"data/customers_archive_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            
+            try:
+                with open(archive_filename, 'w') as f:
+                    json.dump(archived_customers, f, indent=2)
+                
+                # Update main data file with only active customers
+                self.db.save_data(active_customers)
+                
+                return {
+                    'archived_count': len(archived_customers),
+                    'remaining_count': len(active_customers),
+                    'archive_file': archive_filename
+                }
+            except Exception as e:
+                return {
+                    'error': f"Failed to create archive: {str(e)}",
+                    'archived_count': 0,
+                    'remaining_count': len(customers)
+                }
+        
+        return {
+            'archived_count': 0,
+            'remaining_count': len(customers),
+            'message': 'No data to archive'
+        }
 
 class Cylinder:
     """Cylinder model for managing cylinder data"""
@@ -271,3 +332,100 @@ class Cylinder:
             return (datetime.now() - rental_date).days
         except:
             return 0
+    
+    def get_by_rental_duration(self, duration_months: int) -> List[Dict]:
+        """Get cylinders rented for a specific duration or longer"""
+        cylinders = self.db.load_data()
+        results = []
+        
+        for cylinder in cylinders:
+            if cylinder.get('status', '').lower() == 'rented' and cylinder.get('rental_date'):
+                rental_days = self.get_rental_days(cylinder)
+                duration_days = duration_months * 30  # Approximate months to days
+                
+                if rental_days >= duration_days:
+                    results.append(cylinder)
+        
+        return results
+    
+    def archive_old_data(self, months_old: int = 6) -> Dict[str, int]:
+        """Archive data older than specified months and create backup"""
+        from datetime import datetime, timedelta
+        import json
+        import os
+        
+        cutoff_date = datetime.now() - timedelta(days=months_old * 30)
+        cylinders = self.db.load_data()
+        
+        active_cylinders = []
+        archived_cylinders = []
+        
+        for cylinder in cylinders:
+            # Check if cylinder has old data
+            created_at = cylinder.get('created_at')
+            updated_at = cylinder.get('updated_at')
+            rental_date = cylinder.get('rental_date')
+            
+            # Determine if cylinder should be archived
+            should_archive = False
+            
+            # If cylinder is available and old
+            if cylinder.get('status', '').lower() == 'available':
+                if created_at:
+                    try:
+                        created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00').split('.')[0])
+                        if created_date < cutoff_date:
+                            should_archive = True
+                    except:
+                        pass
+            
+            # If cylinder was returned long ago
+            elif cylinder.get('status', '').lower() == 'available' and not rental_date:
+                if updated_at:
+                    try:
+                        updated_date = datetime.fromisoformat(updated_at.replace('Z', '+00:00').split('.')[0])
+                        if updated_date < cutoff_date:
+                            should_archive = True
+                    except:
+                        pass
+            
+            if should_archive:
+                archived_cylinders.append(cylinder)
+            else:
+                active_cylinders.append(cylinder)
+        
+        # Create archived data backup
+        if archived_cylinders:
+            self._ensure_data_directory()
+            archive_filename = f"data/cylinders_archive_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            
+            try:
+                with open(archive_filename, 'w') as f:
+                    json.dump(archived_cylinders, f, indent=2)
+                
+                # Update main data file with only active cylinders
+                self.db.save_data(active_cylinders)
+                
+                return {
+                    'archived_count': len(archived_cylinders),
+                    'remaining_count': len(active_cylinders),
+                    'archive_file': archive_filename
+                }
+            except Exception as e:
+                return {
+                    'error': f"Failed to create archive: {str(e)}",
+                    'archived_count': 0,
+                    'remaining_count': len(cylinders)
+                }
+        
+        return {
+            'archived_count': 0,
+            'remaining_count': len(cylinders),
+            'message': 'No data to archive'
+        }
+    
+    def _ensure_data_directory(self):
+        """Create data directory if it doesn't exist"""
+        import os
+        if not os.path.exists('data'):
+            os.makedirs('data')
