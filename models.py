@@ -214,12 +214,25 @@ class Cylinder:
     
     def add(self, cylinder_data: Dict) -> Dict:
         """Add new cylinder"""
+        from models import Customer
         cylinders = self.db.load_data()
         
         # Generate unique ID
         cylinder_data['id'] = self.generate_id()
         cylinder_data['created_at'] = datetime.now().isoformat()
         cylinder_data['updated_at'] = datetime.now().isoformat()
+        
+        # If cylinder is being rented to a customer, store customer name
+        if cylinder_data.get('rented_to'):
+            customer_model = Customer()
+            customer = customer_model.get_by_id(cylinder_data['rented_to'])
+            if customer:
+                cylinder_data['customer_name'] = customer.get('name', '')
+                cylinder_data['customer_email'] = customer.get('email', '')
+        else:
+            # Initialize customer fields as empty
+            cylinder_data['customer_name'] = ''
+            cylinder_data['customer_email'] = ''
         
         cylinders.append(cylinder_data)
         self.db.save_data(cylinders)
@@ -228,6 +241,7 @@ class Cylinder:
     
     def update(self, cylinder_id: str, cylinder_data: Dict) -> Optional[Dict]:
         """Update existing cylinder"""
+        from models import Customer
         cylinders = self.db.load_data()
         
         for i, cylinder in enumerate(cylinders):
@@ -236,6 +250,18 @@ class Cylinder:
                 cylinder_data['id'] = cylinder_id
                 cylinder_data['created_at'] = cylinder.get('created_at')
                 cylinder_data['updated_at'] = datetime.now().isoformat()
+                
+                # If cylinder is being rented to a customer, store customer name
+                if cylinder_data.get('rented_to'):
+                    customer_model = Customer()
+                    customer = customer_model.get_by_id(cylinder_data['rented_to'])
+                    if customer:
+                        cylinder_data['customer_name'] = customer.get('name', '')
+                        cylinder_data['customer_email'] = customer.get('email', '')
+                else:
+                    # Clear customer info if not rented
+                    cylinder_data['customer_name'] = ''
+                    cylinder_data['customer_email'] = ''
                 
                 cylinders[i] = cylinder_data
                 self.db.save_data(cylinders)
@@ -295,6 +321,7 @@ class Cylinder:
     def rent_cylinder(self, cylinder_id: str, customer_id: str, rental_date: str = None) -> bool:
         """Rent a cylinder to a customer with rental date"""
         from datetime import datetime
+        from models import Customer
         
         cylinders = self.db.load_data()
         for cylinder in cylinders:
@@ -302,8 +329,16 @@ class Cylinder:
                 if cylinder.get('status', '').lower() != 'available':
                     return False
                 
+                # Get customer information
+                customer_model = Customer()
+                customer = customer_model.get_by_id(customer_id)
+                if not customer:
+                    return False
+                
                 cylinder['status'] = 'rented'
                 cylinder['rented_to'] = customer_id
+                cylinder['customer_name'] = customer.get('name', '')
+                cylinder['customer_email'] = customer.get('email', '')
                 cylinder['rental_date'] = rental_date or datetime.now().isoformat()
                 cylinder['date_borrowed'] = rental_date or datetime.now().isoformat()
                 # Clear any previous return date
@@ -323,8 +358,10 @@ class Cylinder:
                 cylinder['status'] = 'available'
                 cylinder['date_returned'] = return_date or datetime.now().isoformat()
                 cylinder['updated_at'] = datetime.now().isoformat()
-                # Keep rental history for tracking
+                # Clear customer assignment but keep rental history for tracking
                 cylinder['rented_to'] = ''
+                cylinder['customer_name'] = ''
+                cylinder['customer_email'] = ''
                 cylinder['rental_date'] = ''
                 self.db.save_data(cylinders)
                 return True

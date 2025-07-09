@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "CUST-ABC12345",
+    "name": "John Smith",
+    "email": "john.smith@email.com",
+    "phone": "555-123-4567",
+    "address": "123 Main Street, Cityville, ST 12345",
+    "company": "Smith Industries",
+    "notes": "Regular customer, good payment history",
+    "created_at": "2025-07-09T11:30:00.000000",
+    "updated_at": "2025-07-09T11:30:00.000000"
+  },
+  {
+    "id": "CUST-DEF67890",
+    "name": "Medical Center",
+    "email": "orders@medicalcenter.com",
+    "phone": "555-987-6543",
+    "address": "456 Hospital Avenue, Medtown, ST 67890",
+    "company": "City Medical Center",
+    "notes": "Medical facility, monthly oxygen supply",
+    "created_at": "2025-07-09T11:30:00.000000",
+    "updated_at": "2025-07-09T11:30:00.000000"
+  }
+]

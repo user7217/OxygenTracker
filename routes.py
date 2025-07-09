@@ -516,12 +516,11 @@ def cylinders():
     # Add rental days calculation for each cylinder
     for cylinder in cylinders_list:
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        # Get customer name for display
-        if cylinder.get('rented_to'):
+        # Customer name should already be stored in the cylinder data
+        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
+            # Fallback: get customer name if not stored
             customer = customer_model.get_by_id(cylinder['rented_to'])
             cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
-        else:
-            cylinder['customer_name'] = ''
     
     # Get all customers for the filter dropdown
     customers = customer_model.get_all()
