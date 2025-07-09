@@ -63,7 +63,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                <select class="form-select" id="status" name="status" required>
+                                <select class="form-select" id="status" name="status" required onchange="toggleCustomerSelection()">
                                     <option value="">Select status</option>
                                     <option value="Available" {% if cylinder.status == 'Available' %}selected{% endif %}>Available</option>
                                     <option value="Rented" {% if cylinder.status == 'Rented' %}selected{% endif %}>Rented</option>
@@ -99,6 +99,36 @@
                             </div>
                         </div>
 
+                        <!-- Customer Selection (for Rented status) -->
+                        <div class="row mb-3" id="customer-selection" style="display: {% if cylinder.status == 'Rented' %}block{% else %}none{% endif %};">
+                            <div class="col-md-12">
+                                <label for="rented_to" class="form-label">Rented to Customer</label>
+                                <select class="form-select" id="rented_to" name="rented_to">
+                                    <option value="">Select customer...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.id }}" {% if cylinder.rented_to == customer.id %}selected{% endif %}>{{ customer.name }} - {{ customer.email }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Required when status is 'Rented'</small>
+                            </div>
+                        </div>
+
+                        <!-- Rental Date Tracking -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="date_borrowed" class="form-label">Date Borrowed</label>
+                                <input type="datetime-local" class="form-control" id="date_borrowed" name="date_borrowed" 
+                                       value="{{ cylinder.date_borrowed[:16] if cylinder.date_borrowed else '' }}">
+                                <small class="form-text text-muted">Set when status is changed to 'Rented'</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="date_returned" class="form-label">Date Returned</label>
+                                <input type="datetime-local" class="form-control" id="date_returned" name="date_returned" 
+                                       value="{{ cylinder.date_returned[:16] if cylinder.date_returned else '' }}">
+                                <small class="form-text text-muted">Set when status is changed to 'Available'</small>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notes</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3" 
@@ -130,6 +160,12 @@
                         </div>
                         <div class="col-md-6">
                             <p><strong>Last Updated:</strong> {{ cylinder.updated_at[:19] if cylinder.updated_at else 'N/A' }}</p>
+                            {% if cylinder.date_borrowed %}
+                            <p><strong>Date Borrowed:</strong> {{ cylinder.date_borrowed[:19] if cylinder.date_borrowed else 'N/A' }}</p>
+                            {% endif %}
+                            {% if cylinder.date_returned %}
+                            <p><strong>Date Returned:</strong> {{ cylinder.date_returned[:19] if cylinder.date_returned else 'N/A' }}</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -137,4 +173,28 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleCustomerSelection() {
+    const statusSelect = document.getElementById('status');
+    const customerSelection = document.getElementById('customer-selection');
+    const rentedToSelect = document.getElementById('rented_to');
+    
+    if (statusSelect.value === 'Rented') {
+        customerSelection.style.display = 'block';
+        rentedToSelect.required = true;
+    } else {
+        customerSelection.style.display = 'none';
+        rentedToSelect.required = false;
+        if (statusSelect.value !== 'Rented') {
+            rentedToSelect.value = '';
+        }
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomerSelection();
+});
+</script>
 {% endblock %}

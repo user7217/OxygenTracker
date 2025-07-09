@@ -115,7 +115,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
-- July 9, 2025: Added bulk cylinder management with text box input, enhanced touch-screen optimization
+- July 9, 2025: Added bulk cylinder management with text box input, enhanced touch-screen optimization, automatic date tracking for borrowed/returned cylinders, default "Warehouse" location for new cylinders, customer selection dropdown for rented cylinders
 - June 30, 2025: Initial setup
 
 ## GitHub Integration

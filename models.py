@@ -292,7 +292,7 @@ class Cylinder:
         cylinders = self.db.load_data()
         return [c for c in cylinders if c.get('rented_to') == customer_id]
     
-    def rent_cylinder(self, cylinder_id: str, customer_id: str) -> bool:
+    def rent_cylinder(self, cylinder_id: str, customer_id: str, rental_date: str = None) -> bool:
         """Rent a cylinder to a customer with rental date"""
         from datetime import datetime
         
@@ -304,17 +304,26 @@ class Cylinder:
                 
                 cylinder['status'] = 'rented'
                 cylinder['rented_to'] = customer_id
-                cylinder['rental_date'] = datetime.now().isoformat()
+                cylinder['rental_date'] = rental_date or datetime.now().isoformat()
+                cylinder['date_borrowed'] = rental_date or datetime.now().isoformat()
+                # Clear any previous return date
+                cylinder['date_returned'] = ''
+                cylinder['updated_at'] = datetime.now().isoformat()
                 self.db.save_data(cylinders)
                 return True
         return False
     
-    def return_cylinder(self, cylinder_id: str) -> bool:
-        """Return a cylinder from rental"""
+    def return_cylinder(self, cylinder_id: str, return_date: str = None) -> bool:
+        """Return a cylinder from rental with return date"""
+        from datetime import datetime
+        
         cylinders = self.db.load_data()
         for cylinder in cylinders:
             if cylinder['id'] == cylinder_id:
                 cylinder['status'] = 'available'
+                cylinder['date_returned'] = return_date or datetime.now().isoformat()
+                cylinder['updated_at'] = datetime.now().isoformat()
+                # Keep rental history for tracking
                 cylinder['rented_to'] = ''
                 cylinder['rental_date'] = ''
                 self.db.save_data(cylinders)
@@ -323,12 +332,14 @@ class Cylinder:
     
     def get_rental_days(self, cylinder: Dict) -> int:
         """Calculate how many days a cylinder has been rented"""
-        if not cylinder.get('rental_date'):
+        # Try to use date_borrowed first, then fall back to rental_date
+        date_to_use = cylinder.get('date_borrowed') or cylinder.get('rental_date')
+        if not date_to_use:
             return 0
         
         try:
             from datetime import datetime
-            rental_date = datetime.fromisoformat(cylinder['rental_date'].replace('Z', '+00:00').split('.')[0])
+            rental_date = datetime.fromisoformat(date_to_use.replace('Z', '+00:00').split('.')[0])
             return (datetime.now() - rental_date).days
         except:
             return 0

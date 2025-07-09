@@ -61,9 +61,9 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                <select class="form-select" id="status" name="status" required>
+                                <select class="form-select" id="status" name="status" required onchange="toggleCustomerSelection()">
                                     <option value="">Select status</option>
-                                    <option value="Available">Available</option>
+                                    <option value="Available" selected>Available</option>
                                     <option value="Rented">Rented</option>
                                     <option value="Maintenance">Maintenance</option>
                                     <option value="Out of Service">Out of Service</option>
@@ -75,12 +75,26 @@
                             <div class="col-md-6">
                                 <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="location" name="location" 
-                                       placeholder="e.g., Warehouse A, Shelf 2" required>
+                                       value="Warehouse" placeholder="e.g., Warehouse A, Shelf 2" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="pressure" class="form-label">Current Pressure (PSI)</label>
                                 <input type="number" class="form-control" id="pressure" name="pressure" 
                                        placeholder="e.g., 2000">
+                            </div>
+                        </div>
+
+                        <!-- Customer Selection (for Rented status) -->
+                        <div class="row mb-3" id="customer-selection" style="display: none;">
+                            <div class="col-md-12">
+                                <label for="rented_to" class="form-label">Rented to Customer</label>
+                                <select class="form-select" id="rented_to" name="rented_to">
+                                    <option value="">Select customer...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.email }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Required when status is 'Rented'</small>
                             </div>
                         </div>
 
@@ -130,4 +144,26 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleCustomerSelection() {
+    const statusSelect = document.getElementById('status');
+    const customerSelection = document.getElementById('customer-selection');
+    const rentedToSelect = document.getElementById('rented_to');
+    
+    if (statusSelect.value === 'Rented') {
+        customerSelection.style.display = 'block';
+        rentedToSelect.required = true;
+    } else {
+        customerSelection.style.display = 'none';
+        rentedToSelect.required = false;
+        rentedToSelect.value = '';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomerSelection();
+});
+</script>
 {% endblock %}

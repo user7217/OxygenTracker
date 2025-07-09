@@ -547,7 +547,8 @@ def add_cylinder():
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
-                return render_template('add_cylinder.html')
+                customers = customer_model.get_all()
+                return render_template('add_cylinder.html', customers=customers)
             cylinder_data[field] = value
         
         # Add optional fields
@@ -556,6 +557,27 @@ def add_cylinder():
         cylinder_data['next_inspection'] = request.form.get('next_inspection', '').strip()
         cylinder_data['notes'] = request.form.get('notes', '').strip()
         
+        # Handle customer assignment for rented cylinders
+        rented_to = request.form.get('rented_to', '').strip()
+        if cylinder_data['status'].lower() == 'rented':
+            if not rented_to:
+                flash('Customer selection is required when status is "Rented"', 'error')
+                customers = customer_model.get_all()
+                return render_template('add_cylinder.html', customers=customers)
+            
+            # Verify customer exists
+            customer = customer_model.get_by_id(rented_to)
+            if not customer:
+                flash('Selected customer not found', 'error')
+                customers = customer_model.get_all()
+                return render_template('add_cylinder.html', customers=customers)
+            
+            cylinder_data['rented_to'] = rented_to
+            # Set rental tracking dates
+            from datetime import datetime
+            cylinder_data['date_borrowed'] = datetime.now().isoformat()
+            cylinder_data['rental_date'] = datetime.now().isoformat()
+        
         try:
             new_cylinder = cylinder_model.add(cylinder_data)
             flash(f'Cylinder {new_cylinder["serial_number"]} added successfully with ID: {new_cylinder["id"]}', 'success')
@@ -563,7 +585,9 @@ def add_cylinder():
         except Exception as e:
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
-    return render_template('add_cylinder.html')
+    # Get all customers for the dropdown
+    customers = customer_model.get_all()
+    return render_template('add_cylinder.html', customers=customers)
 
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
 @login_required
@@ -583,7 +607,8 @@ def edit_cylinder(cylinder_id):
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
-                return render_template('edit_cylinder.html', cylinder=cylinder)
+                customers = customer_model.get_all()
+                return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             cylinder_data[field] = value
         
         # Add optional fields
@@ -591,6 +616,78 @@ def edit_cylinder(cylinder_id):
         cylinder_data['last_inspection'] = request.form.get('last_inspection', '').strip()
         cylinder_data['next_inspection'] = request.form.get('next_inspection', '').strip()
         cylinder_data['notes'] = request.form.get('notes', '').strip()
+        
+        # Handle customer assignment for rented cylinders
+        rented_to = request.form.get('rented_to', '').strip()
+        if cylinder_data['status'].lower() == 'rented':
+            if not rented_to:
+                flash('Customer selection is required when status is "Rented"', 'error')
+                customers = customer_model.get_all()
+                return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
+            
+            # Verify customer exists
+            customer = customer_model.get_by_id(rented_to)
+            if not customer:
+                flash('Selected customer not found', 'error')
+                customers = customer_model.get_all()
+                return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
+            
+            cylinder_data['rented_to'] = rented_to
+        else:
+            # Clear customer assignment if not rented
+            cylinder_data['rented_to'] = ''
+
+        # Handle date tracking fields
+        date_borrowed = request.form.get('date_borrowed', '').strip()
+        date_returned = request.form.get('date_returned', '').strip()
+        
+        # Get current status and new status
+        current_status = cylinder.get('status', '').lower()
+        new_status = cylinder_data['status'].lower()
+        
+        # Auto-set dates based on status changes
+        from datetime import datetime
+        
+        # If status is changing to 'rented', set date_borrowed
+        if new_status == 'rented' and current_status != 'rented':
+            if not date_borrowed:
+                cylinder_data['date_borrowed'] = datetime.now().isoformat()
+            else:
+                # Convert datetime-local format to ISO format
+                try:
+                    dt = datetime.fromisoformat(date_borrowed)
+                    cylinder_data['date_borrowed'] = dt.isoformat()
+                except:
+                    cylinder_data['date_borrowed'] = datetime.now().isoformat()
+            # Clear return date when renting
+            cylinder_data['date_returned'] = ''
+            
+        # If status is changing to 'available' from 'rented', set date_returned
+        elif new_status == 'available' and current_status == 'rented':
+            if not date_returned:
+                cylinder_data['date_returned'] = datetime.now().isoformat()
+            else:
+                # Convert datetime-local format to ISO format
+                try:
+                    dt = datetime.fromisoformat(date_returned)
+                    cylinder_data['date_returned'] = dt.isoformat()
+                except:
+                    cylinder_data['date_returned'] = datetime.now().isoformat()
+        
+        # If manually setting dates, convert them to proper format
+        else:
+            if date_borrowed:
+                try:
+                    dt = datetime.fromisoformat(date_borrowed)
+                    cylinder_data['date_borrowed'] = dt.isoformat()
+                except:
+                    pass
+            if date_returned:
+                try:
+                    dt = datetime.fromisoformat(date_returned)
+                    cylinder_data['date_returned'] = dt.isoformat()
+                except:
+                    pass
         
         try:
             updated_cylinder = cylinder_model.update(cylinder_id, cylinder_data)
@@ -602,7 +699,9 @@ def edit_cylinder(cylinder_id):
         except Exception as e:
             flash(f'Error updating cylinder: {str(e)}', 'error')
     
-    return render_template('edit_cylinder.html', cylinder=cylinder)
+    # Get all customers for the dropdown
+    customers = customer_model.get_all()
+    return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
 @login_required
@@ -859,8 +958,8 @@ def rent_cylinder(cylinder_id):
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
     
-    # Rent the cylinder
-    if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_notes):
+    # Rent the cylinder (rental_notes parameter is no longer used in the updated function)
+    if cylinder_model.rent_cylinder(cylinder_id, customer_id):
         flash(f'Cylinder rented to {customer["name"]} successfully', 'success')
     else:
         flash('Error renting cylinder', 'error')

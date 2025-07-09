@@ -202,7 +202,12 @@
                                         </strong>
                                         <div class="fs-5 fw-bold">{{ cylinder.customer_name }}</div>
                                     </div>
-                                    {% if cylinder.get('rental_date') %}
+                                    {% if cylinder.get('date_borrowed') %}
+                                    <div class="col-6">
+                                        <strong class="fs-6 text-info">Date Borrowed:</strong>
+                                        <div class="fs-6">{{ cylinder.date_borrowed[:10] }}</div>
+                                    </div>
+                                    {% elif cylinder.get('rental_date') %}
                                     <div class="col-6">
                                         <strong class="fs-6 text-info">Start Date:</strong>
                                         <div class="fs-6">{{ cylinder.rental_date[:10] }}</div>
