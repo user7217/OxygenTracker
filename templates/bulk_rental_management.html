@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Cylinder Management - Oxygen Cylinder Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-arrow-repeat me-3"></i>Bulk Cylinder Management
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('cylinders') }}">Cylinders</a></li>
+                    <li class="breadcrumb-item active">Bulk Management</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ol me-2"></i>Bulk Cylinder Rental & Return Operations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('process_bulk_rental') }}">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="customer_id" class="form-label">
+                                    <strong>Select Customer</strong>
+                                </label>
+                                <select class="form-select" id="customer_id" name="customer_id" required>
+                                    <option value="">Choose a customer...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.email }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="action" class="form-label">
+                                    <strong>Action</strong>
+                                </label>
+                                <select class="form-select" id="action" name="action" required>
+                                    <option value="rent">Rent cylinders to customer</option>
+                                    <option value="return">Return cylinders from customer</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="cylinder_ids" class="form-label">
+                                <strong>Cylinder IDs</strong>
+                            </label>
+                            <textarea class="form-control" 
+                                    id="cylinder_ids" 
+                                    name="cylinder_ids" 
+                                    rows="10" 
+                                    placeholder="Enter cylinder IDs, one per line or separated by commas:
+
+CYL001
+CYL002
+CYL003
+
+Or: CYL001, CYL002, CYL003"
+                                    style="font-family: monospace; font-size: 1rem;"
+                                    required></textarea>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Enter cylinder IDs separated by commas or new lines. The system will validate each ID against your cylinder database.
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="bi bi-arrow-repeat me-2"></i>Process Cylinders
+                            </button>
+                            <a href="{{ url_for('cylinders') }}" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Cylinders
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Information Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle me-2"></i>How It Works
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">Renting Cylinders:</h6>
+                            <ul class="mb-0">
+                                <li>Only available cylinders can be rented</li>
+                                <li>Each cylinder will be assigned to the selected customer</li>
+                                <li>Rental date will be automatically set to today</li>
+                                <li>Invalid or unavailable cylinders will be skipped</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Returning Cylinders:</h6>
+                            <ul class="mb-0">
+                                <li>Only cylinders rented to the selected customer can be returned</li>
+                                <li>Return date will be automatically set to today</li>
+                                <li>Cylinders will be marked as available again</li>
+                                <li>Cylinders not rented to this customer will be skipped</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examples Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-lightbulb me-2"></i>Examples
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Single Line Format:</h6>
+                            <code class="d-block p-2 bg-light rounded">
+                                CYL001<br>
+                                CYL002<br>
+                                CYL003
+                            </code>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Comma Separated:</h6>
+                            <code class="d-block p-2 bg-light rounded">
+                                CYL001, CYL002, CYL003
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

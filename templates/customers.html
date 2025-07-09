@@ -61,6 +61,7 @@
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Company</th>
+                                <th>Borrowed Cylinders</th>
                                 <th>Created</th>
                                 <th>Actions</th>
                             </tr>
@@ -77,6 +78,18 @@
                                 <td>{{ customer.email }}</td>
                                 <td>{{ customer.phone }}</td>
                                 <td>{{ customer.company or '-' }}</td>
+                                <td>
+                                    {% if customer.rented_cylinders %}
+                                        <span class="badge bg-warning text-dark">{{ customer.rented_cylinders|length }} cylinders</span>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ customer.rented_cylinders[:3]|join(', ') }}
+                                            {% if customer.rented_cylinders|length > 3 %}...{% endif %}
+                                        </small>
+                                    {% else %}
+                                        <span class="text-muted">No rentals</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <small class="text-muted">
                                         {{ customer.created_at[:10] if customer.created_at else '-' }}

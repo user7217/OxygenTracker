@@ -86,7 +86,7 @@
 
                         <!-- Customer Selection (for Rented status) -->
                         <div class="row mb-3" id="customer-selection" style="display: none;">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <label for="rented_to" class="form-label">Rented to Customer</label>
                                 <select class="form-select" id="rented_to" name="rented_to">
                                     <option value="">Select customer...</option>
@@ -95,6 +95,12 @@
                                     {% endfor %}
                                 </select>
                                 <small class="form-text text-muted">Required when status is 'Rented'</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rental_date" class="form-label">Rental Date</label>
+                                <input type="date" class="form-control" id="rental_date" name="rental_date" 
+                                       value="{{ today_date }}">
+                                <small class="form-text text-muted">Date when cylinder was rented out</small>
                             </div>
                         </div>
 
