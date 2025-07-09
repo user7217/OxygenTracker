@@ -15,6 +15,17 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
+# Try to import Email functionality
+try:
+    from email_service import EmailService
+    email_service = EmailService()
+    EMAIL_AVAILABLE = True
+except ImportError as e:
+    EMAIL_AVAILABLE = False
+    email_service = None
+    import logging
+    logging.warning(f"Email functionality not available: {e}")
+
 # Initialize user manager
 user_manager = UserManager()
 
@@ -265,6 +276,107 @@ def metrics():
     }
     
     return render_template('metrics.html', stats=stats)
+
+@app.route('/send_admin_stats', methods=['POST'])
+@login_required
+@admin_required
+def send_admin_stats():
+    """Send admin statistics via email"""
+    if not EMAIL_AVAILABLE or not email_service:
+        flash('Email service not available', 'error')
+        return redirect(url_for('metrics'))
+    
+    email = request.form.get('email', '').strip()
+    if not email:
+        flash('Please enter a valid email address', 'error')
+        return redirect(url_for('metrics'))
+    
+    # Get current stats
+    customers = customer_model.get_all()
+    cylinders = cylinder_model.get_all()
+    
+    # Get cylinder status counts
+    available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
+    rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
+    maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
+    
+    # Calculate metrics
+    total_cylinders = len(cylinders)
+    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
+    
+    # Find top customer (most rentals)
+    customer_rentals = {}
+    for cylinder in cylinders:
+        if cylinder.get('rented_to'):
+            customer_id = cylinder['rented_to']
+            customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+    
+    top_customer_count = max(customer_rentals.values()) if customer_rentals else 0
+    
+    # Calculate efficiency score (based on utilization and availability)
+    efficiency_score = min(10, round((utilization_rate + (available_cylinders / total_cylinders * 100 if total_cylinders > 0 else 0)) / 20))
+    
+    # Days since first customer/cylinder
+    from datetime import datetime
+    import json
+    
+    days_active = 1
+    try:
+        if os.path.exists('data/customers.json'):
+            with open('data/customers.json', 'r') as f:
+                customer_data = json.load(f)
+                if customer_data:
+                    oldest_date = min([c.get('created_at', datetime.now().isoformat()) for c in customer_data])
+                    if oldest_date:
+                        oldest = datetime.fromisoformat(oldest_date.replace('Z', '+00:00').split('.')[0])
+                        days_active = (datetime.now() - oldest).days + 1
+    except:
+        pass
+    
+    stats = {
+        'total_customers': len(customers),
+        'total_cylinders': total_cylinders,
+        'available_cylinders': available_cylinders,
+        'rented_cylinders': rented_cylinders,
+        'maintenance_cylinders': maintenance_cylinders,
+        'utilization_rate': utilization_rate,
+        'top_customer_count': top_customer_count,
+        'efficiency_score': efficiency_score,
+        'days_active': days_active
+    }
+    
+    # Send email
+    success = email_service.send_admin_stats(email, stats)
+    
+    if success:
+        flash(f'Statistics sent successfully to {email}', 'success')
+    else:
+        flash('Failed to send email. Please check your email configuration.', 'error')
+    
+    return redirect(url_for('metrics'))
+
+@app.route('/test_email', methods=['POST'])
+@login_required
+@admin_required
+def test_email():
+    """Send a test email to verify configuration"""
+    if not EMAIL_AVAILABLE or not email_service:
+        flash('Email service not available', 'error')
+        return redirect(url_for('metrics'))
+    
+    email = request.form.get('test_email', '').strip()
+    if not email:
+        flash('Please enter a valid email address', 'error')
+        return redirect(url_for('metrics'))
+    
+    success = email_service.send_test_email(email)
+    
+    if success:
+        flash(f'Test email sent successfully to {email}', 'success')
+    else:
+        flash('Failed to send test email. Please check your email configuration.', 'error')
+    
+    return redirect(url_for('metrics'))
 
 # Customer routes
 @app.route('/customers')
