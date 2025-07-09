@@ -88,6 +88,11 @@
                                            class="btn btn-outline-warning" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <button type="button" class="btn btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#cylinderModal{{ loop.index }}" title="Manage Cylinders">
+                                            <i class="bi bi-cylinder"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-danger" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
@@ -95,6 +100,76 @@
                                         </button>
                                     </div>
                                     
+                                    <!-- Cylinder Management Modal -->
+                                    <div class="modal fade" id="cylinderModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title fs-4">
+                                                        <i class="bi bi-cylinder me-2"></i>Manage Cylinders for {{ customer.name }}
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form method="POST" action="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}">
+                                                    <div class="modal-body">
+                                                        <div class="mb-4">
+                                                            <h6 class="fs-5 text-info">
+                                                                <i class="bi bi-info-circle me-2"></i>Current Rentals
+                                                            </h6>
+                                                            <div id="currentRentals{{ loop.index }}" class="current-rentals">
+                                                                <em class="text-muted">Loading current rentals...</em>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="cylinderIds{{ loop.index }}" class="form-label fs-5">
+                                                                <strong>Cylinder IDs to Rent</strong>
+                                                            </label>
+                                                            <textarea class="form-control form-control-lg" 
+                                                                    id="cylinderIds{{ loop.index }}" 
+                                                                    name="cylinder_ids" 
+                                                                    rows="6" 
+                                                                    placeholder="Enter cylinder IDs, one per line or separated by commas:&#10;CYL001&#10;CYL002&#10;CYL003&#10;&#10;Or: CYL001, CYL002, CYL003"
+                                                                    style="font-size: 1.1rem; font-family: monospace;"></textarea>
+                                                            <div class="form-text fs-6">
+                                                                <i class="bi bi-lightbulb me-1"></i>
+                                                                Enter cylinder IDs separated by commas or new lines. 
+                                                                The system will validate each ID against your cylinder database.
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="action{{ loop.index }}" class="form-label fs-5">
+                                                                <strong>Action</strong>
+                                                            </label>
+                                                            <select class="form-select form-select-lg" 
+                                                                    id="action{{ loop.index }}" 
+                                                                    name="action" 
+                                                                    style="font-size: 1.1rem;">
+                                                                <option value="rent">Rent cylinders to this customer</option>
+                                                                <option value="return">Return cylinders from this customer</option>
+                                                            </select>
+                                                        </div>
+                                                        
+                                                        <div class="alert alert-warning">
+                                                            <i class="bi bi-exclamation-triangle me-2"></i>
+                                                            <strong>Important:</strong> Only valid, available cylinder IDs will be processed. 
+                                                            Invalid or already rented cylinders will be skipped and reported.
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
+                                                            <i class="bi bi-arrow-repeat me-2"></i>Process Cylinders
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Delete Confirmation Modal -->
                                     <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
                                         <div class="modal-dialog">
@@ -154,4 +229,71 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load current rentals when modal is shown
+    document.querySelectorAll('[id^="cylinderModal"]').forEach(function(modal) {
+        modal.addEventListener('show.bs.modal', function(event) {
+            const modalId = modal.id;
+            const customerId = modal.querySelector('form').action.split('/').pop();
+            const currentRentalsDiv = modal.querySelector('.current-rentals');
+            
+            // Fetch current rentals
+            fetch(`/api/customer/${customerId}/rentals`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.rentals && data.rentals.length > 0) {
+                        let html = '<div class="row g-2">';
+                        data.rentals.forEach(function(rental) {
+                            const daysRented = rental.rental_days || 0;
+                            const badgeClass = daysRented > 30 ? 'bg-danger' : daysRented > 14 ? 'bg-warning' : 'bg-success';
+                            html += `
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card card-sm">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <code class="text-primary">${rental.id}</code>
+                                                <span class="badge ${badgeClass}">${daysRented}d</span>
+                                            </div>
+                                            <small class="text-muted">${rental.serial_number}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        currentRentalsDiv.innerHTML = html;
+                    } else {
+                        currentRentalsDiv.innerHTML = '<div class="text-muted fst-italic">No cylinders currently rented to this customer.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading rentals:', error);
+                    currentRentalsDiv.innerHTML = '<div class="text-danger">Error loading current rentals.</div>';
+                });
+        });
+    });
+});
+</script>
+
+<style>
+.current-rentals .card-sm {
+    font-size: 0.85rem;
+}
+
+.current-rentals .card-sm .card-body {
+    padding: 8px 12px;
+}
+
+@media (max-width: 768px) {
+    .modal-lg {
+        max-width: 95%;
+    }
+    
+    textarea {
+        font-size: 16px !important;
+    }
+}
+</style>
 {% endblock %}

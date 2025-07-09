@@ -859,3 +859,102 @@ def return_cylinder(cylinder_id):
         flash('Error returning cylinder', 'error')
     
     return redirect(url_for('cylinders'))
+
+@app.route('/customers/<customer_id>/bulk_cylinders', methods=['POST'])
+@login_required
+def bulk_cylinder_management(customer_id):
+    """Bulk cylinder rental/return management"""
+    customer = customer_model.get_by_id(customer_id)
+    if not customer:
+        flash('Customer not found', 'error')
+        return redirect(url_for('customers'))
+    
+    cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
+    action = request.form.get('action', 'rent')
+    
+    if not cylinder_ids_text:
+        flash('Please enter at least one cylinder ID', 'error')
+        return redirect(url_for('customers'))
+    
+    # Parse cylinder IDs from text (support both comma-separated and line-separated)
+    cylinder_ids = []
+    for line in cylinder_ids_text.replace(',', '\n').split('\n'):
+        cylinder_id = line.strip()
+        if cylinder_id:
+            cylinder_ids.append(cylinder_id)
+    
+    if not cylinder_ids:
+        flash('No valid cylinder IDs found', 'error')
+        return redirect(url_for('customers'))
+    
+    processed = 0
+    skipped = 0
+    errors = []
+    
+    for cylinder_id in cylinder_ids:
+        cylinder = cylinder_model.get_by_id(cylinder_id)
+        
+        if not cylinder:
+            errors.append(f'Cylinder {cylinder_id}: Not found in database')
+            skipped += 1
+            continue
+        
+        if action == 'rent':
+            # Check if cylinder is available
+            if cylinder.get('status', '').lower() != 'available':
+                errors.append(f'Cylinder {cylinder_id}: Not available (current status: {cylinder.get("status", "unknown")})')
+                skipped += 1
+                continue
+            
+            # Rent the cylinder
+            success = cylinder_model.rent_cylinder(cylinder_id, customer_id)
+            if success:
+                processed += 1
+            else:
+                errors.append(f'Cylinder {cylinder_id}: Failed to rent')
+                skipped += 1
+        
+        elif action == 'return':
+            # Check if cylinder is rented to this customer
+            if cylinder.get('status', '').lower() != 'rented' or cylinder.get('rented_to') != customer_id:
+                errors.append(f'Cylinder {cylinder_id}: Not rented to this customer')
+                skipped += 1
+                continue
+            
+            # Return the cylinder
+            success = cylinder_model.return_cylinder(cylinder_id)
+            if success:
+                processed += 1
+            else:
+                errors.append(f'Cylinder {cylinder_id}: Failed to return')
+                skipped += 1
+    
+    # Create summary message
+    if action == 'rent':
+        flash(f'Successfully rented {processed} cylinders to {customer["name"]}', 'success')
+    else:
+        flash(f'Successfully returned {processed} cylinders from {customer["name"]}', 'success')
+    
+    if skipped > 0:
+        flash(f'{skipped} cylinders were skipped due to errors', 'warning')
+        
+    # Show detailed errors if any
+    if errors:
+        error_msg = 'Details: ' + '; '.join(errors[:5])  # Show first 5 errors
+        if len(errors) > 5:
+            error_msg += f' and {len(errors) - 5} more...'
+        flash(error_msg, 'info')
+    
+    return redirect(url_for('customers'))
+
+@app.route('/api/customer/<customer_id>/rentals')
+@login_required
+def get_customer_rentals(customer_id):
+    """API endpoint to get current rentals for a customer"""
+    rentals = cylinder_model.get_by_customer(customer_id)
+    
+    # Add rental days calculation
+    for rental in rentals:
+        rental['rental_days'] = cylinder_model.get_rental_days(rental)
+    
+    return jsonify({'rentals': rentals})
