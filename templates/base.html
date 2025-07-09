@@ -27,6 +27,7 @@
             color: var(--light-dark);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-weight: 400;
+            font-size: 1.1rem;
         }
         
         .navbar {
@@ -331,6 +332,59 @@
                 background: white;
                 color: black;
             }
+        }
+        
+        /* Touch-screen optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .btn {
+                min-height: 48px;
+                padding: 12px 24px;
+                font-size: 1.1rem;
+            }
+            
+            .form-control, .form-select {
+                min-height: 48px;
+                font-size: 16px;
+            }
+            
+            .navbar-nav .nav-link {
+                padding: 12px 16px;
+                font-size: 1.1rem;
+            }
+            
+            .table td, .table th {
+                padding: 12px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Global font size improvements */
+        .btn {
+            font-size: 1.05rem;
+        }
+        
+        .form-control, .form-select {
+            font-size: 1.05rem;
+        }
+        
+        .navbar-brand {
+            font-size: 1.3rem;
+        }
+        
+        .navbar-nav .nav-link {
+            font-size: 1.05rem;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            line-height: 1.3;
+        }
+        
+        .table {
+            font-size: 1rem;
+        }
+        
+        .table td, .table th {
+            padding: 12px 8px;
         }
     </style>
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">

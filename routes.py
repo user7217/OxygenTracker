@@ -480,17 +480,41 @@ def cylinders():
     search_query = request.args.get('search', '')
     status_filter = request.args.get('status', '')
     
+    customer_filter = request.args.get('customer', '')
+    
+    cylinders_list = cylinder_model.get_all()
+    
+    # Apply search filter
     if search_query:
         cylinders_list = cylinder_model.search(search_query)
-    elif status_filter:
-        cylinders_list = cylinder_model.get_by_status(status_filter)
-    else:
-        cylinders_list = cylinder_model.get_all()
+    
+    # Apply status filter
+    if status_filter:
+        cylinders_list = [c for c in cylinders_list if c.get('status', '').lower() == status_filter.lower()]
+    
+    # Apply customer filter
+    if customer_filter:
+        cylinders_list = [c for c in cylinders_list if c.get('rented_to') == customer_filter]
+    
+    # Add rental days calculation for each cylinder
+    for cylinder in cylinders_list:
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        # Get customer name for display
+        if cylinder.get('rented_to'):
+            customer = customer_model.get_by_id(cylinder['rented_to'])
+            cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
+        else:
+            cylinder['customer_name'] = ''
+    
+    # Get all customers for the filter dropdown
+    customers = customer_model.get_all()
     
     return render_template('cylinders.html', 
                          cylinders=cylinders_list, 
+                         customers=customers,
                          search_query=search_query,
-                         status_filter=status_filter)
+                         status_filter=status_filter,
+                         customer_filter=customer_filter)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required

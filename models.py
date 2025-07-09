@@ -225,3 +225,49 @@ class Cylinder:
         """Get cylinders by status"""
         cylinders = self.db.load_data()
         return [c for c in cylinders if c.get('status', '').lower() == status.lower()]
+    
+    def get_by_customer(self, customer_id: str) -> List[Dict]:
+        """Get all cylinders rented by a specific customer"""
+        cylinders = self.db.load_data()
+        return [c for c in cylinders if c.get('rented_to') == customer_id]
+    
+    def rent_cylinder(self, cylinder_id: str, customer_id: str) -> bool:
+        """Rent a cylinder to a customer with rental date"""
+        from datetime import datetime
+        
+        cylinders = self.db.load_data()
+        for cylinder in cylinders:
+            if cylinder['id'] == cylinder_id:
+                if cylinder.get('status', '').lower() != 'available':
+                    return False
+                
+                cylinder['status'] = 'rented'
+                cylinder['rented_to'] = customer_id
+                cylinder['rental_date'] = datetime.now().isoformat()
+                self.db.save_data(cylinders)
+                return True
+        return False
+    
+    def return_cylinder(self, cylinder_id: str) -> bool:
+        """Return a cylinder from rental"""
+        cylinders = self.db.load_data()
+        for cylinder in cylinders:
+            if cylinder['id'] == cylinder_id:
+                cylinder['status'] = 'available'
+                cylinder['rented_to'] = ''
+                cylinder['rental_date'] = ''
+                self.db.save_data(cylinders)
+                return True
+        return False
+    
+    def get_rental_days(self, cylinder: Dict) -> int:
+        """Calculate how many days a cylinder has been rented"""
+        if not cylinder.get('rental_date'):
+            return 0
+        
+        try:
+            from datetime import datetime
+            rental_date = datetime.fromisoformat(cylinder['rental_date'].replace('Z', '+00:00').split('.')[0])
+            return (datetime.now() - rental_date).days
+        except:
+            return 0
