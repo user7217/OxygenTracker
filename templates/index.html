@@ -44,7 +44,7 @@
                 <div class="card-body d-flex flex-column">
                     <i class="bi bi-check-circle-fill display-4 text-success mb-3"></i>
                     <h3 class="card-title">{{ stats.available_cylinders }}</h3>
-                    <p class="card-text">Available</p>
+                    <p class="card-text">In Warehouse</p>
                     <div class="mt-auto">
                         <a href="{{ url_for('cylinders', status='available') }}" class="btn btn-outline-success btn-sm">View</a>
                     </div>
@@ -114,7 +114,7 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
-                            <span>Available</span>
+                            <span>In Warehouse</span>
                             <span class="badge bg-success">{{ stats.available_cylinders }}</span>
                         </div>
                         <div class="progress mt-1">
