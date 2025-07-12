@@ -390,14 +390,6 @@ def customers():
     else:
         customers_list = customer_model.get_all()
     
-    # Add rented cylinders information for each customer
-    for customer in customers_list:
-        rented_cylinders = cylinder_model.get_by_customer(customer['id'])
-        # Add rental days calculation for each cylinder
-        for cylinder in rented_cylinders:
-            cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        customer['rented_cylinders'] = rented_cylinders
-    
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
