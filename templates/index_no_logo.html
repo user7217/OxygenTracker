@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col text-center">
+            <!-- Logo temporarily removed for PythonAnywhere compatibility -->
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-speedometer2 me-3"></i>Varasai Oxygen Dashboard
+            </h1>
+            <p class="lead">Welcome to your oxygen cylinder management system</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column">
+                    <i class="bi bi-people-fill display-4 text-primary mb-3"></i>
+                    <h3 class="card-title">{{ stats.total_customers }}</h3>
+                    <p class="card-text">Total Customers</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('customers') }}" class="btn btn-outline-primary btn-sm">View All</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column">
+                    <i class="bi bi-cylinder display-4 text-info mb-3"></i>
+                    <h3 class="card-title">{{ stats.total_cylinders }}</h3>
+                    <p class="card-text">Total Cylinders</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('cylinders') }}" class="btn btn-outline-info btn-sm">View All</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column">
+                    <i class="bi bi-check-circle-fill display-4 text-success mb-3"></i>
+                    <h3 class="card-title">{{ stats.available_cylinders }}</h3>
+                    <p class="card-text">In Warehouse</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('cylinders', status='available') }}" class="btn btn-outline-success btn-sm">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column">
+                    <i class="bi bi-exclamation-triangle-fill display-4 text-warning mb-3"></i>
+                    <h3 class="card-title">{{ stats.rented_cylinders }}</h3>
+                    <p class="card-text">Currently Rented</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('cylinders', status='rented') }}" class="btn btn-outline-warning btn-sm">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-charge-fill me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('add_customer') }}" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-person-plus me-2"></i>Add Customer
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('add_cylinder') }}" class="btn btn-info btn-lg w-100">
+                                <i class="bi bi-plus-circle me-2"></i>Add Cylinder
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('bulk_rental_management') }}" class="btn btn-warning btn-lg w-100">
+                                <i class="bi bi-arrow-repeat me-2"></i>Bulk Operations
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fun Statistics -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up me-2"></i>System Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">{{ stats.utilization_rate }}%</h4>
+                            <p class="small text-muted">Utilization Rate</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ stats.efficiency_score }}/10</h4>
+                            <p class="small text-muted">Efficiency Score</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-info">{{ stats.avg_rental_days }}</h4>
+                            <p class="small text-muted">Avg Rental Days</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ stats.days_active }}</h4>
+                            <p class="small text-muted">Days Active</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-trophy me-2"></i>Performance Metrics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Top Customer Rentals</span>
+                            <span class="badge bg-primary">{{ stats.top_customer_count }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Growth Rate</span>
+                            <span class="badge bg-success">{{ stats.growth_rate }}%</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Maintenance Cylinders</span>
+                            <span class="badge bg-warning">{{ stats.maintenance_cylinders }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>System Health</span>
+                            <span class="badge bg-success">Excellent</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
