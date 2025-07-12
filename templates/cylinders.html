@@ -243,12 +243,11 @@
                             <i class="bi bi-arrow-right-circle me-2"></i>Rent
                         </button>
                         {% elif cylinder.get('status', '').lower() == 'rented' %}
-                        <form method="POST" action="{{ url_for('return_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-success btn-lg" style="font-size: 1rem;"
-                                    onclick="return confirm('Return this cylinder?')">
-                                <i class="bi bi-arrow-left-circle me-2"></i>Return
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" 
+                                data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
+                                data-cylinder-serial="{{ cylinder.serial_number }}" style="font-size: 1rem;">
+                            <i class="bi bi-arrow-left-circle me-2"></i>Return
+                        </button>
                         {% endif %}
                         <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
                             <button type="submit" class="btn btn-outline-danger btn-lg" style="font-size: 1rem;"
@@ -311,6 +310,39 @@
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
                         <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Cylinder Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fs-4">
+                    <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('return_cylinder', cylinder_id='') }}" id="returnForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="return_cylinder_info" class="form-label fs-5">Cylinder:</label>
+                        <input type="text" class="form-control form-control-lg" id="return_cylinder_info" readonly style="font-size: 1.1rem;">
+                    </div>
+                    <div class="mb-3">
+                        <label for="return_date" class="form-label fs-5">Return Date:</label>
+                        <input type="datetime-local" class="form-control form-control-lg" id="return_date" name="return_date" style="font-size: 1.1rem;">
+                        <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-lg" style="font-size: 1.1rem;">
+                        <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
                     </button>
                 </div>
             </form>
@@ -397,6 +429,35 @@ document.addEventListener('DOMContentLoaded', function() {
     rentModal.addEventListener('hidden.bs.modal', function() {
         rentForm.reset();
         rentForm.action = rentForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
+    });
+
+    // Handle return modal
+    const returnModal = document.getElementById('returnModal');
+    const returnForm = document.getElementById('returnForm');
+    const returnCylinderInfo = document.getElementById('return_cylinder_info');
+    const returnDate = document.getElementById('return_date');
+    
+    returnModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const cylinderId = button.getAttribute('data-cylinder-id');
+        const cylinderSerial = button.getAttribute('data-cylinder-serial');
+        
+        // Update form action
+        returnForm.action = returnForm.action.replace('cylinder_id=', 'cylinder_id=' + cylinderId);
+        
+        // Update cylinder info
+        returnCylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
+        
+        // Set default return date to current time
+        const now = new Date();
+        const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        returnDate.value = localDateTime;
+    });
+    
+    // Reset return form when modal is hidden
+    returnModal.addEventListener('hidden.bs.modal', function() {
+        returnForm.reset();
+        returnForm.action = returnForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
     });
 });
 </script>

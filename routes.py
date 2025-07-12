@@ -986,7 +986,8 @@ def rent_cylinder(cylinder_id):
 @login_required
 def return_cylinder(cylinder_id):
     """Return a cylinder from rental"""
-    if cylinder_model.return_cylinder(cylinder_id):
+    return_date = request.form.get('return_date')
+    if cylinder_model.return_cylinder(cylinder_id, return_date):
         flash('Cylinder returned successfully', 'success')
     else:
         flash('Error returning cylinder', 'error')

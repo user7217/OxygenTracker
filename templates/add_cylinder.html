@@ -156,14 +156,21 @@ function toggleCustomerSelection() {
     const statusSelect = document.getElementById('status');
     const customerSelection = document.getElementById('customer-selection');
     const rentedToSelect = document.getElementById('rented_to');
+    const locationInput = document.getElementById('location');
     
     if (statusSelect.value === 'Rented') {
         customerSelection.style.display = 'block';
         rentedToSelect.required = true;
+        locationInput.value = ''; // Clear location when rented
+        locationInput.placeholder = 'Will be set to customer location';
     } else {
         customerSelection.style.display = 'none';
         rentedToSelect.required = false;
         rentedToSelect.value = '';
+        if (locationInput.value === '') {
+            locationInput.value = 'Warehouse'; // Reset to warehouse if empty
+        }
+        locationInput.placeholder = 'e.g., Warehouse A, Shelf 2';
     }
 }
 
