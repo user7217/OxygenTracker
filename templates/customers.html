@@ -120,8 +120,8 @@
                                         </button>
                                     </div>
                                     
-                                    <!-- Simple Modal Without JavaScript -->
-                                    <div class="modal fade" id="simpleModal{{ loop.index }}" tabindex="-1">
+                                    <!-- Static Modal - No Fade Animation -->
+                                    <div class="modal" id="simpleModal{{ loop.index }}" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
                                         <div class="modal-dialog modal-lg">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -357,6 +357,26 @@
 }
 
 
+
+/* Force no animations on modals */
+.modal {
+    --bs-modal-fade-transform: none !important;
+}
+
+.modal.fade .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+
+.modal.show .modal-dialog {
+    transform: none !important;
+}
+
+/* Prevent any hover effects */
+.modal *:hover {
+    transition: none !important;
+    transform: none !important;
+}
 
 @media (max-width: 768px) {
     .modal-lg {
