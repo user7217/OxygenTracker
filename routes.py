@@ -994,7 +994,7 @@ def return_cylinder(cylinder_id):
     
     return redirect(url_for('cylinders'))
 
-@app.route('/customers/<customer_id>/bulk_cylinders', methods=['POST'])
+@app.route('/customers/<customer_id>/bulk_cylinders', methods=['GET', 'POST'])
 @login_required
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
@@ -1003,12 +1003,19 @@ def bulk_cylinder_management(customer_id):
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
+    if request.method == 'GET':
+        # Get current rentals for this customer
+        current_rentals = cylinder_model.get_by_customer(customer_id)
+        return render_template('bulk_cylinder_management.html', 
+                             customer=customer, 
+                             current_rentals=current_rentals)
+    
     cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
     action = request.form.get('action', 'rent')
     
     if not cylinder_ids_text:
         flash('Please enter at least one cylinder ID', 'error')
-        return redirect(url_for('customers'))
+        return redirect(url_for('bulk_cylinder_management', customer_id=customer_id))
     
     # Parse cylinder IDs from text (support both comma-separated and line-separated)
     cylinder_ids = []
@@ -1019,7 +1026,7 @@ def bulk_cylinder_management(customer_id):
     
     if not cylinder_ids:
         flash('No valid cylinder IDs found', 'error')
-        return redirect(url_for('customers'))
+        return redirect(url_for('bulk_cylinder_management', customer_id=customer_id))
     
     processed = 0
     skipped = 0
@@ -1079,7 +1086,7 @@ def bulk_cylinder_management(customer_id):
             error_msg += f' and {len(errors) - 5} more...'
         flash(error_msg, 'info')
     
-    return redirect(url_for('customers'))
+    return redirect(url_for('bulk_cylinder_management', customer_id=customer_id))
 
 @app.route('/api/customer/<customer_id>/rentals')
 @login_required
