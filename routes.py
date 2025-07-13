@@ -554,10 +554,20 @@ def add_cylinder():
             cylinder_data[field] = value
         
         # Add optional fields
+        cylinder_data['custom_id'] = request.form.get('custom_id', '').strip()
         cylinder_data['pressure'] = request.form.get('pressure', '').strip()
         cylinder_data['last_inspection'] = request.form.get('last_inspection', '').strip()
         cylinder_data['next_inspection'] = request.form.get('next_inspection', '').strip()
         cylinder_data['notes'] = request.form.get('notes', '').strip()
+        
+        # Validate custom_id uniqueness if provided
+        if cylinder_data['custom_id']:
+            existing_cylinders = cylinder_model.get_all()
+            for existing in existing_cylinders:
+                if existing.get('custom_id') == cylinder_data['custom_id']:
+                    flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
+                    customers = customer_model.get_all()
+                    return render_template('add_cylinder.html', customers=customers)
         
         # Handle customer assignment for rented cylinders
         rented_to = request.form.get('rented_to', '').strip()
@@ -631,10 +641,20 @@ def edit_cylinder(cylinder_id):
             cylinder_data[field] = value
         
         # Add optional fields
+        cylinder_data['custom_id'] = request.form.get('custom_id', '').strip()
         cylinder_data['pressure'] = request.form.get('pressure', '').strip()
         cylinder_data['last_inspection'] = request.form.get('last_inspection', '').strip()
         cylinder_data['next_inspection'] = request.form.get('next_inspection', '').strip()
         cylinder_data['notes'] = request.form.get('notes', '').strip()
+        
+        # Validate custom_id uniqueness if provided and different from current
+        if cylinder_data['custom_id']:
+            existing_cylinders = cylinder_model.get_all()
+            for existing in existing_cylinders:
+                if existing.get('custom_id') == cylinder_data['custom_id'] and existing.get('id') != cylinder_id:
+                    flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
+                    customers = customer_model.get_all()
+                    return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
         rented_to = request.form.get('rented_to', '').strip()
@@ -1036,41 +1056,45 @@ def bulk_cylinder_management(customer_id):
     errors = []
     
     for cylinder_id in cylinder_ids:
-        cylinder = cylinder_model.get_by_id(cylinder_id)
+        cylinder = cylinder_model.find_by_any_identifier(cylinder_id)
         
         if not cylinder:
-            errors.append(f'Cylinder {cylinder_id}: Not found in database')
+            errors.append(f'"{cylinder_id}": Not found in database')
             skipped += 1
             continue
+        
+        # Use the actual system ID for operations
+        actual_cylinder_id = cylinder.get('id')
+        cylinder_display = cylinder.get('custom_id') or cylinder.get('serial_number') or actual_cylinder_id
         
         if action == 'rent':
             # Check if cylinder is available
             if cylinder.get('status', '').lower() != 'available':
-                errors.append(f'Cylinder {cylinder_id}: Not available (current status: {cylinder.get("status", "unknown")})')
+                errors.append(f'"{cylinder_display}": Not available (current status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             
             # Rent the cylinder
-            success = cylinder_model.rent_cylinder(cylinder_id, customer_id)
+            success = cylinder_model.rent_cylinder(actual_cylinder_id, customer_id)
             if success:
                 processed += 1
             else:
-                errors.append(f'Cylinder {cylinder_id}: Failed to rent')
+                errors.append(f'"{cylinder_display}": Failed to rent')
                 skipped += 1
         
         elif action == 'return':
             # Check if cylinder is rented to this customer
             if cylinder.get('status', '').lower() != 'rented' or cylinder.get('rented_to') != customer_id:
-                errors.append(f'Cylinder {cylinder_id}: Not rented to this customer')
+                errors.append(f'"{cylinder_display}": Not rented to this customer')
                 skipped += 1
                 continue
             
             # Return the cylinder
-            success = cylinder_model.return_cylinder(cylinder_id)
+            success = cylinder_model.return_cylinder(actual_cylinder_id)
             if success:
                 processed += 1
             else:
-                errors.append(f'Cylinder {cylinder_id}: Failed to return')
+                errors.append(f'"{cylinder_display}": Failed to return')
                 skipped += 1
     
     # Create summary message

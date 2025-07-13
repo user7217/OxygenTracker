@@ -31,12 +31,22 @@
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}">
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label for="custom_id" class="form-label">
+                                    Custom ID <span class="text-info">(Optional)</span>
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" 
+                                       title="Set a memorable ID like 'A1', 'B2', '001' for easier bulk operations"></i>
+                                </label>
+                                <input type="text" class="form-control" id="custom_id" name="custom_id" 
+                                       value="{{ cylinder.custom_id or '' }}" placeholder="e.g., A1, B2, 001" maxlength="20">
+                                <small class="form-text text-muted">Use for easier bulk rental/return operations</small>
+                            </div>
+                            <div class="col-md-4">
                                 <label for="serial_number" class="form-label">Serial Number <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="serial_number" name="serial_number" 
                                        value="{{ cylinder.serial_number }}" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
                                 <select class="form-select" id="type" name="type" required>
                                     <option value="">Select cylinder type</option>
