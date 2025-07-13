@@ -115,6 +115,8 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 13, 2025: Fixed blue box cylinder management modal in customers page - resolved JavaScript errors, customer ID extraction issues, and modal flickering problems. Modal now opens smoothly and allows proper cylinder rental/return operations.
+- July 12, 2025: Fixed PythonAnywhere deployment issues with Flask url_for() configuration and static file handling. Updated WSGI configuration and app.py for proper URL building.
 - July 12, 2025: Updated branding from "Oxygen Cylinder Tracker" to "Varasai Oxygen" with custom logo implementation in header navigation, favicon, and dashboard page
 - July 9, 2025: Enhanced rental management system with comprehensive customer rental tracking, bulk cylinder operations, custom rental date selection, and detailed cylinder rental history modals in customer page
 - July 9, 2025: Added bulk cylinder management with text box input, enhanced touch-screen optimization, automatic date tracking for borrowed/returned cylinders, default "Warehouse" location for new cylinders, customer selection dropdown for rented cylinders
