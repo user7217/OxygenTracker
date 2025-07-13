@@ -345,12 +345,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const modalId = modal.id;
             const form = modal.querySelector('form');
             const actionUrl = form ? form.getAttribute('action') : '';
-            const customerId = actionUrl ? actionUrl.split('/').pop() : '';
+            // Extract customer ID from URL like /customers/CUST-ABC12345/bulk_cylinders
+            const urlParts = actionUrl ? actionUrl.split('/') : [];
+            const customerId = urlParts.length >= 3 ? urlParts[2] : '';
             const currentRentalsDiv = modal.querySelector('.current-rentals');
             
             // Debug logging
             console.log('Modal ID:', modalId);
             console.log('Form action URL:', actionUrl);
+            console.log('URL parts:', urlParts);
             console.log('Extracted customer ID:', customerId);
             
             // Only fetch if we have a valid customer ID
@@ -408,6 +411,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .current-rentals .card-sm .card-body {
     padding: 8px 12px;
+}
+
+/* Fix modal flickering and interaction issues */
+.modal-backdrop {
+    z-index: 1040;
+}
+
+.modal {
+    z-index: 1050;
+}
+
+.modal-dialog {
+    pointer-events: all;
+}
+
+.modal-content {
+    background-color: white;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Prevent flickering on hover */
+.modal-header, .modal-body, .modal-footer {
+    position: relative;
+    z-index: 1;
 }
 
 @media (max-width: 768px) {
