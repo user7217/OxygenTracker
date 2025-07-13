@@ -294,7 +294,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('rent_cylinder', cylinder_id='') }}" id="rentForm">
+            <form method="POST" action="#" id="rentForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="cylinder_info" class="form-label fs-5">Cylinder:</label>
@@ -331,7 +331,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('return_cylinder', cylinder_id='') }}" id="returnForm">
+            <form method="POST" action="#" id="returnForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="return_cylinder_info" class="form-label fs-5">Cylinder:</label>
@@ -422,8 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cylinderId = button.getAttribute('data-cylinder-id');
         const cylinderSerial = button.getAttribute('data-cylinder-serial');
         
-        // Update form action
-        rentForm.action = rentForm.action.replace('cylinder_id=', 'cylinder_id=' + cylinderId);
+        // Update form action with proper URL
+        rentForm.action = '/cylinders/rent/' + cylinderId;
         
         // Update cylinder info
         cylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
@@ -432,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset form when modal is hidden
     rentModal.addEventListener('hidden.bs.modal', function() {
         rentForm.reset();
-        rentForm.action = rentForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
+        rentForm.action = '#';
     });
 
     // Handle return modal
@@ -446,8 +446,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cylinderId = button.getAttribute('data-cylinder-id');
         const cylinderSerial = button.getAttribute('data-cylinder-serial');
         
-        // Update form action
-        returnForm.action = returnForm.action.replace('cylinder_id=', 'cylinder_id=' + cylinderId);
+        // Update form action with proper URL
+        returnForm.action = '/cylinders/return/' + cylinderId;
         
         // Update cylinder info
         returnCylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset return form when modal is hidden
     returnModal.addEventListener('hidden.bs.modal', function() {
         returnForm.reset();
-        returnForm.action = returnForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
+        returnForm.action = '#';
     });
 });
 </script>
