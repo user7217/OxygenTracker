@@ -343,8 +343,25 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[id^="cylinderModal"]').forEach(function(modal) {
         modal.addEventListener('show.bs.modal', function(event) {
             const modalId = modal.id;
-            const customerId = modal.querySelector('form').action.split('/').pop();
+            const form = modal.querySelector('form');
+            const actionUrl = form ? form.getAttribute('action') : '';
+            const customerId = actionUrl ? actionUrl.split('/').pop() : '';
             const currentRentalsDiv = modal.querySelector('.current-rentals');
+            
+            // Debug logging
+            console.log('Modal ID:', modalId);
+            console.log('Form action URL:', actionUrl);
+            console.log('Extracted customer ID:', customerId);
+            
+            // Only fetch if we have a valid customer ID
+            if (!customerId) {
+                console.error('Could not extract customer ID from form action');
+                currentRentalsDiv.innerHTML = '<div class="text-danger">Error: Could not identify customer.</div>';
+                return;
+            }
+            
+            // Show loading state
+            currentRentalsDiv.innerHTML = '<div class="text-muted"><i class="bi bi-hourglass-split me-2"></i>Loading current rentals...</div>';
             
             // Fetch current rentals
             fetch(`/api/customer/${customerId}/rentals`)
