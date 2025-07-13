@@ -108,11 +108,10 @@
                                            class="btn btn-outline-warning" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" class="btn btn-outline-info" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#simpleModal{{ loop.index }}" title="Manage Cylinders">
+                                        <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
+                                           class="btn btn-outline-info" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
-                                        </button>
+                                        </a>
                                         <button type="button" class="btn btn-outline-danger" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
@@ -120,83 +119,7 @@
                                         </button>
                                     </div>
                                     
-                                    <!-- Static Modal - No Fade Animation -->
-                                    <div class="modal" id="simpleModal{{ loop.index }}" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">
-                                                        <i class="bi bi-cylinder me-2"></i>Manage Cylinders for {{ customer.name }}
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form method="POST" action="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}">
-                                                    <div class="modal-body">
-                                                        <div class="mb-4">
-                                                            <h6 class="text-info">
-                                                                <i class="bi bi-info-circle me-2"></i>Current Rentals
-                                                            </h6>
-                                                            {% if customer.rented_cylinders %}
-                                                                <div class="row g-2">
-                                                                    {% for cylinder in customer.rented_cylinders %}
-                                                                    <div class="col-md-6 col-lg-4">
-                                                                        <div class="card card-sm">
-                                                                            <div class="card-body p-2">
-                                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                                    <code class="text-primary">{{ cylinder.id }}</code>
-                                                                                    <span class="badge bg-success">{{ cylinder.rental_days or 0 }}d</span>
-                                                                                </div>
-                                                                                <small class="text-muted">{{ cylinder.serial_number }}</small>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    {% endfor %}
-                                                                </div>
-                                                            {% else %}
-                                                                <div class="text-muted fst-italic">No cylinders currently rented to this customer.</div>
-                                                            {% endif %}
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label class="form-label">
-                                                                <strong>Cylinder IDs</strong>
-                                                            </label>
-                                                            <textarea class="form-control" 
-                                                                    name="cylinder_ids" 
-                                                                    rows="4" 
-                                                                    placeholder="Enter cylinder IDs, one per line or separated by commas:&#10;CYL001&#10;CYL002&#10;CYL003"></textarea>
-                                                            <div class="form-text">
-                                                                Enter cylinder IDs separated by commas or new lines.
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label class="form-label">
-                                                                <strong>Action</strong>
-                                                            </label>
-                                                            <select class="form-select" name="action">
-                                                                <option value="rent">Rent cylinders to this customer</option>
-                                                                <option value="return">Return cylinders from this customer</option>
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <div class="alert alert-warning">
-                                                            <i class="bi bi-exclamation-triangle me-2"></i>
-                                                            <strong>Important:</strong> Only valid, available cylinder IDs will be processed.
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            Cancel
-                                                        </button>
-                                                        <button type="submit" class="btn btn-warning">
-                                                            <i class="bi bi-arrow-repeat me-2"></i>Process Cylinders
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
+
 
                                     <!-- Rented Cylinders Details Modal -->
                                     {% if customer.rented_cylinders %}
