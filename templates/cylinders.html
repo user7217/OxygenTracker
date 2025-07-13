@@ -285,14 +285,14 @@
 </div>
 
 <!-- Rent Cylinder Modal -->
-<div class="modal fade" id="rentModal" tabindex="-1">
+<div class="modal fade" id="rentModal" tabindex="-1" aria-labelledby="rentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fs-4">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fs-4" id="rentModalLabel">
                     <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="#" id="rentForm">
                 <div class="modal-body">
@@ -310,7 +310,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
                         <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
@@ -322,14 +322,14 @@
 </div>
 
 <!-- Return Cylinder Modal -->
-<div class="modal fade" id="returnModal" tabindex="-1">
+<div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fs-4">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title fs-4" id="returnModalLabel">
                     <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="#" id="returnForm">
                 <div class="modal-body">
@@ -343,7 +343,7 @@
                         <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-success btn-lg" style="font-size: 1.1rem;">
                         <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
@@ -370,6 +370,33 @@
 .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Modal styling improvements */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.modal-content {
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.modal-header {
+    border-bottom: none !important;
+}
+
+.modal-footer {
+    border-top: none !important;
+}
+
+.modal-body {
+    padding: 2rem;
+    background-color: #fff;
+}
+
+.btn-close-white {
+    filter: brightness(0) invert(1);
 }
 
 @media (max-width: 768px) {

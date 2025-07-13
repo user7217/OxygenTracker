@@ -3,7 +3,7 @@
     "serial_number": "1",
     "type": "Medical Oxygen",
     "size": "Medium (10L)",
-    "status": "Available",
+    "status": "available",
     "location": "Warehouse",
     "pressure": "",
     "last_inspection": "",
@@ -11,10 +11,14 @@
     "notes": "",
     "id": "CYL-6EA62B15",
     "created_at": "2025-07-13T15:21:42.152396",
-    "updated_at": "2025-07-13T16:14:47.875755",
+    "updated_at": "2025-07-13T16:27:59.059508",
     "customer_name": "",
     "customer_email": "",
-    "custom_id": ""
+    "custom_id": "",
+    "rented_to": "",
+    "rental_date": "",
+    "date_borrowed": "2025-07-13T16:27:50.640917",
+    "date_returned": "2025-07-13T21:57"
   },
   {
     "serial_number": "1",
