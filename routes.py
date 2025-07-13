@@ -383,6 +383,7 @@ def test_email():
 @login_required
 def customers():
     """List all customers with search functionality"""
+    print(f"DEBUG: Accessing customers route with args: {dict(request.args)}")
     search_query = request.args.get('search', '')
     
     if search_query:
@@ -477,6 +478,7 @@ def delete_customer(customer_id):
 @login_required
 def cylinders():
     """List all cylinders with search and filter functionality"""
+    print(f"DEBUG: Accessing cylinders route with args: {dict(request.args)}")
     search_query = request.args.get('search', '')
     status_filter = request.args.get('status', '')
     customer_filter = request.args.get('customer', '')
@@ -525,6 +527,7 @@ def cylinders():
     # Get all customers for the filter dropdown
     customers = customer_model.get_all()
     
+    print(f"DEBUG: Rendering cylinders.html with {len(cylinders_list)} cylinders")
     return render_template('cylinders.html', 
                          cylinders=cylinders_list, 
                          customers=customers,
