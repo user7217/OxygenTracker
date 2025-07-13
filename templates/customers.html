@@ -121,7 +121,7 @@
                                     </div>
                                     
                                     <!-- Cylinder Management Modal -->
-                                    <div class="modal fade" id="cylinderModal{{ loop.index }}" tabindex="-1">
+                                    <div class="modal" id="cylinderModal{{ loop.index }}" tabindex="-1" data-bs-backdrop="static">
                                         <div class="modal-dialog modal-lg">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -428,27 +428,43 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .modal-content {
-    background-color: white;
-    border: none;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    will-change: auto;
-    backface-visibility: hidden;
+    background-color: white !important;
+    border: none !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    will-change: auto !important;
+    backface-visibility: hidden !important;
+    pointer-events: auto !important;
 }
 
 /* Prevent flickering on hover */
 .modal-header, .modal-body, .modal-footer {
-    position: relative;
-    z-index: 1;
-    backface-visibility: hidden;
+    position: relative !important;
+    z-index: 1 !important;
+    backface-visibility: hidden !important;
+    pointer-events: auto !important;
 }
 
-/* Smooth modal transitions */
+/* Disable hover effects that might cause flickering */
+.modal-content:hover,
+.modal-dialog:hover,
+.modal:hover {
+    transform: none !important;
+}
+
+/* Disable modal animations to prevent flickering */
 .modal.fade .modal-dialog {
-    transition: transform 0.3s ease-out;
+    transition: none !important;
+    transform: none !important;
 }
 
 .modal.show .modal-dialog {
-    transform: none;
+    transform: none !important;
+}
+
+/* Force stable positioning */
+.modal-dialog {
+    margin: 1.75rem auto !important;
+    position: relative !important;
 }
 
 @media (max-width: 768px) {
