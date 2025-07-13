@@ -212,15 +212,38 @@ class Cylinder:
                 return cylinder
         return None
     
+    def find_by_any_identifier(self, identifier: str) -> Optional[Dict]:
+        """Find cylinder by any identifier: ID, custom_id, or serial_number"""
+        cylinders = self.db.load_data()
+        identifier = identifier.strip()
+        
+        for cylinder in cylinders:
+            # Check system ID
+            if cylinder.get('id') == identifier:
+                return cylinder
+            # Check custom ID (case-insensitive)
+            if cylinder.get('custom_id') and cylinder.get('custom_id').lower() == identifier.lower():
+                return cylinder
+            # Check serial number (case-insensitive)
+            if cylinder.get('serial_number') and cylinder.get('serial_number').lower() == identifier.lower():
+                return cylinder
+        
+        return None
+    
     def add(self, cylinder_data: Dict) -> Dict:
         """Add new cylinder"""
         from models import Customer
+        from datetime import datetime
         cylinders = self.db.load_data()
         
         # Generate unique ID
         cylinder_data['id'] = self.generate_id()
         cylinder_data['created_at'] = datetime.now().isoformat()
         cylinder_data['updated_at'] = datetime.now().isoformat()
+        
+        # Ensure custom_id field exists (even if empty)
+        if 'custom_id' not in cylinder_data:
+            cylinder_data['custom_id'] = ''
         
         # If cylinder is being rented to a customer, store customer name
         if cylinder_data.get('rented_to'):
@@ -242,6 +265,7 @@ class Cylinder:
     def update(self, cylinder_id: str, cylinder_data: Dict) -> Optional[Dict]:
         """Update existing cylinder"""
         from models import Customer
+        from datetime import datetime
         cylinders = self.db.load_data()
         
         for i, cylinder in enumerate(cylinders):
@@ -250,6 +274,10 @@ class Cylinder:
                 cylinder_data['id'] = cylinder_id
                 cylinder_data['created_at'] = cylinder.get('created_at')
                 cylinder_data['updated_at'] = datetime.now().isoformat()
+                
+                # Ensure custom_id field exists (even if empty)
+                if 'custom_id' not in cylinder_data:
+                    cylinder_data['custom_id'] = ''
                 
                 # If cylinder is being rented to a customer, store customer name
                 if cylinder_data.get('rented_to'):
@@ -291,6 +319,7 @@ class Cylinder:
             # Search across multiple fields
             searchable_fields = [
                 cylinder.get('serial_number', ''),
+                cylinder.get('custom_id', ''),
                 cylinder.get('type', ''),
                 cylinder.get('status', ''),
                 cylinder.get('location', ''),
