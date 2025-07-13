@@ -285,16 +285,16 @@
 </div>
 
 <!-- Rent Cylinder Modal -->
-<div class="modal fade" id="rentModal" tabindex="-1">
+<div class="modal fade" id="rentModal" tabindex="-1" aria-labelledby="rentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fs-4">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fs-4" id="rentModalLabel">
                     <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('rent_cylinder', cylinder_id='') }}" id="rentForm">
+            <form method="POST" action="#" id="rentForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="cylinder_info" class="form-label fs-5">Cylinder:</label>
@@ -310,7 +310,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
                         <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
@@ -322,16 +322,16 @@
 </div>
 
 <!-- Return Cylinder Modal -->
-<div class="modal fade" id="returnModal" tabindex="-1">
+<div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fs-4">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title fs-4" id="returnModalLabel">
                     <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('return_cylinder', cylinder_id='') }}" id="returnForm">
+            <form method="POST" action="#" id="returnForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="return_cylinder_info" class="form-label fs-5">Cylinder:</label>
@@ -343,7 +343,7 @@
                         <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-success btn-lg" style="font-size: 1.1rem;">
                         <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
@@ -370,6 +370,33 @@
 .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Modal styling improvements */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.modal-content {
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.modal-header {
+    border-bottom: none !important;
+}
+
+.modal-footer {
+    border-top: none !important;
+}
+
+.modal-body {
+    padding: 2rem;
+    background-color: #fff;
+}
+
+.btn-close-white {
+    filter: brightness(0) invert(1);
 }
 
 @media (max-width: 768px) {
@@ -422,8 +449,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cylinderId = button.getAttribute('data-cylinder-id');
         const cylinderSerial = button.getAttribute('data-cylinder-serial');
         
-        // Update form action
-        rentForm.action = rentForm.action.replace('cylinder_id=', 'cylinder_id=' + cylinderId);
+        // Update form action with proper URL
+        rentForm.action = '/cylinders/rent/' + cylinderId;
         
         // Update cylinder info
         cylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
@@ -432,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset form when modal is hidden
     rentModal.addEventListener('hidden.bs.modal', function() {
         rentForm.reset();
-        rentForm.action = rentForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
+        rentForm.action = '#';
     });
 
     // Handle return modal
@@ -446,8 +473,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cylinderId = button.getAttribute('data-cylinder-id');
         const cylinderSerial = button.getAttribute('data-cylinder-serial');
         
-        // Update form action
-        returnForm.action = returnForm.action.replace('cylinder_id=', 'cylinder_id=' + cylinderId);
+        // Update form action with proper URL
+        returnForm.action = '/cylinders/return/' + cylinderId;
         
         // Update cylinder info
         returnCylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
@@ -461,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset return form when modal is hidden
     returnModal.addEventListener('hidden.bs.modal', function() {
         returnForm.reset();
-        returnForm.action = returnForm.action.replace(/cylinder_id=.*/, 'cylinder_id=');
+        returnForm.action = '#';
     });
 });
 </script>
