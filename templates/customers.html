@@ -109,8 +109,7 @@
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button type="button" class="btn btn-outline-info" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#cylinderModal{{ loop.index }}" title="Manage Cylinders">
+                                                onclick="openCylinderModal('{{ customer.id }}', '{{ customer.name }}', {{ loop.index }})" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
                                         </button>
                                         <button type="button" class="btn btn-outline-danger" 
@@ -120,18 +119,19 @@
                                         </button>
                                     </div>
                                     
-                                    <!-- Cylinder Management Modal -->
-                                    <div class="modal" id="cylinderModal{{ loop.index }}" tabindex="-1" data-bs-backdrop="static">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title fs-4">
+                                    <!-- Custom Cylinder Management Modal -->
+                                    <div id="customCylinderModal{{ loop.index }}" class="custom-modal" style="display: none;">
+                                        <div class="custom-modal-backdrop" onclick="closeCylinderModal({{ loop.index }})"></div>
+                                        <div class="custom-modal-dialog">
+                                            <div class="custom-modal-content">
+                                                <div class="custom-modal-header">
+                                                    <h5 class="fs-4">
                                                         <i class="bi bi-cylinder me-2"></i>Manage Cylinders for {{ customer.name }}
                                                     </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    <button type="button" class="btn-close" onclick="closeCylinderModal({{ loop.index }})"></button>
                                                 </div>
                                                 <form method="POST" action="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}">
-                                                    <div class="modal-body">
+                                                    <div class="custom-modal-body">
                                                         <div class="mb-4">
                                                             <h6 class="fs-5 text-info">
                                                                 <i class="bi bi-info-circle me-2"></i>Current Rentals
@@ -177,8 +177,8 @@
                                                             Invalid or already rented cylinders will be skipped and reported.
                                                         </div>
                                                     </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">
+                                                    <div class="custom-modal-footer">
+                                                        <button type="button" class="btn btn-secondary btn-lg" onclick="closeCylinderModal({{ loop.index }})" style="font-size: 1.1rem;">
                                                             Cancel
                                                         </button>
                                                         <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
@@ -338,69 +338,67 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Load current rentals when modal is shown
-    document.querySelectorAll('[id^="cylinderModal"]').forEach(function(modal) {
-        modal.addEventListener('show.bs.modal', function(event) {
-            const modalId = modal.id;
-            const form = modal.querySelector('form');
-            const actionUrl = form ? form.getAttribute('action') : '';
-            // Extract customer ID from URL like /customers/CUST-ABC12345/bulk_cylinders
-            const urlParts = actionUrl ? actionUrl.split('/') : [];
-            const customerId = urlParts.length >= 3 ? urlParts[2] : '';
-            const currentRentalsDiv = modal.querySelector('.current-rentals');
-            
-            // Debug logging (remove these lines in production)
-            // console.log('Modal ID:', modalId);
-            // console.log('Form action URL:', actionUrl);
-            // console.log('URL parts:', urlParts);
-            // console.log('Extracted customer ID:', customerId);
-            
-            // Only fetch if we have a valid customer ID
-            if (!customerId) {
-                console.error('Could not extract customer ID from form action');
-                currentRentalsDiv.innerHTML = '<div class="text-danger">Error: Could not identify customer.</div>';
-                return;
-            }
-            
-            // Show loading state
-            currentRentalsDiv.innerHTML = '<div class="text-muted"><i class="bi bi-hourglass-split me-2"></i>Loading current rentals...</div>';
-            
-            // Fetch current rentals
-            fetch(`/api/customer/${customerId}/rentals`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.rentals && data.rentals.length > 0) {
-                        let html = '<div class="row g-2">';
-                        data.rentals.forEach(function(rental) {
-                            const daysRented = rental.rental_days || 0;
-                            const badgeClass = daysRented > 30 ? 'bg-danger' : daysRented > 14 ? 'bg-warning' : 'bg-success';
-                            html += `
-                                <div class="col-md-6 col-lg-4">
-                                    <div class="card card-sm">
-                                        <div class="card-body p-2">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <code class="text-primary">${rental.id}</code>
-                                                <span class="badge ${badgeClass}">${daysRented}d</span>
-                                            </div>
-                                            <small class="text-muted">${rental.serial_number}</small>
-                                        </div>
+// Custom modal functions to avoid Bootstrap flickering
+function openCylinderModal(customerId, customerName, modalIndex) {
+    const modal = document.getElementById('customCylinderModal' + modalIndex);
+    const currentRentalsDiv = document.getElementById('currentRentals' + modalIndex);
+    
+    // Show modal
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Load current rentals
+    currentRentalsDiv.innerHTML = '<div class="text-muted"><i class="bi bi-hourglass-split me-2"></i>Loading current rentals...</div>';
+    
+    fetch(`/api/customer/${customerId}/rentals`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.rentals && data.rentals.length > 0) {
+                let html = '<div class="row g-2">';
+                data.rentals.forEach(function(rental) {
+                    const daysRented = rental.rental_days || 0;
+                    const badgeClass = daysRented > 30 ? 'bg-danger' : daysRented > 14 ? 'bg-warning' : 'bg-success';
+                    html += `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card card-sm">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <code class="text-primary">${rental.id}</code>
+                                        <span class="badge ${badgeClass}">${daysRented}d</span>
                                     </div>
+                                    <small class="text-muted">${rental.serial_number}</small>
                                 </div>
-                            `;
-                        });
-                        html += '</div>';
-                        currentRentalsDiv.innerHTML = html;
-                    } else {
-                        currentRentalsDiv.innerHTML = '<div class="text-muted fst-italic">No cylinders currently rented to this customer.</div>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading rentals:', error);
-                    currentRentalsDiv.innerHTML = '<div class="text-danger">Error loading current rentals.</div>';
+                            </div>
+                        </div>
+                    `;
                 });
+                html += '</div>';
+                currentRentalsDiv.innerHTML = html;
+            } else {
+                currentRentalsDiv.innerHTML = '<div class="text-muted fst-italic">No cylinders currently rented to this customer.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading rentals:', error);
+            currentRentalsDiv.innerHTML = '<div class="text-danger">Error loading current rentals.</div>';
         });
-    });
+}
+
+function closeCylinderModal(modalIndex) {
+    const modal = document.getElementById('customCylinderModal' + modalIndex);
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    if (event.target.classList.contains('custom-modal-backdrop')) {
+        const modal = event.target.closest('.custom-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
 });
 </script>
 
@@ -413,58 +411,66 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 8px 12px;
 }
 
-/* Fix modal flickering and interaction issues */
-.modal-backdrop {
+/* Custom modal styles - no Bootstrap conflicts */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+    overflow: auto;
+}
+
+.custom-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
     z-index: 1040;
 }
 
-.modal {
+.custom-modal-dialog {
+    position: relative;
+    margin: 1.75rem auto;
+    max-width: 800px;
+    width: 90%;
     z-index: 1050;
 }
 
-.modal-dialog {
-    pointer-events: all;
-    transform: translate(0, 0);
+.custom-modal-content {
+    background-color: white;
+    border: none;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    position: relative;
 }
 
-.modal-content {
-    background-color: white !important;
-    border: none !important;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-    will-change: auto !important;
-    backface-visibility: hidden !important;
-    pointer-events: auto !important;
+.custom-modal-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
 }
 
-/* Prevent flickering on hover */
-.modal-header, .modal-body, .modal-footer {
-    position: relative !important;
-    z-index: 1 !important;
-    backface-visibility: hidden !important;
-    pointer-events: auto !important;
+.custom-modal-header h5 {
+    margin: 0;
+    flex: 1;
 }
 
-/* Disable hover effects that might cause flickering */
-.modal-content:hover,
-.modal-dialog:hover,
-.modal:hover {
-    transform: none !important;
+.custom-modal-body {
+    padding: 1.5rem;
 }
 
-/* Disable modal animations to prevent flickering */
-.modal.fade .modal-dialog {
-    transition: none !important;
-    transform: none !important;
-}
-
-.modal.show .modal-dialog {
-    transform: none !important;
-}
-
-/* Force stable positioning */
-.modal-dialog {
-    margin: 1.75rem auto !important;
-    position: relative !important;
+.custom-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #dee2e6;
 }
 
 @media (max-width: 768px) {
