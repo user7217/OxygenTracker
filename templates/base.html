@@ -354,6 +354,10 @@
                 font-size: 1.1rem;
             }
             
+            .navbar-nav .nav-item {
+                margin: 0;
+            }
+            
             .table td, .table th {
                 padding: 12px;
                 font-size: 1rem;
@@ -375,6 +379,15 @@
         
         .navbar-nav .nav-link {
             font-size: 1.05rem;
+            padding: 0.75rem 1rem;
+        }
+        
+        .navbar-nav .nav-item {
+            margin: 0 0.25rem;
+        }
+        
+        .navbar-nav .dropdown-toggle::after {
+            margin-left: 0.5rem;
         }
         
         h1, h2, h3, h4, h5, h6 {
@@ -404,36 +417,36 @@
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto align-items-center">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="bi bi-house me-1"></i>Dashboard
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('index') }}">
+                            <i class="bi bi-house me-2"></i>Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('customers') }}">
-                            <i class="bi bi-people me-1"></i>Customers
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('customers') }}">
+                            <i class="bi bi-people me-2"></i>Customers
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('cylinders') }}">
-                            <i class="bi bi-cylinder me-1"></i>Cylinders
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('cylinders') }}">
+                            <i class="bi bi-cylinder me-2"></i>Cylinders
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('reports') }}">
-                            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Reports
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('reports') }}">
+                            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Reports
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gear me-1"></i>Tools
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear me-2"></i>Tools
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('bulk_rental_management') }}">
+                            <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('bulk_rental_management') }}">
                                 <i class="bi bi-arrow-repeat me-2"></i>Bulk Cylinder Management
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('import_data') }}">
+                            <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('import_data') }}">
                                 <i class="bi bi-download me-2"></i>Import from Access
                             </a></li>
                         </ul>
@@ -450,7 +463,7 @@
                                    placeholder="Search customers & cylinders..." 
                                    value="{{ request.args.get('q', '') }}"
                                    style="min-width: 200px;">
-                            <button class="btn btn-outline-light" type="submit">
+                            <button class="btn btn-outline-light d-flex align-items-center" type="submit">
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
@@ -458,23 +471,23 @@
                     
                     <!-- User Dropdown -->
                     <div class="dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle me-1"></i>{{ session.username }}
+                        <a class="nav-link dropdown-toggle text-light d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-2"></i>{{ session.username }}
                             {% if session.role == 'admin' %}
-                            <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            <span class="badge bg-warning text-dark ms-2">Admin</span>
                             {% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {% if session.role == 'admin' %}
-                            <li><a class="dropdown-item" href="{{ url_for('users') }}">
+                            <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('users') }}">
                                 <i class="bi bi-people me-2"></i>Manage Users
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('register') }}">
+                            <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('register') }}">
                                 <i class="bi bi-person-plus me-2"></i>Add User
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                            <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('logout') }}">
                                 <i class="bi bi-box-arrow-right me-2"></i>Logout
                             </a></li>
                         </ul>
