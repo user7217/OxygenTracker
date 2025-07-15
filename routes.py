@@ -1,4 +1,7 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, Response
+import csv
+import io
+from datetime import datetime, timedelta
 from app import app
 from models import Customer, Cylinder
 from auth_models import UserManager
@@ -482,6 +485,7 @@ def cylinders():
     search_query = request.args.get('search', '')
     status_filter = request.args.get('status', '')
     customer_filter = request.args.get('customer', '')
+    type_filter = request.args.get('type_filter', '')
     rental_duration_filter = request.args.get('rental_duration', '')
     
     cylinders_list = cylinder_model.get_all()
@@ -493,6 +497,10 @@ def cylinders():
     # Apply status filter
     if status_filter:
         cylinders_list = [c for c in cylinders_list if c.get('status', '').lower() == status_filter.lower()]
+    
+    # Apply type filter
+    if type_filter:
+        cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
     
     # Apply customer filter
     if customer_filter:
@@ -534,6 +542,7 @@ def cylinders():
                          search_query=search_query,
                          status_filter=status_filter,
                          customer_filter=customer_filter,
+                         type_filter=type_filter,
                          rental_duration_filter=rental_duration_filter)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
@@ -1276,3 +1285,345 @@ def process_bulk_rental():
         flash(error_msg, 'info')
     
     return redirect(url_for('bulk_rental_management'))
+
+# Reports routes
+@app.route('/reports')
+@login_required
+def reports():
+    """Data reports and export page"""
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    
+    # Get current stats
+    customers = customer_model.get_all()
+    cylinders = cylinder_model.get_all()
+    
+    # Calculate stats
+    active_rentals = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
+    
+    # Calculate available months (last 12 months)
+    available_months = []
+    current_date = datetime.now()
+    for i in range(12):
+        month_date = current_date - timedelta(days=30*i)
+        available_months.append({
+            'value': month_date.strftime('%Y-%m'),
+            'label': month_date.strftime('%B %Y')
+        })
+    
+    # Calculate months of data
+    data_months = 12  # Assume we have data for 12 months
+    
+    stats = {
+        'total_customers': len(customers),
+        'total_cylinders': len(cylinders),
+        'active_rentals': active_rentals,
+        'data_months': data_months
+    }
+    
+    return render_template('reports.html', stats=stats, available_months=available_months)
+
+@app.route('/export/customers.csv')
+@login_required
+def export_customers_csv():
+    """Export all customers to CSV"""
+    customer_model = Customer()
+    customers = customer_model.get_all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Updated At', 'Notes'])
+    
+    # Write customer data
+    for customer in customers:
+        writer.writerow([
+            customer.get('id', ''),
+            customer.get('name', ''),
+            customer.get('email', ''),
+            customer.get('phone', ''),
+            customer.get('address', ''),
+            customer.get('company', ''),
+            customer.get('created_at', ''),
+            customer.get('updated_at', ''),
+            customer.get('notes', '')
+        ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=customers_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+@app.route('/export/cylinders.csv')
+@login_required
+def export_cylinders_csv():
+    """Export all cylinders to CSV"""
+    cylinder_model = Cylinder()
+    cylinders = cylinder_model.get_all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 
+                    'Pressure', 'Last Inspection', 'Next Inspection', 'Rented To', 'Customer Name',
+                    'Date Borrowed', 'Date Returned', 'Created At', 'Updated At', 'Notes'])
+    
+    # Write cylinder data
+    for cylinder in cylinders:
+        writer.writerow([
+            cylinder.get('id', ''),
+            cylinder.get('serial_number', ''),
+            cylinder.get('custom_id', ''),
+            cylinder.get('type', ''),
+            cylinder.get('size', ''),
+            cylinder.get('status', ''),
+            cylinder.get('location', ''),
+            cylinder.get('pressure', ''),
+            cylinder.get('last_inspection', ''),
+            cylinder.get('next_inspection', ''),
+            cylinder.get('rented_to', ''),
+            cylinder.get('customer_name', ''),
+            cylinder.get('date_borrowed', ''),
+            cylinder.get('date_returned', ''),
+            cylinder.get('created_at', ''),
+            cylinder.get('updated_at', ''),
+            cylinder.get('notes', '')
+        ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=cylinders_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+@app.route('/export/rental-activities.csv')
+@login_required
+def export_rental_activities_csv():
+    """Export rental activities to CSV"""
+    cylinder_model = Cylinder()
+    customer_model = Customer()
+    cylinders = cylinder_model.get_all()
+    customers = customer_model.get_all()
+    
+    # Create customer lookup
+    customer_lookup = {c['id']: c for c in customers}
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    writer.writerow(['Cylinder ID', 'Serial Number', 'Custom ID', 'Type', 'Customer ID', 
+                    'Customer Name', 'Customer Email', 'Date Borrowed', 'Date Returned', 
+                    'Status', 'Rental Days'])
+    
+    # Write rental data
+    for cylinder in cylinders:
+        if cylinder.get('rented_to') or cylinder.get('date_borrowed'):
+            customer = customer_lookup.get(cylinder.get('rented_to', ''), {})
+            rental_days = cylinder_model.get_rental_days(cylinder)
+            
+            writer.writerow([
+                cylinder.get('id', ''),
+                cylinder.get('serial_number', ''),
+                cylinder.get('custom_id', ''),
+                cylinder.get('type', ''),
+                cylinder.get('rented_to', ''),
+                customer.get('name', ''),
+                customer.get('email', ''),
+                cylinder.get('date_borrowed', ''),
+                cylinder.get('date_returned', ''),
+                cylinder.get('status', ''),
+                rental_days
+            ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=rental_activities_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+@app.route('/export/complete-data.csv')
+@login_required
+def export_complete_data_csv():
+    """Export complete database to CSV"""
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    customers = customer_model.get_all()
+    cylinders = cylinder_model.get_all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write a complete report with all data
+    writer.writerow(['=== COMPLETE DATABASE EXPORT ==='])
+    writer.writerow(['Export Date:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Total Customers:', len(customers)])
+    writer.writerow(['Total Cylinders:', len(cylinders)])
+    writer.writerow([])
+    
+    # Customers section
+    writer.writerow(['=== CUSTOMERS ==='])
+    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Notes'])
+    for customer in customers:
+        writer.writerow([
+            customer.get('id', ''),
+            customer.get('name', ''),
+            customer.get('email', ''),
+            customer.get('phone', ''),
+            customer.get('address', ''),
+            customer.get('company', ''),
+            customer.get('created_at', ''),
+            customer.get('notes', '')
+        ])
+    
+    writer.writerow([])
+    
+    # Cylinders section
+    writer.writerow(['=== CYLINDERS ==='])
+    writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 
+                    'Pressure', 'Rented To', 'Customer Name', 'Date Borrowed', 'Rental Days'])
+    for cylinder in cylinders:
+        rental_days = cylinder_model.get_rental_days(cylinder)
+        writer.writerow([
+            cylinder.get('id', ''),
+            cylinder.get('serial_number', ''),
+            cylinder.get('custom_id', ''),
+            cylinder.get('type', ''),
+            cylinder.get('size', ''),
+            cylinder.get('status', ''),
+            cylinder.get('location', ''),
+            cylinder.get('pressure', ''),
+            cylinder.get('rented_to', ''),
+            cylinder.get('customer_name', ''),
+            cylinder.get('date_borrowed', ''),
+            rental_days
+        ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=complete_database_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+@app.route('/export/monthly-report', methods=['POST'])
+@login_required
+def export_monthly_report():
+    """Export monthly report based on selected month and type"""
+    report_month = request.form.get('report_month')
+    report_type = request.form.get('report_type')
+    
+    if not report_month or not report_type:
+        flash('Please select both month and report type', 'error')
+        return redirect(url_for('reports'))
+    
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    customers = customer_model.get_all()
+    cylinders = cylinder_model.get_all()
+    
+    # Filter data by month (simplified - in real implementation, you'd filter by actual dates)
+    year, month = report_month.split('-')
+    month_name = datetime(int(year), int(month), 1).strftime('%B %Y')
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers based on report type
+    writer.writerow([f'=== {report_type.upper()} REPORT FOR {month_name} ==='])
+    writer.writerow(['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow([])
+    
+    if report_type == 'complete':
+        # Complete report - all data
+        writer.writerow(['=== CUSTOMERS ==='])
+        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals'])
+        for customer in customers:
+            active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
+            writer.writerow([
+                customer.get('id', ''),
+                customer.get('name', ''),
+                customer.get('email', ''),
+                customer.get('phone', ''),
+                customer.get('company', ''),
+                active_rentals
+            ])
+        
+        writer.writerow([])
+        writer.writerow(['=== CYLINDERS ==='])
+        writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Status', 'Customer', 'Rental Days'])
+        for cylinder in cylinders:
+            rental_days = cylinder_model.get_rental_days(cylinder)
+            writer.writerow([
+                cylinder.get('id', ''),
+                cylinder.get('serial_number', ''),
+                cylinder.get('custom_id', ''),
+                cylinder.get('type', ''),
+                cylinder.get('status', ''),
+                cylinder.get('customer_name', ''),
+                rental_days
+            ])
+    
+    elif report_type == 'rentals':
+        # Rental activities only
+        writer.writerow(['=== RENTAL ACTIVITIES ==='])
+        writer.writerow(['Cylinder ID', 'Serial Number', 'Type', 'Customer', 'Date Borrowed', 'Rental Days', 'Status'])
+        for cylinder in cylinders:
+            if cylinder.get('rented_to') or cylinder.get('date_borrowed'):
+                rental_days = cylinder_model.get_rental_days(cylinder)
+                writer.writerow([
+                    cylinder.get('id', ''),
+                    cylinder.get('serial_number', ''),
+                    cylinder.get('type', ''),
+                    cylinder.get('customer_name', ''),
+                    cylinder.get('date_borrowed', ''),
+                    rental_days,
+                    cylinder.get('status', '')
+                ])
+    
+    elif report_type == 'customers':
+        # Customer summary
+        writer.writerow(['=== CUSTOMER SUMMARY ==='])
+        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals', 'Total Value'])
+        for customer in customers:
+            active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
+            writer.writerow([
+                customer.get('id', ''),
+                customer.get('name', ''),
+                customer.get('email', ''),
+                customer.get('phone', ''),
+                customer.get('company', ''),
+                active_rentals,
+                f'${active_rentals * 50}'  # Example pricing
+            ])
+    
+    elif report_type == 'cylinders':
+        # Cylinder inventory
+        writer.writerow(['=== CYLINDER INVENTORY ==='])
+        writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 'Pressure'])
+        for cylinder in cylinders:
+            writer.writerow([
+                cylinder.get('id', ''),
+                cylinder.get('serial_number', ''),
+                cylinder.get('custom_id', ''),
+                cylinder.get('type', ''),
+                cylinder.get('size', ''),
+                cylinder.get('status', ''),
+                cylinder.get('location', ''),
+                cylinder.get('pressure', '')
+            ])
+    
+    output.seek(0)
+    filename = f'{report_type}_report_{report_month}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )

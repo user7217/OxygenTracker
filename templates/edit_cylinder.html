@@ -52,8 +52,10 @@
                                     <option value="">Select cylinder type</option>
                                     <option value="Medical Oxygen" {% if cylinder.type == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
                                     <option value="Industrial Oxygen" {% if cylinder.type == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
-                                    <option value="Compressed Air" {% if cylinder.type == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
+                                    <option value="CO2" {% if cylinder.type == 'CO2' %}selected{% endif %}>CO2</option>
+                                    <option value="Argon" {% if cylinder.type == 'Argon' %}selected{% endif %}>Argon</option>
                                     <option value="Nitrogen" {% if cylinder.type == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
+                                    <option value="Compressed Air" {% if cylinder.type == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
                                     <option value="Other" {% if cylinder.type == 'Other' %}selected{% endif %}>Other</option>
                                 </select>
                             </div>

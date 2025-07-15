@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-file-earmark-spreadsheet me-3"></i>Data Reports
+            </h1>
+            <p class="lead">Export comprehensive reports and analytics data</p>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-month me-2"></i>Monthly Reports
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Generate detailed monthly reports with rental data, customer information, and cylinder usage.</p>
+                    
+                    <form method="POST" action="{{ url_for('export_monthly_report') }}" class="mb-3">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="report_month" class="form-label">Select Month</label>
+                                <select class="form-select" id="report_month" name="report_month" required>
+                                    <option value="">Choose a month...</option>
+                                    {% for month in available_months %}
+                                    <option value="{{ month.value }}">{{ month.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="report_type" class="form-label">Report Type</label>
+                                <select class="form-select" id="report_type" name="report_type" required>
+                                    <option value="">Choose report type...</option>
+                                    <option value="complete">Complete Report (All Data)</option>
+                                    <option value="rentals">Rental Activities Only</option>
+                                    <option value="customers">Customer Summary</option>
+                                    <option value="cylinders">Cylinder Inventory</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-download me-2"></i>Download Monthly Report (CSV)
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>Current Data Export
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Export current snapshot of all system data for backup or analysis.</p>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('export_customers_csv') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-people me-2"></i>Export All Customers (CSV)
+                        </a>
+                        <a href="{{ url_for('export_cylinders_csv') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-cylinder me-2"></i>Export All Cylinders (CSV)
+                        </a>
+                        <a href="{{ url_for('export_rental_activities_csv') }}" class="btn btn-outline-warning btn-lg">
+                            <i class="bi bi-arrow-repeat me-2"></i>Export Rental Activities (CSV)
+                        </a>
+                        <a href="{{ url_for('export_complete_data_csv') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-database me-2"></i>Export Complete Database (CSV)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Statistics -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Data Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <i class="bi bi-people text-primary fs-1"></i>
+                                <h4 class="mt-2">{{ stats.total_customers }}</h4>
+                                <p class="text-muted">Total Customers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <i class="bi bi-cylinder text-success fs-1"></i>
+                                <h4 class="mt-2">{{ stats.total_cylinders }}</h4>
+                                <p class="text-muted">Total Cylinders</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <i class="bi bi-arrow-right-circle text-warning fs-1"></i>
+                                <h4 class="mt-2">{{ stats.active_rentals }}</h4>
+                                <p class="text-muted">Active Rentals</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <i class="bi bi-calendar-check text-info fs-1"></i>
+                                <h4 class="mt-2">{{ stats.data_months }}</h4>
+                                <p class="text-muted">Months of Data</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Usage Instructions -->
+    <div class="row">
+        <div class="col">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Report Usage Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-calendar-month me-1"></i>Monthly Reports</h6>
+                            <ul class="list-unstyled">
+                                <li>• <strong>Complete Report:</strong> All customers, cylinders, and rental activities for the month</li>
+                                <li>• <strong>Rental Activities:</strong> Only rental and return transactions</li>
+                                <li>• <strong>Customer Summary:</strong> Customer data with rental statistics</li>
+                                <li>• <strong>Cylinder Inventory:</strong> Cylinder status and location data</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-download me-1"></i>Current Data Export</h6>
+                            <ul class="list-unstyled">
+                                <li>• <strong>Real-time data</strong> exported as of download time</li>
+                                <li>• <strong>CSV format</strong> compatible with Excel and other tools</li>
+                                <li>• <strong>Complete Database:</strong> Includes all data in multiple sheets</li>
+                                <li>• <strong>Perfect for backup</strong> and external analysis</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

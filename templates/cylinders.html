@@ -56,6 +56,18 @@
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label for="type_filter" class="form-label fs-5">Type</label>
+                            <select class="form-select form-select-lg" id="type_filter" name="type_filter" style="font-size: 1.1rem;">
+                                <option value="">All Types</option>
+                                <option value="Medical Oxygen" {% if type_filter == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
+                                <option value="Industrial Oxygen" {% if type_filter == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
+                                <option value="CO2" {% if type_filter == 'CO2' %}selected{% endif %}>CO2</option>
+                                <option value="Argon" {% if type_filter == 'Argon' %}selected{% endif %}>Argon</option>
+                                <option value="Nitrogen" {% if type_filter == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
+                                <option value="Compressed Air" {% if type_filter == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <label for="rental_duration" class="form-label fs-5">Rented For</label>
                             <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
                                 <option value="">Any Duration</option>
@@ -141,6 +153,9 @@
                         {% endif %}
                         {% if customer_filter %}
                         <span class="badge bg-warning text-dark ms-2">Customer Filter</span>
+                        {% endif %}
+                        {% if type_filter %}
+                        <span class="badge bg-success ms-2">Type: {{ type_filter }}</span>
                         {% endif %}
                         {% if rental_duration_filter %}
                         <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Months</span>
