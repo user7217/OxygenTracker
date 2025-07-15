@@ -166,7 +166,7 @@
                             {% for cylinder in cylinders %}
                             <tr>
                                 <td>
-                                    <strong>{{ cylinder.serial_number }}</strong>
+                                    <strong>OXY-{{ "%03d"|format(loop.index) }}</strong>
                                     <br><small class="text-muted">ID: {{ cylinder.id }}</small>
                                 </td>
                                 <td>
@@ -213,13 +213,13 @@
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Rent">
+                                                data-cylinder-serial="OXY-{{ "%03d"|format(loop.index) }}" title="Rent">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
                                         {% elif cylinder.get('status', '').lower() == 'rented' %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Return">
+                                                data-cylinder-serial="OXY-{{ "%03d"|format(loop.index) }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
@@ -239,7 +239,7 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.serial_number }}</strong>?
+                                                    Are you sure you want to delete cylinder <strong>OXY-{{ "%03d"|format(loop.index) }}</strong>?
                                                     This action cannot be undone.
                                                 </div>
                                                 <div class="modal-footer">
