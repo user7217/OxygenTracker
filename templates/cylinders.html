@@ -124,147 +124,144 @@
     </div>
     {% endif %}
 
-    <!-- Results Summary -->
+    <!-- Cylinders Table -->
     {% if cylinders %}
-    <div class="row mb-3">
+    <div class="row">
         <div class="col">
-            <div class="d-flex align-items-center gap-3">
-                <h4 class="mb-0 fs-4">
-                    <i class="bi bi-list-ul me-2"></i>Cylinder List
-                </h4>
-                <span class="badge bg-primary fs-6">{{ cylinders|length }} cylinder(s)</span>
-                {% if search_query %}
-                <span class="badge bg-info fs-6">Search: "{{ search_query }}"</span>
-                {% endif %}
-                {% if status_filter %}
-                <span class="badge bg-warning fs-6">Status: {{ status_filter.title() }}</span>
-                {% endif %}
-                {% if customer_filter %}
-                <span class="badge bg-success fs-6">Customer Filter Active</span>
-                {% endif %}
-                {% if rental_duration_filter %}
-                <span class="badge bg-danger fs-6">Rented {{ rental_duration_filter }}+ Months</span>
-                {% endif %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Cylinder List
+                        <span class="badge bg-secondary ms-2">{{ cylinders|length }} cylinder(s)</span>
+                        {% if search_query %}
+                        <span class="badge bg-info ms-2">Search: "{{ search_query }}"</span>
+                        {% endif %}
+                        {% if status_filter %}
+                        <span class="badge bg-primary ms-2">Status: {{ status_filter.title() }}</span>
+                        {% endif %}
+                        {% if customer_filter %}
+                        <span class="badge bg-warning text-dark ms-2">Customer Filter</span>
+                        {% endif %}
+                        {% if rental_duration_filter %}
+                        <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Months</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Serial Number</th>
+                                <th>Custom ID</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Location</th>
+                                <th>Pressure</th>
+                                <th>Status</th>
+                                <th>Current Rental</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cylinder in cylinders %}
+                            <tr>
+                                <td>
+                                    <strong>{{ cylinder.serial_number }}</strong>
+                                    <br><small class="text-muted">ID: {{ cylinder.id }}</small>
+                                </td>
+                                <td>
+                                    {% if cylinder.get('custom_id') %}
+                                    <span class="badge bg-info">{{ cylinder.custom_id }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cylinder.get('type', 'N/A') }}</td>
+                                <td>{{ cylinder.get('size', 'N/A') }}</td>
+                                <td>{{ cylinder.get('location', 'N/A') }}</td>
+                                <td>{{ cylinder.get('pressure', 'N/A') }}</td>
+                                <td>
+                                    <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {{ cylinder.get('status', 'Unknown').title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
+                                    <div class="rental-info">
+                                        <strong class="text-warning">{{ cylinder.customer_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {% if cylinder.get('date_borrowed') %}
+                                            Since: {{ cylinder.date_borrowed[:10] }}
+                                            {% endif %}
+                                            <br>
+                                            <span class="badge {% if cylinder.rental_days > 30 %}bg-danger{% elif cylinder.rental_days > 14 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                {{ cylinder.rental_days or 0 }} days
+                                            </span>
+                                        </small>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" 
+                                           class="btn btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% if cylinder.get('status', '').lower() == 'available' %}
+                                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
+                                                data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
+                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Rent">
+                                            <i class="bi bi-arrow-right-circle"></i>
+                                        </button>
+                                        {% elif cylinder.get('status', '').lower() == 'rented' %}
+                                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
+                                                data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
+                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Return">
+                                            <i class="bi bi-arrow-left-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Delete Confirmation Modal -->
+                                    <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.serial_number }}</strong>?
+                                                    This action cannot be undone.
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Cylinders Cards -->
-    {% if cylinders %}
-    <div class="row">
-        {% for cylinder in cylinders %}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4">
-            <div class="card h-100 {% if cylinder.get('status', '').lower() == 'rented' %}border-warning{% elif cylinder.get('status', '').lower() == 'available' %}border-success{% else %}border-danger{% endif %}">
-                <div class="card-header {% if cylinder.get('status', '').lower() == 'rented' %}bg-warning{% elif cylinder.get('status', '').lower() == 'available' %}bg-success{% else %}bg-danger{% endif %} text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fs-5">
-                            <i class="bi bi-cylinder me-2"></i>
-                            {% if cylinder.custom_id %}
-                                <span class="badge bg-light text-dark me-2">{{ cylinder.custom_id }}</span>
-                            {% endif %}
-                            {{ cylinder.serial_number }}
-                        </h5>
-                        <span class="badge bg-light text-dark fs-6">{{ cylinder.get('status', 'Unknown').title() }}</span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="info-item">
-                                <strong class="fs-6">Type:</strong>
-                                <div class="fs-5">{{ cylinder.get('type', 'N/A') }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="info-item">
-                                <strong class="fs-6">Size:</strong>
-                                <div class="fs-5">{{ cylinder.get('size', 'N/A') }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="info-item">
-                                <strong class="fs-6">Location:</strong>
-                                <div class="fs-5">{{ cylinder.get('location', 'N/A') }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="info-item">
-                                <strong class="fs-6">Pressure:</strong>
-                                <div class="fs-5">{{ cylinder.get('pressure', 'N/A') }}</div>
-                            </div>
-                        </div>
-                        
-                        {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
-                        <div class="col-12">
-                            <hr class="my-2">
-                            <div class="rental-info bg-light p-3 rounded">
-                                <div class="row">
-                                    <div class="col-12 mb-2">
-                                        <strong class="fs-6 text-warning">
-                                            <i class="bi bi-person-fill me-1"></i>Rented to:
-                                        </strong>
-                                        <div class="fs-5 fw-bold">{{ cylinder.customer_name }}</div>
-                                    </div>
-                                    {% if cylinder.get('date_borrowed') %}
-                                    <div class="col-6">
-                                        <strong class="fs-6 text-info">Date Borrowed:</strong>
-                                        <div class="fs-6">{{ cylinder.date_borrowed[:10] }}</div>
-                                    </div>
-                                    {% elif cylinder.get('rental_date') %}
-                                    <div class="col-6">
-                                        <strong class="fs-6 text-info">Start Date:</strong>
-                                        <div class="fs-6">{{ cylinder.rental_date[:10] }}</div>
-                                    </div>
-                                    {% endif %}
-                                    <div class="col-6">
-                                        <strong class="fs-6 text-danger">Days Rented:</strong>
-                                        <div class="fs-5 fw-bold">{{ cylinder.rental_days or 0 }} days</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="col-12">
-                            <small class="text-muted fs-6">
-                                <i class="bi bi-info-circle me-1"></i>
-                                ID: {{ cylinder.id }}
-                            </small>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" 
-                           class="btn btn-outline-primary btn-lg" style="font-size: 1rem;">
-                            <i class="bi bi-pencil me-2"></i>Edit
-                        </a>
-                        {% if cylinder.get('status', '').lower() == 'available' %}
-                        <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="modal" 
-                                data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                data-cylinder-serial="{{ cylinder.serial_number }}" style="font-size: 1rem;">
-                            <i class="bi bi-arrow-right-circle me-2"></i>Rent
-                        </button>
-                        {% elif cylinder.get('status', '').lower() == 'rented' %}
-                        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" 
-                                data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                data-cylinder-serial="{{ cylinder.serial_number }}" style="font-size: 1rem;">
-                            <i class="bi bi-arrow-left-circle me-2"></i>Return
-                        </button>
-                        {% endif %}
-                        <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-outline-danger btn-lg" style="font-size: 1rem;"
-                                    onclick="return confirm('Are you sure you want to delete this cylinder?')">
-                                <i class="bi bi-trash me-2"></i>Delete
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
     {% else %}
     <div class="row">
         <div class="col">

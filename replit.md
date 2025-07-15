@@ -115,6 +115,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 15, 2025: Changed cylinders page from card-based layout to table-based list format similar to customers page. Users can now see all cylinder information in a clean, organized table with better data visibility and actions grouped in button groups.
 - July 13, 2025: Added custom cylinder ID feature for easier bulk operations. Users can now set memorable custom IDs (like "A1", "B2", "001") when creating or editing cylinders. Bulk rental system now accepts system IDs, custom IDs, or serial numbers, making it much easier to perform bulk operations without memorizing system-generated IDs.
 - July 13, 2025: Fixed blue box cylinder management modal flickering issue by replacing modal approach with dedicated page. Cylinder management now opens on a separate page (/customers/{id}/bulk_cylinders) with no modals, animations, or JavaScript interactions - completely eliminating flickering problems. Page shows current rentals and provides clean form for bulk operations.
 - July 12, 2025: Fixed PythonAnywhere deployment issues with Flask url_for() configuration and static file handling. Updated WSGI configuration and app.py for proper URL building.
