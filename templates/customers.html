@@ -114,11 +114,13 @@
                                         </a>
                                         {% endif %}
                                         
-                                        <!-- Cylinder management for all users -->
+                                        <!-- Cylinder management for users and admins only -->
+                                        {% if session.user_role in ['admin', 'user'] %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
                                            class="btn btn-outline-info" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
+                                        {% endif %}
                                         
                                         <!-- Admin-only delete action -->
                                         {% if session.user_role == 'admin' %}

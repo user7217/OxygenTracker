@@ -247,7 +247,8 @@
                                         </a>
                                         {% endif %}
                                         
-                                        <!-- Rent/Return actions (available to all users) -->
+                                        <!-- Rent/Return actions (available to users and admins only) -->
+                                        {% if session.user_role in ['admin', 'user'] %}
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
@@ -260,6 +261,7 @@
                                                 data-cylinder-serial="{{ cylinder.display_serial }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
+                                        {% endif %}
                                         {% endif %}
                                         
                                         <!-- Admin-only delete action -->
