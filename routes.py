@@ -84,7 +84,7 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
-            session['role'] = user.get('role', 'user')
+            session['user_role'] = user.get('role', 'user')
             
             flash(f'Welcome back, {user["username"]}!', 'success')
             
@@ -404,6 +404,7 @@ def customers():
 
 @app.route('/customers/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
@@ -470,6 +471,7 @@ def edit_customer(customer_id):
 
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
 @login_required
+@admin_required
 def delete_customer(customer_id):
     """Delete customer"""
     try:
@@ -563,6 +565,7 @@ def cylinders():
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
@@ -645,6 +648,7 @@ def add_cylinder():
 
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
     cylinder = cylinder_model.get_by_id(cylinder_id)
@@ -769,6 +773,7 @@ def edit_cylinder(cylinder_id):
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
 @login_required
+@admin_required
 def delete_cylinder(cylinder_id):
     """Delete cylinder"""
     try:
@@ -784,6 +789,7 @@ def delete_cylinder(cylinder_id):
 # Data Import routes
 @app.route('/import')
 @login_required
+@admin_required
 def import_data():
     """Data import dashboard"""
     if not ACCESS_AVAILABLE:
@@ -1317,6 +1323,7 @@ def process_bulk_rental():
 # Reports routes
 @app.route('/reports')
 @login_required
+@admin_required
 def reports():
     """Data reports and export page"""
     customer_model = Customer()
