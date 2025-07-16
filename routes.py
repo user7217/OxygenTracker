@@ -2,6 +2,12 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, s
 import csv
 import io
 from datetime import datetime, timedelta
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
 from app import app
 from models import Customer, Cylinder
 from auth_models import UserManager
@@ -1648,4 +1654,242 @@ def export_monthly_report():
         output.getvalue(),
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+# PDF Export Routes
+@app.route('/export/customers.pdf')
+@login_required
+def export_customers_pdf():
+    """Export all customers to PDF"""
+    customer_model = Customer()
+    customers = customer_model.get_all()
+    
+    # Create PDF buffer
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                           rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Container for the PDF elements
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph("Varasai Oxygen - Customer Report", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Date and summary
+    date_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date_para = Paragraph(f"Generated on: {date_str}", styles['Normal'])
+    story.append(date_para)
+    
+    summary_para = Paragraph(f"Total Customers: {len(customers)}", styles['Normal'])
+    story.append(summary_para)
+    story.append(Spacer(1, 12))
+    
+    # Customer table
+    if customers:
+        data = [['Name', 'Email', 'Phone', 'Company', 'Address']]
+        for customer in customers:
+            data.append([
+                customer.get('name', '')[:25],  # Truncate long names
+                customer.get('email', '')[:30],
+                customer.get('phone', '')[:15],
+                customer.get('company', '')[:20],
+                customer.get('address', '')[:30]
+            ])
+        
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(table)
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    return Response(
+        buffer.getvalue(),
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename=customers_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
+    )
+
+@app.route('/export/cylinders.pdf')
+@login_required
+def export_cylinders_pdf():
+    """Export all cylinders to PDF"""
+    cylinder_model = Cylinder()
+    cylinders = cylinder_model.get_all()
+    
+    # Create PDF buffer
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                           rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Container for the PDF elements
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph("Varasai Oxygen - Cylinder Inventory Report", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Date and summary
+    date_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date_para = Paragraph(f"Generated on: {date_str}", styles['Normal'])
+    story.append(date_para)
+    
+    summary_para = Paragraph(f"Total Cylinders: {len(cylinders)}", styles['Normal'])
+    story.append(summary_para)
+    
+    # Status breakdown
+    status_counts = {}
+    for cylinder in cylinders:
+        status = cylinder.get('status', 'Unknown')
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    status_text = " | ".join([f"{status}: {count}" for status, count in status_counts.items()])
+    status_para = Paragraph(f"Status Breakdown: {status_text}", styles['Normal'])
+    story.append(status_para)
+    story.append(Spacer(1, 12))
+    
+    # Cylinder table
+    if cylinders:
+        data = [['Serial#', 'Type', 'Size', 'Status', 'Location', 'Customer']]
+        for i, cylinder in enumerate(cylinders):
+            # Generate display serial number
+            cylinder_type = cylinder.get('type', 'Other')
+            display_serial = cylinder_model.get_serial_number(cylinder_type, i + 1)
+            
+            data.append([
+                display_serial,
+                cylinder.get('type', '')[:15],
+                cylinder.get('size', '')[:12],
+                cylinder.get('status', '')[:10],
+                cylinder.get('location', '')[:15],
+                cylinder.get('customer_name', '')[:15]
+            ])
+        
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(table)
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    return Response(
+        buffer.getvalue(),
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename=cylinders_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
+    )
+
+@app.route('/export/rental-activities.pdf')
+@login_required
+def export_rental_activities_pdf():
+    """Export rental activities to PDF"""
+    cylinder_model = Cylinder()
+    customer_model = Customer()
+    cylinders = cylinder_model.get_all()
+    customers = customer_model.get_all()
+    
+    # Create customer lookup
+    customer_lookup = {c['id']: c for c in customers}
+    
+    # Filter cylinders with rental history
+    rental_cylinders = [c for c in cylinders if c.get('rented_to') or c.get('date_borrowed')]
+    
+    # Create PDF buffer
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                           rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Container for the PDF elements
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph("Varasai Oxygen - Rental Activities Report", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Date and summary
+    date_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date_para = Paragraph(f"Generated on: {date_str}", styles['Normal'])
+    story.append(date_para)
+    
+    summary_para = Paragraph(f"Total Rental Activities: {len(rental_cylinders)}", styles['Normal'])
+    story.append(summary_para)
+    story.append(Spacer(1, 12))
+    
+    # Rental activities table
+    if rental_cylinders:
+        data = [['Cylinder', 'Type', 'Customer', 'Date Borrowed', 'Status', 'Days']]
+        for i, cylinder in enumerate(rental_cylinders):
+            customer = customer_lookup.get(cylinder.get('rented_to', ''), {})
+            rental_days = cylinder_model.get_rental_days(cylinder)
+            
+            # Generate display serial number
+            cylinder_type = cylinder.get('type', 'Other')
+            display_serial = cylinder_model.get_serial_number(cylinder_type, i + 1)
+            
+            date_borrowed = cylinder.get('date_borrowed', '')
+            if date_borrowed:
+                try:
+                    date_obj = datetime.fromisoformat(date_borrowed.replace('Z', '+00:00'))
+                    date_borrowed = date_obj.strftime('%Y-%m-%d')
+                except:
+                    pass
+            
+            data.append([
+                display_serial,
+                cylinder.get('type', '')[:12],
+                customer.get('name', '')[:15],
+                date_borrowed[:10],
+                cylinder.get('status', '')[:10],
+                str(rental_days)
+            ])
+        
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(table)
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    return Response(
+        buffer.getvalue(),
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename=rental_activities_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
     )
