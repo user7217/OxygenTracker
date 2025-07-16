@@ -195,10 +195,30 @@ class Cylinder:
     
     def __init__(self):
         self.db = JSONDatabase("cylinders.json")
+        # Cylinder type to prefix mapping
+        self.type_prefixes = {
+            'Medical Oxygen': 'OXY',
+            'Industrial Oxygen': 'OXY', 
+            'CO2': 'CO2',
+            'Carbon Dioxide': 'CO2',
+            'Argon': 'ARG',
+            'Nitrogen': 'N2',
+            'Compressed Air': 'AIR',
+            'Other': 'GAS'
+        }
     
     def generate_id(self) -> str:
         """Generate unique cylinder ID"""
         return f"CYL-{str(uuid.uuid4())[:8].upper()}"
+    
+    def get_serial_number(self, cylinder_type: str, index: int) -> str:
+        """Generate display serial number based on cylinder type and index"""
+        prefix = self.type_prefixes.get(cylinder_type, 'GAS')
+        return f"{prefix}-{index:03d}"
+    
+    def get_type_prefix(self, cylinder_type: str) -> str:
+        """Get prefix for a cylinder type"""
+        return self.type_prefixes.get(cylinder_type, 'GAS')
     
     def get_all(self) -> List[Dict]:
         """Get all cylinders"""

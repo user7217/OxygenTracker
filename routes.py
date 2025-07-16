@@ -498,9 +498,16 @@ def cylinders():
     if status_filter:
         cylinders_list = [c for c in cylinders_list if c.get('status', '').lower() == status_filter.lower()]
     
-    # Apply type filter
+    # Apply type filter (handle both CO2 and Carbon Dioxide)
     if type_filter:
-        cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
+        if type_filter == 'Carbon Dioxide':
+            # Match both "Carbon Dioxide" and "CO2" for backward compatibility
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
+        elif type_filter == 'CO2':
+            # Match both "CO2" and "Carbon Dioxide" for backward compatibility
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
+        else:
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
     
     # Apply customer filter
     if customer_filter:
@@ -523,9 +530,11 @@ def cylinders():
         except ValueError:
             pass  # Ignore invalid duration values
     
-    # Add rental days calculation for each cylinder
-    for cylinder in cylinders_list:
+    # Add rental days calculation and type-specific serial numbers for each cylinder
+    for i, cylinder in enumerate(cylinders_list):
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        # Generate type-specific serial number for display
+        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
         # Customer name should already be stored in the cylinder data
         if not cylinder.get('customer_name') and cylinder.get('rented_to'):
             # Fallback: get customer name if not stored
@@ -543,7 +552,8 @@ def cylinders():
                          status_filter=status_filter,
                          customer_filter=customer_filter,
                          type_filter=type_filter,
-                         rental_duration_filter=rental_duration_filter)
+                         rental_duration_filter=rental_duration_filter,
+                         cylinder_model=cylinder_model)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
@@ -994,7 +1004,7 @@ def delete_user(user_id):
 def rent_cylinder(cylinder_id):
     """Rent a cylinder to a customer"""
     customer_id = request.form.get('customer_id')
-    rental_notes = request.form.get('rental_notes', '').strip()
+    rental_date = request.form.get('rental_date', '').strip()
     
     if not customer_id:
         flash('Please select a customer', 'error')
@@ -1006,8 +1016,20 @@ def rent_cylinder(cylinder_id):
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
     
-    # Rent the cylinder (rental_notes parameter is no longer used in the updated function)
-    if cylinder_model.rent_cylinder(cylinder_id, customer_id):
+    # Convert rental_date to ISO format if provided
+    rental_date_iso = None
+    if rental_date:
+        try:
+            from datetime import datetime
+            # Parse datetime-local format (YYYY-MM-DDTHH:MM) and convert to ISO
+            dt = datetime.fromisoformat(rental_date)
+            rental_date_iso = dt.isoformat()
+        except ValueError:
+            flash('Invalid rental date format', 'error')
+            return redirect(url_for('cylinders'))
+    
+    # Rent the cylinder with optional rental date
+    if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_date_iso):
         flash(f'Cylinder rented to {customer["name"]} successfully', 'success')
     else:
         flash('Error renting cylinder', 'error')

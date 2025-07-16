@@ -7,7 +7,13 @@
     <div class="row mb-4">
         <div class="col">
             <h1 class="display-4 mb-3" style="font-size: 2.5rem;">
-                <i class="bi bi-cylinder me-3"></i>Cylinders
+                <svg width="32" height="32" fill="currentColor" class="me-3" viewBox="0 0 16 16">
+                    <rect x="5" y="1" width="6" height="1.5" rx="0.5"/>
+                    <rect x="6.5" y="2.5" width="3" height="1" rx="0.5"/>
+                    <rect x="4" y="4" width="8" height="10" rx="1"/>
+                    <ellipse cx="8" cy="14" rx="4" ry="1"/>
+                    <text x="8" y="10" text-anchor="middle" font-size="3" font-weight="bold">O₂</text>
+                </svg>Cylinders
             </h1>
             <p class="lead" style="font-size: 1.25rem;">Manage your oxygen cylinder inventory</p>
         </div>
@@ -53,6 +59,18 @@
                                         {{ customer.name }}
                                     </option>
                                 {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="type_filter" class="form-label fs-5">Type</label>
+                            <select class="form-select form-select-lg" id="type_filter" name="type_filter" style="font-size: 1.1rem;">
+                                <option value="">All Types</option>
+                                <option value="Medical Oxygen" {% if type_filter == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
+                                <option value="Industrial Oxygen" {% if type_filter == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
+                                <option value="Carbon Dioxide" {% if type_filter == 'Carbon Dioxide' or type_filter == 'CO2' %}selected{% endif %}>Carbon Dioxide</option>
+                                <option value="Argon" {% if type_filter == 'Argon' %}selected{% endif %}>Argon</option>
+                                <option value="Nitrogen" {% if type_filter == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
+                                <option value="Compressed Air" {% if type_filter == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -142,6 +160,9 @@
                         {% if customer_filter %}
                         <span class="badge bg-warning text-dark ms-2">Customer Filter</span>
                         {% endif %}
+                        {% if type_filter %}
+                        <span class="badge bg-success ms-2">Type: {{ type_filter }}</span>
+                        {% endif %}
                         {% if rental_duration_filter %}
                         <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Months</span>
                         {% endif %}
@@ -166,7 +187,7 @@
                             {% for cylinder in cylinders %}
                             <tr>
                                 <td>
-                                    <strong>{{ cylinder.serial_number }}</strong>
+                                    <strong>{{ cylinder.display_serial }}</strong>
                                     <br><small class="text-muted">ID: {{ cylinder.id }}</small>
                                 </td>
                                 <td>
@@ -213,13 +234,13 @@
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Rent">
+                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Rent">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
                                         {% elif cylinder.get('status', '').lower() == 'rented' %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="{{ cylinder.serial_number }}" title="Return">
+                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
@@ -239,7 +260,7 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.serial_number }}</strong>?
+                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.display_serial }}</strong>?
                                                     This action cannot be undone.
                                                 </div>
                                                 <div class="modal-footer">
@@ -303,6 +324,11 @@
                             <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.email }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rental_date" class="form-label fs-5">Rental Date:</label>
+                        <input type="datetime-local" class="form-control form-control-lg" id="rental_date" name="rental_date" style="font-size: 1.1rem;">
+                        <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
@@ -449,6 +475,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update cylinder info
         cylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
+        
+        // Set default rental date to current time
+        const rentalDate = document.getElementById('rental_date');
+        const now = new Date();
+        const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        rentalDate.value = localDateTime;
     });
     
     // Reset form when modal is hidden
