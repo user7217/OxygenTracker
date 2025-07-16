@@ -994,7 +994,7 @@ def delete_user(user_id):
 def rent_cylinder(cylinder_id):
     """Rent a cylinder to a customer"""
     customer_id = request.form.get('customer_id')
-    rental_notes = request.form.get('rental_notes', '').strip()
+    rental_date = request.form.get('rental_date', '').strip()
     
     if not customer_id:
         flash('Please select a customer', 'error')
@@ -1006,8 +1006,20 @@ def rent_cylinder(cylinder_id):
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
     
-    # Rent the cylinder (rental_notes parameter is no longer used in the updated function)
-    if cylinder_model.rent_cylinder(cylinder_id, customer_id):
+    # Convert rental_date to ISO format if provided
+    rental_date_iso = None
+    if rental_date:
+        try:
+            from datetime import datetime
+            # Parse datetime-local format (YYYY-MM-DDTHH:MM) and convert to ISO
+            dt = datetime.fromisoformat(rental_date)
+            rental_date_iso = dt.isoformat()
+        except ValueError:
+            flash('Invalid rental date format', 'error')
+            return redirect(url_for('cylinders'))
+    
+    # Rent the cylinder with optional rental date
+    if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_date_iso):
         flash(f'Cylinder rented to {customer["name"]} successfully', 'success')
     else:
         flash('Error renting cylinder', 'error')

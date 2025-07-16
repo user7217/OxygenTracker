@@ -325,6 +325,11 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label for="rental_date" class="form-label fs-5">Rental Date:</label>
+                        <input type="datetime-local" class="form-control form-control-lg" id="rental_date" name="rental_date" style="font-size: 1.1rem;">
+                        <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
@@ -470,6 +475,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update cylinder info
         cylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
+        
+        // Set default rental date to current time
+        const rentalDate = document.getElementById('rental_date');
+        const now = new Date();
+        const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        rentalDate.value = localDateTime;
     });
     
     // Reset form when modal is hidden
