@@ -34,62 +34,72 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="GET" class="row g-3">
-                        <div class="col-md-4">
-                            <label for="search" class="form-label fs-5">Search Cylinders</label>
-                            <input type="text" class="form-control form-control-lg" id="search" name="search" 
-                                   placeholder="Search by serial number, type, location..." 
-                                   value="{{ search_query }}" style="font-size: 1.1rem;">
+                    <form method="GET">
+                        <!-- First Row: Search Bar -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-12">
+                                <label for="search" class="form-label fs-5">Search Cylinders</label>
+                                <input type="text" class="form-control form-control-lg" id="search" name="search" 
+                                       placeholder="Search by serial number, type, location..." 
+                                       value="{{ search_query }}" style="font-size: 1.1rem;">
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label for="status" class="form-label fs-5">Filter by Status</label>
-                            <select class="form-select form-select-lg" id="status" name="status" style="font-size: 1.1rem;">
-                                <option value="">All Statuses</option>
-                                <option value="available" {% if status_filter == 'available' %}selected{% endif %}>Available</option>
-                                <option value="rented" {% if status_filter == 'rented' %}selected{% endif %}>Rented</option>
-                                <option value="maintenance" {% if status_filter == 'maintenance' %}selected{% endif %}>Maintenance</option>
-                            </select>
+                        
+                        <!-- Second Row: Filter Options -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-lg-3 col-md-6">
+                                <label for="status" class="form-label fs-5">Status</label>
+                                <select class="form-select form-select-lg" id="status" name="status" style="font-size: 1.1rem;">
+                                    <option value="">All Statuses</option>
+                                    <option value="available" {% if status_filter == 'available' %}selected{% endif %}>Available</option>
+                                    <option value="rented" {% if status_filter == 'rented' %}selected{% endif %}>Rented</option>
+                                    <option value="maintenance" {% if status_filter == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label for="type_filter" class="form-label fs-5">Cylinder Type</label>
+                                <select class="form-select form-select-lg" id="type_filter" name="type_filter" style="font-size: 1.1rem;">
+                                    <option value="">All Types</option>
+                                    <option value="Medical Oxygen" {% if type_filter == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
+                                    <option value="Industrial Oxygen" {% if type_filter == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
+                                    <option value="Carbon Dioxide" {% if type_filter == 'Carbon Dioxide' or type_filter == 'CO2' %}selected{% endif %}>Carbon Dioxide</option>
+                                    <option value="Argon" {% if type_filter == 'Argon' %}selected{% endif %}>Argon</option>
+                                    <option value="Nitrogen" {% if type_filter == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
+                                    <option value="Compressed Air" {% if type_filter == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label for="customer" class="form-label fs-5">Customer</label>
+                                <select class="form-select form-select-lg" id="customer" name="customer" style="font-size: 1.1rem;">
+                                    <option value="">All Customers</option>
+                                    {% for customer in customers %}
+                                        <option value="{{ customer.id }}" {% if customer_filter == customer.id %}selected{% endif %}>
+                                            {{ customer.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label for="rental_duration" class="form-label fs-5">Rental Duration</label>
+                                <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
+                                    <option value="">Any Duration</option>
+                                    <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month</option>
+                                    <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months</option>
+                                    <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <label for="customer" class="form-label fs-5">Filter by Customer</label>
-                            <select class="form-select form-select-lg" id="customer" name="customer" style="font-size: 1.1rem;">
-                                <option value="">All Customers</option>
-                                {% for customer in customers %}
-                                    <option value="{{ customer.id }}" {% if customer_filter == customer.id %}selected{% endif %}>
-                                        {{ customer.name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="type_filter" class="form-label fs-5">Type</label>
-                            <select class="form-select form-select-lg" id="type_filter" name="type_filter" style="font-size: 1.1rem;">
-                                <option value="">All Types</option>
-                                <option value="Medical Oxygen" {% if type_filter == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
-                                <option value="Industrial Oxygen" {% if type_filter == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
-                                <option value="Carbon Dioxide" {% if type_filter == 'Carbon Dioxide' or type_filter == 'CO2' %}selected{% endif %}>Carbon Dioxide</option>
-                                <option value="Argon" {% if type_filter == 'Argon' %}selected{% endif %}>Argon</option>
-                                <option value="Nitrogen" {% if type_filter == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
-                                <option value="Compressed Air" {% if type_filter == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="rental_duration" class="form-label fs-5">Rented For</label>
-                            <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
-                                <option value="">Any Duration</option>
-                                <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month</option>
-                                <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months</option>
-                                <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">&nbsp;</label>
-                            <div class="d-grid gap-2">
+                        
+                        <!-- Third Row: Action Buttons -->
+                        <div class="row g-3">
+                            <div class="col-auto">
                                 <button type="submit" class="btn btn-primary btn-lg" style="font-size: 1.1rem;">
-                                    <i class="bi bi-search me-2"></i>Search
+                                    <i class="bi bi-search me-2"></i>Search & Filter
                                 </button>
+                            </div>
+                            <div class="col-auto">
                                 <a href="{{ url_for('cylinders') }}" class="btn btn-outline-secondary btn-lg" style="font-size: 1.1rem;">
-                                    <i class="bi bi-x-circle me-2"></i>Clear
+                                    <i class="bi bi-x-circle me-2"></i>Clear All
                                 </a>
                             </div>
                         </div>
