@@ -64,6 +64,18 @@
             background: var(--light-background);
         }
         
+        /* Fix hamburger menu for light theme */
+        .navbar-toggler {
+            color: var(--light-dark) !important;
+            border-color: var(--light-border) !important;
+        }
+        
+        .navbar-toggler:focus {
+            color: var(--light-dark) !important;
+            border-color: var(--light-primary) !important;
+            box-shadow: 0 0 0 0.25rem rgba(0, 86, 179, 0.25);
+        }
+        
         .navbar-nav .nav-item {
             margin: 0 0.25rem;
         }
@@ -315,39 +327,42 @@
             
             /* Mobile navigation improvements */
             .navbar-collapse {
-                background: var(--light-dark);
+                background: var(--light-white);
                 border-radius: 8px;
                 margin-top: 10px;
                 padding: 1rem;
-                border: 1px solid rgba(255,255,255,0.1);
+                border: 1px solid var(--light-border);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             }
             
             .navbar-nav .nav-link {
                 padding: 12px 16px;
                 border-radius: 6px;
                 margin: 2px 0;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
+                border-bottom: 1px solid var(--light-border);
+                color: var(--light-dark) !important;
             }
             
             .navbar-nav .nav-link:hover {
-                background: rgba(255,255,255,0.1);
+                background: var(--light-background);
+                color: var(--light-primary) !important;
             }
             
             .navbar-nav .dropdown-menu {
-                background: rgba(0,0,0,0.8);
-                border: none;
-                box-shadow: none;
+                background: var(--light-white);
+                border: 1px solid var(--light-border);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 margin-left: 1rem;
             }
             
             .navbar-nav .dropdown-item {
-                color: rgba(255,255,255,0.8);
+                color: var(--light-dark);
                 padding: 8px 16px;
             }
             
             .navbar-nav .dropdown-item:hover {
-                background: rgba(255,255,255,0.1);
-                color: white;
+                background: var(--light-background);
+                color: var(--light-primary);
             }
             
             /* Hide search on mobile to save space */
@@ -362,12 +377,14 @@
             
             /* Improve hamburger menu visibility */
             .navbar-toggler {
-                border: 2px solid rgba(255,255,255,0.3);
+                border: 2px solid var(--light-border) !important;
                 padding: 8px 12px;
+                color: var(--light-dark) !important;
             }
             
             .navbar-toggler:focus {
-                box-shadow: 0 0 0 0.25rem rgba(255,255,255,0.25);
+                box-shadow: 0 0 0 0.25rem rgba(0, 86, 179, 0.25) !important;
+                border-color: var(--light-primary) !important;
             }
             
             .navbar-toggler-icon {
@@ -483,7 +500,7 @@
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-light mb-4">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Varasai Oxygen" height="60" class="me-2">
@@ -549,7 +566,7 @@
                                 <input class="form-control" type="search" name="q" 
                                        placeholder="Search customers & cylinders..." 
                                        value="{{ request.args.get('q', '') }}">
-                                <button class="btn btn-outline-light" type="submit">
+                                <button class="btn btn-outline-primary" type="submit">
                                     <i class="bi bi-search"></i>
                                 </button>
                             </div>
@@ -559,7 +576,7 @@
                     <!-- Mobile User Info -->
                     <li class="nav-item d-lg-none">
                         <div class="nav-link">
-                            <small class="text-light">
+                            <small class="text-muted">
                                 <i class="bi bi-person-circle me-1"></i>{{ session.username }}
                                 {% if session.role %}
                                 <span class="badge {% if session.role == 'admin' %}bg-warning text-dark{% elif session.role == 'user' %}bg-info{% else %}bg-secondary{% endif %} ms-1">
@@ -603,7 +620,7 @@
                                    placeholder="Search customers & cylinders..." 
                                    value="{{ request.args.get('q', '') }}"
                                    style="min-width: 200px;">
-                            <button class="btn btn-outline-light d-flex align-items-center" type="submit">
+                            <button class="btn btn-outline-primary d-flex align-items-center" type="submit">
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
@@ -611,7 +628,7 @@
                     
                     <!-- User Dropdown -->
                     <div class="dropdown">
-                        <a class="nav-link dropdown-toggle text-light d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle text-dark d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle me-2"></i>{{ session.username }}
                             {% if session.role == 'admin' %}
                             <span class="badge bg-warning text-dark ms-2">Admin</span>
