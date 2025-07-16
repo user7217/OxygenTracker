@@ -11,13 +11,11 @@
             </h1>
             <p class="lead">Manage your customer database</p>
         </div>
-        {% if session.user_role == 'admin' %}
         <div class="col-auto">
             <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-2"></i>Add Customer
             </a>
         </div>
-        {% endif %}
     </div>
 
     <!-- Search Bar -->
@@ -106,30 +104,19 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <!-- Admin-only actions -->
-                                        {% if session.user_role == 'admin' %}
                                         <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
                                            class="btn btn-outline-warning" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        {% endif %}
-                                        
-                                        <!-- Cylinder management for users and admins only -->
-                                        {% if session.user_role in ['admin', 'user'] %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
                                            class="btn btn-outline-info" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
-                                        {% endif %}
-                                        
-                                        <!-- Admin-only delete action -->
-                                        {% if session.user_role == 'admin' %}
                                         <button type="button" class="btn btn-outline-danger" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        {% endif %}
                                     </div>
                                     
 
@@ -221,8 +208,7 @@
                                     </div>
                                     {% endif %}
 
-                                    <!-- Admin-only Delete Confirmation Modal -->
-                                    {% if session.user_role == 'admin' %}
+                                    <!-- Delete Confirmation Modal -->
                                     <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
@@ -243,7 +229,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

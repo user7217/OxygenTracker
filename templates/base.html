@@ -312,89 +312,6 @@
                 padding: 10px 16px;
                 font-size: 1rem;
             }
-            
-            .navbar {
-                padding: 0.5rem 0;
-            }
-            
-            .navbar-brand {
-                font-size: 1.2rem;
-            }
-            
-            .navbar-brand img {
-                height: 40px !important;
-            }
-            
-            .navbar-toggler {
-                border: 2px solid var(--light-primary);
-                padding: 6px 10px;
-                border-radius: 6px;
-            }
-            
-            .navbar-toggler:focus {
-                box-shadow: 0 0 0 0.2rem rgba(0, 86, 179, 0.25);
-            }
-            
-            .navbar-toggler-icon {
-                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23212529' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-                width: 20px;
-                height: 20px;
-            }
-            
-            .navbar-collapse {
-                background: var(--light-white);
-                margin-top: 0.5rem;
-                padding: 1rem;
-                border-radius: 8px;
-                border: 1px solid var(--light-border);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            }
-            
-            .navbar-nav .nav-link {
-                padding: 0.75rem 1rem;
-                margin: 0.25rem 0;
-                border-radius: 6px;
-                font-weight: 600;
-                font-size: 1.1rem;
-            }
-            
-            .navbar-nav .nav-link:hover {
-                background: var(--light-background);
-                color: var(--light-primary) !important;
-            }
-            
-            .dropdown-menu {
-                position: static !important;
-                float: none;
-                width: 100%;
-                margin-top: 0.5rem;
-                background-color: var(--light-background);
-                border: 1px solid var(--light-border);
-                border-radius: 6px;
-                box-shadow: none;
-            }
-            
-            .dropdown-item {
-                padding: 0.75rem 1rem;
-                font-size: 1rem;
-                font-weight: 500;
-            }
-            
-            .dropdown-item:hover {
-                background-color: var(--light-primary);
-                color: white;
-            }
-            
-            /* Hide search form on mobile */
-            .navbar form {
-                display: none;
-            }
-            
-            /* Stack user dropdown items */
-            .navbar .dropdown-menu {
-                border-radius: 6px;
-                margin-top: 0.5rem;
-            }
         }
         
         /* Print Styles */
@@ -489,7 +406,7 @@
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Varasai Oxygen" height="60" class="me-2">
@@ -500,14 +417,12 @@
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto align-items-center">
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('index') }}">
                             <i class="bi bi-house me-2"></i>Dashboard
                         </a>
                     </li>
-                    
-                    <!-- All users can view customers and cylinders -->
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('customers') }}">
                             <i class="bi bi-people me-2"></i>Customers
@@ -524,9 +439,6 @@
                             </svg>Cylinders
                         </a>
                     </li>
-                    
-                    <!-- Admin-only sections -->
-                    {% if session.user_role == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('reports') }}">
                             <i class="bi bi-file-earmark-spreadsheet me-2"></i>Reports
@@ -534,7 +446,7 @@
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gear me-2"></i>Admin Tools
+                            <i class="bi bi-gear me-2"></i>Tools
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('bulk_rental_management') }}">
@@ -545,34 +457,19 @@
                             </a></li>
                         </ul>
                     </li>
-                    {% else %}
-                    <!-- Regular users get simplified tools -->
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center" href="{{ url_for('bulk_rental_management') }}">
-                            <i class="bi bi-arrow-repeat me-2"></i>Rent/Return
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Mobile-only search link -->
-                    <li class="nav-item d-lg-none">
-                        <a class="nav-link d-flex align-items-center" href="{{ url_for('global_search') }}">
-                            <i class="bi bi-search me-2"></i>Search
-                        </a>
-                    </li>
                 </ul>
                 
                 <!-- User Info and Actions -->
                 <div class="d-flex align-items-center">
                     {% if session.user_id %}
-                    <!-- Global Search Form - Hidden on mobile -->
-                    <form class="d-none d-lg-flex me-3" method="GET" action="{{ url_for('global_search') }}">
+                    <!-- Global Search Form -->
+                    <form class="d-flex me-3" method="GET" action="{{ url_for('global_search') }}">
                         <div class="input-group">
                             <input class="form-control" type="search" name="q" 
                                    placeholder="Search customers & cylinders..." 
                                    value="{{ request.args.get('q', '') }}"
                                    style="min-width: 200px;">
-                            <button class="btn btn-outline-primary d-flex align-items-center" type="submit">
+                            <button class="btn btn-outline-light d-flex align-items-center" type="submit">
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
@@ -580,14 +477,14 @@
                     
                     <!-- User Dropdown -->
                     <div class="dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle text-light d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle me-2"></i>{{ session.username }}
-                            {% if session.user_role == 'admin' %}
-                            <span class="badge bg-warning text-dark ms-2 d-none d-md-inline">Admin</span>
+                            {% if session.role == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-2">Admin</span>
                             {% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            {% if session.user_role == 'admin' %}
+                            {% if session.role == 'admin' %}
                             <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('users') }}">
                                 <i class="bi bi-people me-2"></i>Manage Users
                             </a></li>

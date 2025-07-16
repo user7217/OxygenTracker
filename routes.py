@@ -64,22 +64,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def user_or_admin_required(f):
-    """Decorator to require user or admin role (excludes viewers)"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please log in to access this page', 'error')
-            return redirect(url_for('login'))
-        
-        user = user_manager.get_user_by_id(session['user_id'])
-        if not user or user.get('role') not in ['admin', 'user']:
-            flash('Access denied. User privileges required for this action.', 'error')
-            return redirect(url_for('index'))
-        
-        return f(*args, **kwargs)
-    return decorated_function
-
 # Initialize models
 customer_model = Customer()
 cylinder_model = Cylinder()
@@ -100,7 +84,7 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
-            session['user_role'] = user.get('role', 'user')
+            session['role'] = user.get('role', 'user')
             
             flash(f'Welcome back, {user["username"]}!', 'success')
             
@@ -420,7 +404,6 @@ def customers():
 
 @app.route('/customers/add', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
@@ -487,7 +470,6 @@ def edit_customer(customer_id):
 
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
 @login_required
-@admin_required
 def delete_customer(customer_id):
     """Delete customer"""
     try:
@@ -581,7 +563,6 @@ def cylinders():
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
@@ -664,7 +645,6 @@ def add_cylinder():
 
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
     cylinder = cylinder_model.get_by_id(cylinder_id)
@@ -789,7 +769,6 @@ def edit_cylinder(cylinder_id):
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
 @login_required
-@admin_required
 def delete_cylinder(cylinder_id):
     """Delete cylinder"""
     try:
@@ -805,7 +784,6 @@ def delete_cylinder(cylinder_id):
 # Data Import routes
 @app.route('/import')
 @login_required
-@admin_required
 def import_data():
     """Data import dashboard"""
     if not ACCESS_AVAILABLE:
@@ -1029,7 +1007,6 @@ def delete_user(user_id):
 
 @app.route('/cylinders/rent/<cylinder_id>', methods=['POST'])
 @login_required
-@user_or_admin_required
 def rent_cylinder(cylinder_id):
     """Rent a cylinder to a customer"""
     customer_id = request.form.get('customer_id')
@@ -1067,7 +1044,6 @@ def rent_cylinder(cylinder_id):
 
 @app.route('/cylinders/return/<cylinder_id>', methods=['POST'])
 @login_required
-@user_or_admin_required
 def return_cylinder(cylinder_id):
     """Return a cylinder from rental"""
     return_date = request.form.get('return_date')
@@ -1080,7 +1056,6 @@ def return_cylinder(cylinder_id):
 
 @app.route('/customers/<customer_id>/bulk_cylinders', methods=['GET', 'POST'])
 @login_required
-@user_or_admin_required
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
     customer = customer_model.get_by_id(customer_id)
@@ -1237,7 +1212,6 @@ def archive_data():
 
 @app.route('/bulk_rental_management')
 @login_required
-@user_or_admin_required
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
     customers = customer_model.get_all()
@@ -1245,7 +1219,6 @@ def bulk_rental_management():
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
-@user_or_admin_required
 def process_bulk_rental():
     """Process bulk cylinder rental/return operations"""
     customer_id = request.form.get('customer_id', '').strip()
@@ -1344,7 +1317,6 @@ def process_bulk_rental():
 # Reports routes
 @app.route('/reports')
 @login_required
-@admin_required
 def reports():
     """Data reports and export page"""
     customer_model = Customer()
