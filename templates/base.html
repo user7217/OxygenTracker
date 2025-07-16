@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -558,22 +558,8 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Mobile Search (only visible on mobile) -->
-                    {% if session.user_id %}
-                    <li class="nav-item d-lg-none">
-                        <form method="GET" action="{{ url_for('global_search') }}" class="mt-2">
-                            <div class="input-group">
-                                <input class="form-control" type="search" name="q" 
-                                       placeholder="Search customers & cylinders..." 
-                                       value="{{ request.args.get('q', '') }}">
-                                <button class="btn btn-outline-primary" type="submit">
-                                    <i class="bi bi-search"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </li>
-                    
                     <!-- Mobile User Info -->
+                    {% if session.user_id %}
                     <li class="nav-item d-lg-none">
                         <div class="nav-link">
                             <small class="text-muted">
@@ -606,6 +592,20 @@
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('logout') }}">
                             <i class="bi bi-box-arrow-right me-2"></i>Logout
                         </a>
+                    </li>
+                    
+                    <!-- Mobile Search at bottom -->
+                    <li class="nav-item d-lg-none mt-3 pt-3" style="border-top: 1px solid var(--light-border);">
+                        <form method="GET" action="{{ url_for('global_search') }}">
+                            <div class="input-group">
+                                <input class="form-control" type="search" name="q" 
+                                       placeholder="Search customers & cylinders..." 
+                                       value="{{ request.args.get('q', '') }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </form>
                     </li>
                     {% endif %}
                 </ul>
