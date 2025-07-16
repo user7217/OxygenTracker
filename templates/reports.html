@@ -67,19 +67,56 @@
                 <div class="card-body">
                     <p class="mb-3">Export current snapshot of all system data for backup or analysis.</p>
                     
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('export_customers_csv') }}" class="btn btn-outline-primary btn-lg">
-                            <i class="bi bi-people me-2"></i>Export All Customers (CSV)
-                        </a>
-                        <a href="{{ url_for('export_cylinders_csv') }}" class="btn btn-outline-primary btn-lg">
-                            <i class="bi bi-cylinder me-2"></i>Export All Cylinders (CSV)
-                        </a>
-                        <a href="{{ url_for('export_rental_activities_csv') }}" class="btn btn-outline-warning btn-lg">
-                            <i class="bi bi-arrow-repeat me-2"></i>Export Rental Activities (CSV)
-                        </a>
-                        <a href="{{ url_for('export_complete_data_csv') }}" class="btn btn-primary btn-lg">
-                            <i class="bi bi-database me-2"></i>Export Complete Database (CSV)
-                        </a>
+                    <div class="d-grid gap-3">
+                        <!-- Customer Export -->
+                        <div class="border rounded p-3">
+                            <h6 class="mb-2"><i class="bi bi-people me-2"></i>Customer Reports</h6>
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('export_customers_csv') }}" class="btn btn-outline-success">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV
+                                </a>
+                                <a href="{{ url_for('export_customers_pdf') }}" class="btn btn-outline-danger">
+                                    <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Cylinder Export -->
+                        <div class="border rounded p-3">
+                            <h6 class="mb-2"><i class="bi bi-cylinder me-2"></i>Cylinder Inventory</h6>
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('export_cylinders_csv') }}" class="btn btn-outline-success">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV
+                                </a>
+                                <a href="{{ url_for('export_cylinders_pdf') }}" class="btn btn-outline-danger">
+                                    <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Rental Activities Export -->
+                        <div class="border rounded p-3">
+                            <h6 class="mb-2"><i class="bi bi-arrow-repeat me-2"></i>Rental Activities</h6>
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('export_rental_activities_csv') }}" class="btn btn-outline-success">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV
+                                </a>
+                                <a href="{{ url_for('export_rental_activities_pdf') }}" class="btn btn-outline-danger">
+                                    <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Complete Database Export -->
+                        <div class="border rounded p-3">
+                            <h6 class="mb-2"><i class="bi bi-database me-2"></i>Complete Database</h6>
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('export_complete_data_csv') }}" class="btn btn-primary">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV Only
+                                </a>
+                            </div>
+                            <small class="text-muted">Full database export available in CSV format only</small>
+                        </div>
                     </div>
                 </div>
             </div>
