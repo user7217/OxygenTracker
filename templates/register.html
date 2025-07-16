@@ -56,12 +56,14 @@
                         <div class="mb-4">
                             <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
                             <select class="form-select" id="role" name="role" required>
+                                <option value="viewer">Viewer</option>
                                 <option value="user">User</option>
                                 <option value="admin">Admin</option>
                             </select>
                             <div class="form-text">
-                                <strong>User:</strong> Can view and manage customers and cylinders<br>
-                                <strong>Admin:</strong> Can manage users and access all features
+                                <strong>Viewer:</strong> View-only access (cannot add/edit/delete data)<br>
+                                <strong>User:</strong> Can rent/return cylinders only<br>
+                                <strong>Admin:</strong> Full access to all features including user management
                             </div>
                         </div>
 
