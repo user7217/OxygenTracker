@@ -17,11 +17,13 @@
             </h1>
             <p class="lead" style="font-size: 1.25rem;">Manage your oxygen cylinder inventory</p>
         </div>
+        {% if session.role == 'admin' %}
         <div class="col-auto">
             <a href="{{ url_for('add_cylinder') }}" class="btn btn-primary btn-lg" style="font-size: 1.2rem;">
                 <i class="bi bi-plus-lg me-2"></i>Add Cylinder
             </a>
         </div>
+        {% endif %}
     </div>
 
     <!-- Enhanced Search and Filter Bar -->
@@ -190,7 +192,7 @@
                                 <th>Pressure</th>
                                 <th>Status</th>
                                 <th>Current Rental</th>
-                                <th>Actions</th>
+                                {% if session.role in ['admin', 'user'] %}<th>Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -235,12 +237,15 @@
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
+                                {% if session.role in ['admin', 'user'] %}
                                 <td>
                                     <div class="btn-group btn-group-sm">
+                                        {% if session.role == 'admin' %}
                                         <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" 
                                            class="btn btn-outline-primary" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        {% endif %}
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
@@ -254,12 +259,15 @@
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
+                                        {% if session.role == 'admin' %}
                                         <button type="button" class="btn btn-outline-danger" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
+                                {% endif %}
                                     
                                     <!-- Delete Confirmation Modal -->
                                     <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">

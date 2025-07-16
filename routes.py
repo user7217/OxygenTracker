@@ -64,6 +64,38 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def user_or_admin_required(f):
+    """Decorator to require user or admin role (excludes viewers)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'error')
+            return redirect(url_for('login'))
+        
+        user = user_manager.get_user_by_id(session['user_id'])
+        if not user or user.get('role') not in ['admin', 'user']:
+            flash('Insufficient permissions', 'error')
+            return redirect(url_for('index'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_or_user_can_edit(f):
+    """Decorator for routes that only admin can access (users can only rent/return)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'error')
+            return redirect(url_for('login'))
+        
+        user = user_manager.get_user_by_id(session['user_id'])
+        if not user or user.get('role') != 'admin':
+            flash('Only administrators can add/edit/delete customers and cylinders', 'error')
+            return redirect(url_for('index'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Initialize models
 customer_model = Customer()
 cylinder_model = Cylinder()
@@ -115,7 +147,7 @@ def register():
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
         confirm_password = request.form.get('confirm_password', '').strip()
-        role = request.form.get('role', 'user')
+        role = request.form.get('role', 'viewer').strip()
         
         # Validation
         if not all([username, email, password, confirm_password]):
@@ -130,12 +162,27 @@ def register():
             flash('Password must be at least 6 characters long', 'error')
             return render_template('register.html')
         
+        if role not in ['admin', 'user', 'viewer']:
+            flash('Invalid role selected', 'error')
+            return render_template('register.html')
+        
+        # Check if user already exists
+        if user_manager.get_user_by_username(username):
+            flash('Username already exists', 'error')
+            return render_template('register.html')
+        
+        # Check if email already exists
+        users = user_manager.get_all_users()
+        if any(u.get('email') == email for u in users):
+            flash('Email already registered', 'error')
+            return render_template('register.html')
+        
         try:
             new_user = user_manager.create_user(username, email, password, role)
-            flash(f'User {username} created successfully', 'success')
+            flash(f'User {username} created successfully with role: {role}', 'success')
             return redirect(url_for('users'))
-        except ValueError as e:
-            flash(str(e), 'error')
+        except Exception as e:
+            flash(f'Error creating user: {str(e)}', 'error')
     
     return render_template('register.html')
 
@@ -403,7 +450,7 @@ def customers():
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
-@login_required
+@admin_or_user_can_edit
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
@@ -432,7 +479,7 @@ def add_customer():
     return render_template('add_customer.html')
 
 @app.route('/customers/edit/<customer_id>', methods=['GET', 'POST'])
-@login_required
+@admin_or_user_can_edit
 def edit_customer(customer_id):
     """Edit existing customer"""
     customer = customer_model.get_by_id(customer_id)
@@ -469,7 +516,7 @@ def edit_customer(customer_id):
     return render_template('edit_customer.html', customer=customer)
 
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
-@login_required
+@admin_or_user_can_edit
 def delete_customer(customer_id):
     """Delete customer"""
     try:
@@ -562,7 +609,7 @@ def cylinders():
                          cylinder_model=cylinder_model)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
-@login_required
+@admin_or_user_can_edit
 def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
@@ -644,7 +691,7 @@ def add_cylinder():
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)
 
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
-@login_required
+@admin_or_user_can_edit
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
     cylinder = cylinder_model.get_by_id(cylinder_id)
@@ -768,7 +815,7 @@ def edit_cylinder(cylinder_id):
     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
-@login_required
+@admin_or_user_can_edit
 def delete_cylinder(cylinder_id):
     """Delete cylinder"""
     try:
@@ -1006,7 +1053,7 @@ def delete_user(user_id):
     return redirect(url_for('users'))
 
 @app.route('/cylinders/rent/<cylinder_id>', methods=['POST'])
-@login_required
+@user_or_admin_required
 def rent_cylinder(cylinder_id):
     """Rent a cylinder to a customer"""
     customer_id = request.form.get('customer_id')
@@ -1043,7 +1090,7 @@ def rent_cylinder(cylinder_id):
     return redirect(url_for('cylinders'))
 
 @app.route('/cylinders/return/<cylinder_id>', methods=['POST'])
-@login_required
+@user_or_admin_required
 def return_cylinder(cylinder_id):
     """Return a cylinder from rental"""
     return_date = request.form.get('return_date')
@@ -1055,7 +1102,7 @@ def return_cylinder(cylinder_id):
     return redirect(url_for('cylinders'))
 
 @app.route('/customers/<customer_id>/bulk_cylinders', methods=['GET', 'POST'])
-@login_required
+@user_or_admin_required
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
     customer = customer_model.get_by_id(customer_id)

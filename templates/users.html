@@ -56,8 +56,12 @@
                                 <td>
                                     {% if user.role == 'admin' %}
                                     <span class="badge bg-warning text-dark">Admin</span>
+                                    {% elif user.role == 'user' %}
+                                    <span class="badge bg-info">User</span>
+                                    {% elif user.role == 'viewer' %}
+                                    <span class="badge bg-secondary">Viewer</span>
                                     {% else %}
-                                    <span class="badge bg-secondary">User</span>
+                                    <span class="badge bg-dark">{{ user.role|title }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -149,8 +153,9 @@
                         <div class="col-md-6">
                             <h6 class="text-primary">User Roles:</h6>
                             <ul class="mb-3">
-                                <li><strong>Admin:</strong> Full system access, can manage users</li>
-                                <li><strong>User:</strong> Can manage customers and cylinders</li>
+                                <li><strong>Admin:</strong> Full system access, can manage users, data exports</li>
+                                <li><strong>User:</strong> Can rent/return cylinders, bulk management</li>
+                                <li><strong>Viewer:</strong> Read-only access to all data</li>
                             </ul>
                         </div>
                         <div class="col-md-6">

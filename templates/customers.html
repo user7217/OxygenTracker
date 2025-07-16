@@ -11,11 +11,13 @@
             </h1>
             <p class="lead">Manage your customer database</p>
         </div>
+        {% if session.role == 'admin' %}
         <div class="col-auto">
             <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-2"></i>Add Customer
             </a>
         </div>
+        {% endif %}
     </div>
 
     <!-- Search Bar -->
@@ -63,7 +65,7 @@
                                 <th>Company</th>
                                 <th>Borrowed Cylinders</th>
                                 <th>Created</th>
-                                <th>Actions</th>
+                                {% if session.role in ['admin', 'user'] %}<th>Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -102,22 +104,28 @@
                                         {{ customer.created_at[:10] if customer.created_at else '-' }}
                                     </small>
                                 </td>
+                                {% if session.role in ['admin', 'user'] %}
                                 <td>
                                     <div class="btn-group btn-group-sm">
+                                        {% if session.role == 'admin' %}
                                         <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
                                            class="btn btn-outline-warning" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        {% endif %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
                                            class="btn btn-outline-info" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
+                                        {% if session.role == 'admin' %}
                                         <button type="button" class="btn btn-outline-danger" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
+                                {% endif %}
                                     
 
 

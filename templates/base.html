@@ -439,11 +439,14 @@
                             </svg>Cylinders
                         </a>
                     </li>
+                    {% if session.role == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('reports') }}">
                             <i class="bi bi-file-earmark-spreadsheet me-2"></i>Reports
                         </a>
                     </li>
+                    {% endif %}
+                    {% if session.role in ['admin', 'user'] %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-gear me-2"></i>Tools
@@ -452,11 +455,14 @@
                             <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('bulk_rental_management') }}">
                                 <i class="bi bi-arrow-repeat me-2"></i>Bulk Cylinder Management
                             </a></li>
+                            {% if session.role == 'admin' %}
                             <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('import_data') }}">
                                 <i class="bi bi-download me-2"></i>Import from Access
                             </a></li>
+                            {% endif %}
                         </ul>
                     </li>
+                    {% endif %}
                 </ul>
                 
                 <!-- User Info and Actions -->
