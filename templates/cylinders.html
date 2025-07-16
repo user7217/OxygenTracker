@@ -67,7 +67,7 @@
                                 <option value="">All Types</option>
                                 <option value="Medical Oxygen" {% if type_filter == 'Medical Oxygen' %}selected{% endif %}>Medical Oxygen</option>
                                 <option value="Industrial Oxygen" {% if type_filter == 'Industrial Oxygen' %}selected{% endif %}>Industrial Oxygen</option>
-                                <option value="CO2" {% if type_filter == 'CO2' %}selected{% endif %}>CO2</option>
+                                <option value="Carbon Dioxide" {% if type_filter == 'Carbon Dioxide' or type_filter == 'CO2' %}selected{% endif %}>Carbon Dioxide</option>
                                 <option value="Argon" {% if type_filter == 'Argon' %}selected{% endif %}>Argon</option>
                                 <option value="Nitrogen" {% if type_filter == 'Nitrogen' %}selected{% endif %}>Nitrogen</option>
                                 <option value="Compressed Air" {% if type_filter == 'Compressed Air' %}selected{% endif %}>Compressed Air</option>
@@ -187,7 +187,7 @@
                             {% for cylinder in cylinders %}
                             <tr>
                                 <td>
-                                    <strong>OXY-{{ "%03d"|format(loop.index) }}</strong>
+                                    <strong>{{ cylinder.display_serial }}</strong>
                                     <br><small class="text-muted">ID: {{ cylinder.id }}</small>
                                 </td>
                                 <td>
@@ -234,13 +234,13 @@
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="OXY-{{ "%03d"|format(loop.index) }}" title="Rent">
+                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Rent">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
                                         {% elif cylinder.get('status', '').lower() == 'rented' %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="OXY-{{ "%03d"|format(loop.index) }}" title="Return">
+                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
@@ -260,7 +260,7 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    Are you sure you want to delete cylinder <strong>OXY-{{ "%03d"|format(loop.index) }}</strong>?
+                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.display_serial }}</strong>?
                                                     This action cannot be undone.
                                                 </div>
                                                 <div class="modal-footer">

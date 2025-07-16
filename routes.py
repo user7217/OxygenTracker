@@ -523,9 +523,11 @@ def cylinders():
         except ValueError:
             pass  # Ignore invalid duration values
     
-    # Add rental days calculation for each cylinder
-    for cylinder in cylinders_list:
+    # Add rental days calculation and type-specific serial numbers for each cylinder
+    for i, cylinder in enumerate(cylinders_list):
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        # Generate type-specific serial number for display
+        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
         # Customer name should already be stored in the cylinder data
         if not cylinder.get('customer_name') and cylinder.get('rented_to'):
             # Fallback: get customer name if not stored
@@ -543,7 +545,8 @@ def cylinders():
                          status_filter=status_filter,
                          customer_filter=customer_filter,
                          type_filter=type_filter,
-                         rental_duration_filter=rental_duration_filter)
+                         rental_duration_filter=rental_duration_filter,
+                         cylinder_model=cylinder_model)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
