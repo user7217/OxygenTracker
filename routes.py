@@ -498,9 +498,16 @@ def cylinders():
     if status_filter:
         cylinders_list = [c for c in cylinders_list if c.get('status', '').lower() == status_filter.lower()]
     
-    # Apply type filter
+    # Apply type filter (handle both CO2 and Carbon Dioxide)
     if type_filter:
-        cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
+        if type_filter == 'Carbon Dioxide':
+            # Match both "Carbon Dioxide" and "CO2" for backward compatibility
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
+        elif type_filter == 'CO2':
+            # Match both "CO2" and "Carbon Dioxide" for backward compatibility
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
+        else:
+            cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
     
     # Apply customer filter
     if customer_filter:
