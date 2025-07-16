@@ -561,7 +561,7 @@ def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
         # Validate required fields
-        required_fields = ['serial_number', 'type', 'size', 'status', 'location']
+        required_fields = ['type', 'size', 'status', 'location']
         cylinder_data = {}
         
         for field in required_fields:
@@ -626,7 +626,7 @@ def add_cylinder():
         
         try:
             new_cylinder = cylinder_model.add(cylinder_data)
-            flash(f'Cylinder {new_cylinder["serial_number"]} added successfully with ID: {new_cylinder["id"]}', 'success')
+            flash(f'Cylinder added successfully with ID: {new_cylinder["id"]}', 'success')
             return redirect(url_for('cylinders'))
         except Exception as e:
             flash(f'Error adding cylinder: {str(e)}', 'error')
@@ -648,7 +648,7 @@ def edit_cylinder(cylinder_id):
     
     if request.method == 'POST':
         # Validate required fields
-        required_fields = ['serial_number', 'type', 'size', 'status', 'location']
+        required_fields = ['type', 'size', 'status', 'location']
         cylinder_data = {}
         
         for field in required_fields:
