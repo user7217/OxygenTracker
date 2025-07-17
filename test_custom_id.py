@@ -1,14 +1,18 @@
-
+#!/usr/bin/env python3
+"""
+Test script to verify custom ID functionality
+"""
 
 from models import Cylinder
 
 def test_custom_id_functionality():
-    
+    """Test the custom ID feature"""
     print("Testing Custom ID Functionality")
     print("=" * 40)
     
     cylinder_model = Cylinder()
     
+    # Test 1: Create cylinder with custom ID
     test_cylinder = {
         'custom_id': 'A1',
         'serial_number': 'TEST001',
@@ -23,6 +27,7 @@ def test_custom_id_functionality():
     new_cylinder = cylinder_model.add(test_cylinder)
     print(f"   ✓ Created cylinder: {new_cylinder['id']} with custom ID: {new_cylinder.get('custom_id', 'None')}")
     
+    # Test 2: Find by custom ID
     print("\n2. Finding cylinder by custom ID...")
     found_cylinder = cylinder_model.find_by_any_identifier('A1')
     if found_cylinder:
@@ -30,6 +35,7 @@ def test_custom_id_functionality():
     else:
         print("   ✗ Failed to find cylinder by custom ID")
     
+    # Test 3: Find by serial number
     print("\n3. Finding cylinder by serial number...")
     found_by_serial = cylinder_model.find_by_any_identifier('TEST001')
     if found_by_serial:
@@ -37,6 +43,7 @@ def test_custom_id_functionality():
     else:
         print("   ✗ Failed to find cylinder by serial number")
     
+    # Test 4: Find by system ID
     print("\n4. Finding cylinder by system ID...")
     found_by_id = cylinder_model.find_by_any_identifier(new_cylinder['id'])
     if found_by_id:
@@ -44,6 +51,7 @@ def test_custom_id_functionality():
     else:
         print("   ✗ Failed to find cylinder by system ID")
     
+    # Test 5: Case insensitive search
     print("\n5. Testing case-insensitive search...")
     found_case_insensitive = cylinder_model.find_by_any_identifier('a1')
     if found_case_insensitive:

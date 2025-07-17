@@ -1,10 +1,13 @@
-
+#!/usr/bin/env python3
+"""
+Test script to diagnose local development issues with Varasai Oxygen
+"""
 import os
 import sys
 import traceback
 
 def test_imports():
-    
+    """Test all imports"""
     print("Testing imports...")
     try:
         from app import app
@@ -23,7 +26,7 @@ def test_imports():
         return None
 
 def test_data_directory():
-    
+    """Test data directory and files"""
     print("\nTesting data directory...")
     
     if not os.path.exists('data'):
@@ -32,6 +35,7 @@ def test_data_directory():
     else:
         print("✓ Data directory exists")
     
+    # Check for required files
     files = ['customers.json', 'cylinders.json', 'users.json']
     for file in files:
         path = os.path.join('data', file)
@@ -41,7 +45,7 @@ def test_data_directory():
             print(f"✗ {file} missing - will be created on first use")
 
 def test_default_user():
-    
+    """Test default admin user creation"""
     print("\nTesting default user...")
     try:
         from auth_models import UserManager
@@ -57,7 +61,7 @@ def test_default_user():
         print(f"✗ Error checking user: {e}")
 
 def test_flask_routes(app):
-    
+    """Test Flask routes"""
     print("\nTesting Flask routes...")
     if app:
         with app.app_context():
@@ -67,7 +71,7 @@ def test_flask_routes(app):
                 print(f"  {rule.rule} [{methods}] -> {rule.endpoint}")
 
 def test_static_files():
-    
+    """Test static files"""
     print("\nTesting static files...")
     static_files = ['logo.jpg']
     for file in static_files:
@@ -78,7 +82,7 @@ def test_static_files():
             print(f"✗ {file} missing")
 
 def test_templates():
-    
+    """Test template files"""
     print("\nTesting template files...")
     template_files = ['base.html', 'index.html', 'login.html']
     for file in template_files:
@@ -94,6 +98,7 @@ def main():
     print(f"Working directory: {os.getcwd()}")
     print()
     
+    # Run tests
     app = test_imports()
     test_data_directory()
     test_default_user()

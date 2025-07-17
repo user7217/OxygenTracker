@@ -1,4 +1,8 @@
-
+#!/usr/bin/env python3
+"""
+Diagnostic script for PythonAnywhere deployment issues
+Run this on PythonAnywhere to identify common problems
+"""
 import sys
 import os
 
@@ -106,6 +110,7 @@ def check_environment():
 def check_permissions():
     print("\n=== File Permissions ===")
     try:
+        # Test write permission
         test_file = 'test_write.tmp'
         with open(test_file, 'w') as f:
             f.write('test')

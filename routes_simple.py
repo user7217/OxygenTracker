@@ -6,6 +6,7 @@ from functools import wraps
 import os
 import tempfile
 
+# Try to import Access functionality
 try:
     from data_importer import DataImporter
     ACCESS_AVAILABLE = True
@@ -14,6 +15,7 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
+# Try to import Email functionality
 try:
     from email_service import EmailService
     email_service = EmailService()
@@ -24,10 +26,11 @@ except ImportError as e:
     import logging
     logging.warning(f"Email functionality not available: {e}")
 
+# Initialize user manager
 user_manager = UserManager()
 
 def login_required(f):
-    
+    """Decorator to require login for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -37,7 +40,7 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    
+    """Decorator to require admin role"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -52,12 +55,14 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Initialize models
 customer_model = Customer()
 cylinder_model = Cylinder()
 
+# Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    
+    """User login"""
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -82,7 +87,7 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    
+    """User logout"""
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -91,14 +96,16 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    
+    """Simplified Dashboard - removed complex calculations that might fail on PythonAnywhere"""
     try:
         customers = customer_model.get_all()
         cylinders = cylinder_model.get_all()
         
+        # Simple counts only
         total_customers = len(customers)
         total_cylinders = len(cylinders)
         
+        # Basic status counts
         available_cylinders = 0
         rented_cylinders = 0
         maintenance_cylinders = 0
@@ -112,11 +119,13 @@ def index():
             elif status == 'maintenance':
                 maintenance_cylinders += 1
         
+        # Simple calculations only
         if total_cylinders > 0:
             utilization_rate = round((rented_cylinders / total_cylinders) * 100)
         else:
             utilization_rate = 0
         
+        # Static values to avoid random/datetime issues
         stats = {
             'total_customers': total_customers,
             'total_cylinders': total_cylinders,
@@ -134,21 +143,26 @@ def index():
         return render_template('index.html', stats=stats)
         
     except Exception as e:
+        # Log the error and show a simple message
         import logging
         logging.error(f"Dashboard error: {e}")
         flash('Dashboard temporarily unavailable. Please try again.', 'error')
-        return render_template('login.html')
+        return render_template('login.html')  # Fallback to login page
+
+# Add all other routes here (customers, cylinders, etc.)
+# For now, just the essential ones for testing
 
 @app.route('/customers')
 @login_required
 def customers():
-    
+    """List all customers with search functionality"""
     search_query = request.args.get('search', '').strip()
     customers = customer_model.get_all()
     
     if search_query:
         customers = customer_model.search(search_query)
     
+    # Get cylinder data for each customer
     for customer in customers:
         rented_cylinders = cylinder_model.get_by_customer(customer['id'])
         customer['rented_cylinders'] = rented_cylinders
@@ -159,7 +173,7 @@ def customers():
 @app.route('/cylinders')
 @login_required
 def cylinders():
-    
+    """List all cylinders with search and filter functionality"""
     search_query = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '').strip()
     customer_filter = request.args.get('customer', '').strip()
@@ -167,6 +181,7 @@ def cylinders():
     
     cylinders = cylinder_model.get_all()
     
+    # Apply filters
     if search_query:
         cylinders = cylinder_model.search(search_query)
     
@@ -182,6 +197,7 @@ def cylinders():
         cylinder_ids = [c['id'] for c in long_rentals]
         cylinders = [c for c in cylinders if c['id'] in cylinder_ids]
     
+    # Get all customers for filters
     customers = customer_model.get_all()
     all_customers = {c['id']: c for c in customers}
     

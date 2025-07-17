@@ -1,4 +1,9 @@
-
+#!/usr/bin/env python3
+"""
+Database migration script to update existing customer records to new structure
+Converts old customer format to new Access-compatible format
+Run this script to update existing customer records with the new field structure
+"""
 
 import json
 import os
@@ -7,17 +12,25 @@ from datetime import datetime
 from models import Customer
 
 def migrate_customers():
-
+    """
+    Migrate existing customer records to new structure
+    Old structure: name, email, phone, address, company, notes
+    New structure: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone, customer_apgst, customer_cst
+    """
+    
+    # Initialize customer model to access data directory
     customer_model = Customer()
     data_file = customer_model.db.filepath
     
     print(f"Starting customer migration...")
     print(f"Data file: {data_file}")
     
+    # Check if data file exists
     if not os.path.exists(data_file):
         print("No existing customer data found. Migration not needed.")
         return
     
+    # Create backup before migration
     backup_file = f"{data_file}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     try:
         with open(data_file, 'r') as original:
@@ -28,6 +41,7 @@ def migrate_customers():
         print(f"Error creating backup: {e}")
         return
     
+    # Load existing customer data
     try:
         with open(data_file, 'r') as f:
             customers = json.load(f)
@@ -46,46 +60,60 @@ def migrate_customers():
     
     for i, customer in enumerate(customers):
         try:
+            # Check if already migrated (has customer_no field)
             if 'customer_no' in customer:
                 print(f"Customer {i+1}: Already migrated, skipping.")
                 migrated_customers.append(customer)
                 continue
             
+            # Create new customer structure
             new_customer = {}
             
+            # Generate unique customer number if not exists
             new_customer['customer_no'] = f"CUST-{str(uuid.uuid4())[:8].upper()}"
             
+            # Map old fields to new structure
             new_customer['customer_name'] = customer.get('name', 'Unknown Customer')
             
+            # Split address into address, city, state if possible
             old_address = customer.get('address', '')
             if old_address:
+                # Try to parse address, city, state from old address field
                 address_parts = old_address.split(',')
                 if len(address_parts) >= 3:
+                    # Address has multiple parts - assume "address, city, state" format
                     new_customer['customer_address'] = address_parts[0].strip()
                     new_customer['customer_city'] = address_parts[1].strip()
                     new_customer['customer_state'] = address_parts[2].strip()
                 elif len(address_parts) == 2:
+                    # Two parts - assume "address, city" format
                     new_customer['customer_address'] = address_parts[0].strip()
                     new_customer['customer_city'] = address_parts[1].strip()
-                    new_customer['customer_state'] = ''
+                    new_customer['customer_state'] = ''  # Default empty
                 else:
+                    # Single part - put everything in address
                     new_customer['customer_address'] = old_address
                     new_customer['customer_city'] = ''
                     new_customer['customer_state'] = ''
             else:
+                # No address data
                 new_customer['customer_address'] = ''
                 new_customer['customer_city'] = ''
                 new_customer['customer_state'] = ''
             
+            # Map phone field
             new_customer['customer_phone'] = customer.get('phone', '')
             
+            # Set optional fields as empty (can be filled later)
             new_customer['customer_apgst'] = ''
             new_customer['customer_cst'] = ''
             
+            # Preserve system fields
             new_customer['id'] = customer.get('id', f"CUS-{str(uuid.uuid4())[:8].upper()}")
             new_customer['created_at'] = customer.get('created_at', datetime.now().isoformat())
             new_customer['updated_at'] = datetime.now().isoformat()
             
+            # Add legacy fields as notes for reference (optional)
             legacy_notes = []
             if customer.get('email'):
                 legacy_notes.append(f"Email: {customer['email']}")
@@ -104,8 +132,10 @@ def migrate_customers():
             
         except Exception as e:
             print(f"Error migrating customer {i+1}: {e}")
+            # Keep original customer if migration fails
             migrated_customers.append(customer)
     
+    # Save migrated data
     try:
         with open(data_file, 'w') as f:
             json.dump(migrated_customers, f, indent=2)
@@ -116,6 +146,7 @@ def migrate_customers():
         print(f"- Already migrated: {len(customers) - migration_count}")
         print(f"- Backup saved: {backup_file}")
         
+        # Show sample of migrated data
         if migrated_customers:
             print(f"\nSample migrated customer:")
             sample = migrated_customers[0]
@@ -138,7 +169,7 @@ def migrate_customers():
             print(f"Error restoring backup: {restore_error}")
 
 def verify_migration():
-    
+    """Verify the migration was successful"""
     customer_model = Customer()
     customers = customer_model.get_all()
     
@@ -170,6 +201,7 @@ if __name__ == "__main__":
     print("A backup will be created before making any changes.")
     print()
     
+    # Ask for confirmation
     response = input("Do you want to proceed with the migration? (yes/no): ").lower().strip()
     
     if response in ['yes', 'y']:
