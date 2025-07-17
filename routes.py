@@ -1460,17 +1460,21 @@ def export_customers_csv():
     writer = csv.writer(output)
     
     # Write headers
-    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Updated At', 'Notes'])
+    writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'APGST', 'CST', 'Created At', 'Updated At', 'Notes'])
     
     # Write customer data
     for customer in customers:
         writer.writerow([
             customer.get('id', ''),
-            customer.get('name', ''),
-            customer.get('email', ''),
-            customer.get('phone', ''),
-            customer.get('address', ''),
-            customer.get('company', ''),
+            customer.get('customer_no', ''),
+            customer.get('customer_name', '') or customer.get('name', ''),
+            customer.get('customer_email', '') or customer.get('email', ''),
+            customer.get('customer_phone', '') or customer.get('phone', ''),
+            customer.get('customer_address', '') or customer.get('address', ''),
+            customer.get('customer_city', ''),
+            customer.get('customer_state', ''),
+            customer.get('customer_apgst', ''),
+            customer.get('customer_cst', ''),
             customer.get('created_at', ''),
             customer.get('updated_at', ''),
             customer.get('notes', '')
@@ -1559,8 +1563,8 @@ def export_rental_activities_csv():
                 cylinder.get('custom_id', ''),
                 cylinder.get('type', ''),
                 cylinder.get('rented_to', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
                 cylinder.get('date_borrowed', ''),
                 cylinder.get('date_returned', ''),
                 cylinder.get('status', ''),
@@ -1595,15 +1599,19 @@ def export_complete_data_csv():
     
     # Customers section
     writer.writerow(['=== CUSTOMERS ==='])
-    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Notes'])
+    writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'APGST', 'CST', 'Created At', 'Notes'])
     for customer in customers:
         writer.writerow([
             customer.get('id', ''),
-            customer.get('name', ''),
-            customer.get('email', ''),
-            customer.get('phone', ''),
-            customer.get('address', ''),
-            customer.get('company', ''),
+            customer.get('customer_no', ''),
+            customer.get('customer_name', '') or customer.get('name', ''),
+            customer.get('customer_email', '') or customer.get('email', ''),
+            customer.get('customer_phone', '') or customer.get('phone', ''),
+            customer.get('customer_address', '') or customer.get('address', ''),
+            customer.get('customer_city', ''),
+            customer.get('customer_state', ''),
+            customer.get('customer_apgst', ''),
+            customer.get('customer_cst', ''),
             customer.get('created_at', ''),
             customer.get('notes', '')
         ])
@@ -1669,15 +1677,18 @@ def export_monthly_report():
     if report_type == 'complete':
         # Complete report - all data
         writer.writerow(['=== CUSTOMERS ==='])
-        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals'])
+        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals'])
         for customer in customers:
             active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
             writer.writerow([
                 customer.get('id', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
-                customer.get('phone', ''),
-                customer.get('company', ''),
+                customer.get('customer_no', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
+                customer.get('customer_phone', '') or customer.get('phone', ''),
+                customer.get('customer_address', '') or customer.get('address', ''),
+                customer.get('customer_city', ''),
+                customer.get('customer_state', ''),
                 active_rentals
             ])
         
@@ -1716,15 +1727,18 @@ def export_monthly_report():
     elif report_type == 'customers':
         # Customer summary
         writer.writerow(['=== CUSTOMER SUMMARY ==='])
-        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals', 'Total Value'])
+        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals', 'Total Value'])
         for customer in customers:
             active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
             writer.writerow([
                 customer.get('id', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
-                customer.get('phone', ''),
-                customer.get('company', ''),
+                customer.get('customer_no', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
+                customer.get('customer_phone', '') or customer.get('phone', ''),
+                customer.get('customer_address', '') or customer.get('address', ''),
+                customer.get('customer_city', ''),
+                customer.get('customer_state', ''),
                 active_rentals,
                 f'${active_rentals * 50}'  # Example pricing
             ])
@@ -1787,14 +1801,16 @@ def export_customers_pdf():
     
     # Customer table
     if customers:
-        data = [['Name', 'Email', 'Phone', 'Company', 'Address']]
+        data = [['Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State']]
         for customer in customers:
             data.append([
-                customer.get('name', '')[:25],  # Truncate long names
-                customer.get('email', '')[:30],
-                customer.get('phone', '')[:15],
-                customer.get('company', '')[:20],
-                customer.get('address', '')[:30]
+                customer.get('customer_no', '')[:15],
+                (customer.get('customer_name', '') or customer.get('name', ''))[:25],  # Truncate long names
+                (customer.get('customer_email', '') or customer.get('email', ''))[:30],
+                (customer.get('customer_phone', '') or customer.get('phone', ''))[:15],
+                (customer.get('customer_address', '') or customer.get('address', ''))[:25],
+                customer.get('customer_city', '')[:15],
+                customer.get('customer_state', '')[:10]
             ])
         
         table = Table(data)
@@ -1962,7 +1978,7 @@ def export_rental_activities_pdf():
             data.append([
                 display_serial,
                 cylinder.get('type', '')[:12],
-                customer.get('name', '')[:15],
+                (customer.get('customer_name', '') or customer.get('name', ''))[:15],
                 date_borrowed[:10],
                 cylinder.get('status', '')[:10],
                 str(rental_days)
