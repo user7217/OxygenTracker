@@ -541,8 +541,15 @@ def delete_customer(customer_id):
 @app.route('/cylinders')
 @login_required
 def cylinders():
-    """List all cylinders with search and filter functionality"""
+    """List all cylinders with search, filter functionality, and pagination"""
 
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)  # Default 50 cylinders per page
+    
+    # Limit per_page to reasonable values
+    per_page = min(max(per_page, 10), 200)  # Between 10 and 200 items per page
+    
     search_query = request.args.get('search', '')
     status_filter = request.args.get('status', '')
     customer_filter = request.args.get('customer', '')
@@ -602,17 +609,47 @@ def cylinders():
             customer = customer_model.get_by_id(cylinder['rented_to'])
             cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
     
+    # Calculate pagination
+    total_cylinders = len(cylinders_list)
+    total_pages = (total_cylinders + per_page - 1) // per_page  # Ceiling division
+    
+    # Calculate start and end indices for current page
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    
+    # Get cylinders for current page
+    paginated_cylinders = cylinders_list[start_index:end_index]
+    
+    # Calculate pagination info
+    has_prev = page > 1
+    has_next = page < total_pages
+    prev_page = page - 1 if has_prev else None
+    next_page = page + 1 if has_next else None
+    
+    # Create pagination object for template
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_cylinders,
+        'total_pages': total_pages,
+        'has_prev': has_prev,
+        'has_next': has_next,
+        'prev_page': prev_page,
+        'next_page': next_page,
+        'pages': list(range(max(1, page - 2), min(total_pages + 1, page + 3)))  # Show 5 pages around current
+    }
+    
     # Get all customers for the filter dropdown
     customers = customer_model.get_all()
-    
 
     return render_template('cylinders.html', 
-                         cylinders=cylinders_list, 
+                         cylinders=paginated_cylinders, 
                          customers=customers,
                          search_query=search_query,
                          status_filter=status_filter,
                          customer_filter=customer_filter,
                          type_filter=type_filter,
+                         pagination=pagination,
                          rental_duration_filter=rental_duration_filter,
                          cylinder_model=cylinder_model)
 
