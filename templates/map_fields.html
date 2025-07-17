@@ -78,6 +78,7 @@
                         {% elif import_type == 'cylinder' %}
                         {% set target_fields = [
                             ('serial_number', 'Serial Number', true),
+                            ('custom_id', 'Custom ID / Cylinder Number', false),
                             ('type', 'Type', true),
                             ('size', 'Size', true),
                             ('status', 'Status', false),
@@ -90,8 +91,9 @@
                         {% else %}
                         {% set target_fields = [
                             ('customer_no', 'Customer No', true),
-                            ('cylinder_no', 'Cylinder No', true),
-                            ('transaction_date', 'Transaction Date', false),
+                            ('cylinder_no', 'Cylinder No / Custom ID', true),
+                            ('dispatch_date', 'Dispatch Date', false),
+                            ('return_date', 'Return Date', false),
                             ('transaction_type', 'Transaction Type', false),
                             ('quantity', 'Quantity', false),
                             ('notes', 'Notes', false)

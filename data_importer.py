@@ -51,6 +51,7 @@ class DataImporter:
             # Cylinder field mappings
             field_suggestions = {
                 'serial_number': ['serial_number', 'serial', 'cylinder_serial', 'number'],
+                'custom_id': ['custom_id', 'cylinder_number', 'cylinder_no', 'id', 'ref_number'],
                 'type': ['type', 'gas_type', 'cylinder_type', 'gas'],
                 'size': ['size', 'capacity', 'volume', 'cylinder_size'],
                 'status': ['status', 'state', 'condition', 'availability'],
@@ -216,12 +217,21 @@ class DataImporter:
         
         # Create lookup dictionaries for faster searching
         customer_lookup = {c.get('customer_no', '').upper(): c for c in existing_customers}
-        cylinder_lookup = {cyl.get('serial_number', '').upper(): cyl for cyl in existing_cylinders}
+        cylinder_lookup = {}
         
-        # Also check by custom_id for cylinders
+        # Build cylinder lookup with multiple identifiers (serial_number, custom_id)
         for cyl in existing_cylinders:
+            # Add by serial number
+            if cyl.get('serial_number'):
+                cylinder_lookup[cyl.get('serial_number', '').upper()] = cyl
+            
+            # Add by custom_id (cylinder number)
             if cyl.get('custom_id'):
                 cylinder_lookup[cyl.get('custom_id', '').upper()] = cyl
+            
+            # Also add by system ID as fallback
+            if cyl.get('id'):
+                cylinder_lookup[cyl.get('id', '').upper()] = cyl
         
         print(f"Found {len(customer_lookup)} customers and {len(cylinder_lookup)} cylinders for linking")
         
@@ -259,46 +269,79 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Determine transaction type and update cylinder status accordingly
+                # Get dispatch and return dates from transaction data
+                dispatch_date = transaction_data.get('dispatch_date', '')
+                return_date = transaction_data.get('return_date', '')
                 transaction_type = transaction_data.get('transaction_type', '').lower()
-                transaction_date = transaction_data.get('transaction_date', '')
                 
-                if transaction_type in ['rent', 'rental', 'out', 'issue']:
-                    # Rent cylinder to customer
-                    success = self.cylinder_model.rent_cylinder(
+                # Determine operation based on available dates and transaction type
+                if dispatch_date and return_date:
+                    # Complete rental cycle - rent then return
+                    # First rent the cylinder
+                    success_rent = self.cylinder_model.rent_cylinder(
                         cylinder['id'], 
                         customer['id'], 
-                        transaction_date
+                        dispatch_date
                     )
-                    if success:
-                        linked_count += 1
-                        print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no}")
+                    if success_rent:
+                        # Then return the cylinder
+                        success_return = self.cylinder_model.return_cylinder(
+                            cylinder['id'], 
+                            return_date
+                        )
+                        if success_return:
+                            linked_count += 1
+                            print(f"Row {row_num}: Complete cycle - rented {cylinder_no} to {customer_no} on {dispatch_date}, returned on {return_date}")
+                        else:
+                            errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
                         errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                         
-                elif transaction_type in ['return', 'returned', 'in', 'receive']:
-                    # Return cylinder from customer
-                    success = self.cylinder_model.return_cylinder(
-                        cylinder['id'], 
-                        transaction_date
-                    )
-                    if success:
-                        linked_count += 1
-                        print(f"Row {row_num}: Returned cylinder {cylinder_no} from customer {customer_no}")
-                    else:
-                        errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
-                else:
-                    # Default to rental if transaction type is unclear
+                elif dispatch_date and not return_date:
+                    # Only dispatch date - rent cylinder
                     success = self.cylinder_model.rent_cylinder(
                         cylinder['id'], 
                         customer['id'], 
-                        transaction_date
+                        dispatch_date
                     )
                     if success:
                         linked_count += 1
-                        print(f"Row {row_num}: Linked cylinder {cylinder_no} to customer {customer_no} (default rental)")
+                        print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no} on {dispatch_date}")
                     else:
-                        errors.append(f"Row {row_num}: Failed to link cylinder {cylinder_no}")
+                        errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
+                        
+                elif return_date and not dispatch_date:
+                    # Only return date - return cylinder
+                    success = self.cylinder_model.return_cylinder(
+                        cylinder['id'], 
+                        return_date
+                    )
+                    if success:
+                        linked_count += 1
+                        print(f"Row {row_num}: Returned cylinder {cylinder_no} on {return_date}")
+                    else:
+                        errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                        
+                else:
+                    # No specific dates - use transaction type or default to rental
+                    if transaction_type in ['return', 'returned', 'in', 'receive']:
+                        success = self.cylinder_model.return_cylinder(cylinder['id'])
+                        if success:
+                            linked_count += 1
+                            print(f"Row {row_num}: Returned cylinder {cylinder_no}")
+                        else:
+                            errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                    else:
+                        # Default to rental
+                        success = self.cylinder_model.rent_cylinder(
+                            cylinder['id'], 
+                            customer['id']
+                        )
+                        if success:
+                            linked_count += 1
+                            print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no}")
+                        else:
+                            errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                 
                 imported_count += 1
                 
@@ -316,11 +359,12 @@ class DataImporter:
         
         mapping = {}
         
-        # Transaction field mappings
+        # Transaction field mappings for dispatch and return dates
         field_suggestions = {
             'customer_no': ['customer_no', 'customer_number', 'cust_no', 'customer_id', 'customer_code'],
-            'cylinder_no': ['cylinder_no', 'cylinder_number', 'cylinder_id', 'serial_number', 'cylinder_serial'],
-            'transaction_date': ['transaction_date', 'date', 'trans_date', 'issue_date', 'rental_date'],
+            'cylinder_no': ['cylinder_no', 'cylinder_number', 'cylinder_id', 'serial_number', 'cylinder_serial', 'custom_id'],
+            'dispatch_date': ['dispatch_date', 'date_out', 'issue_date', 'rental_date', 'date_dispatched', 'out_date'],
+            'return_date': ['return_date', 'date_in', 'received_date', 'date_returned', 'in_date'],
             'transaction_type': ['transaction_type', 'type', 'trans_type', 'operation', 'action'],
             'quantity': ['quantity', 'qty', 'amount', 'count'],
             'notes': ['notes', 'comments', 'remarks', 'description', 'details']
