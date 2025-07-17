@@ -115,6 +115,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 17, 2025: Made email optional for customers in both import and manual entry. Set default location to "Warehouse" and status to "Available" for cylinders during Access import. Reduced required fields for imports to improve flexibility. Added user preference for comprehensive code commenting.
 - July 16, 2025: Added responsive mobile navigation with hamburger menu for mobile devices. Mobile navigation includes collapsible menu with all navigation items, mobile-optimized search functionality, user info display with role badges, and admin options for user management. Desktop layout remains unchanged while mobile users get a clean, touch-friendly hamburger menu experience.
 - July 16, 2025: Implemented comprehensive three-tier role-based permission system: Admin (full access including user management, data exports, CRUD operations), User (cylinder rental/return operations and bulk management), and Viewer (read-only access to all data). Updated all templates to hide inappropriate buttons and menu items based on user roles. Navigation automatically adapts to show role-appropriate options with Reports and Import tools restricted to admins only.
 - July 16, 2025: Added comprehensive PDF export system to complement existing CSV exports. Users can now export customers, cylinders, and rental activities in professional PDF format with formatted tables, company branding, and status breakdowns. PDF reports feature clean layouts with proper headers, date stamps, and organized data presentation. Both CSV and PDF options are available side-by-side in the Reports section for maximum flexibility.
@@ -138,8 +139,10 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Code style: Add comprehensive comments to all code files going forward for better maintainability and understanding.
 Dashboard design: Clean and simple dashboard with core functionality only. Complex tools (bulk operations, barcode generator, calculator) removed. Metrics moved to separate dedicated tab for users who want detailed analytics.
 Email functionality: SendGrid integration added for sending admin statistics reports via email. Accessible from metrics page for administrators.
 Cylinder management: Enhanced with customer-wise filtering, rental tracking with start dates and duration calculation, touch-screen optimization with larger fonts and buttons for mobile/tablet use. Card-based layout for better touch interaction.
 Data archiving: Automatic archiving system for old data (6+ months) to maintain performance. Admin-only feature with backup file creation.
 Rental duration filtering: Added 1, 6, and 12 month filters to identify long-term rentals in cylinders view.
+Data import: Email is optional for customers, location defaults to "Warehouse" for cylinders, status defaults to "Available" for cylinders when importing from Access databases.
