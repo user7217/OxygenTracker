@@ -95,8 +95,8 @@ class DataImporter:
                     if source_field in row and row[source_field] is not None:
                         customer_data[target_field] = str(row[source_field]).strip()
                 
-                # Check required fields
-                required_fields = ['name', 'email', 'phone', 'address']
+                # Check required fields (email is now optional)
+                required_fields = ['name', 'phone', 'address']
                 missing_fields = [f for f in required_fields if not customer_data.get(f)]
                 
                 if missing_fields:
@@ -104,8 +104,12 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Check for duplicates
-                if skip_duplicates and customer_data['email'].lower() in existing_emails:
+                # Set default email if not provided
+                if not customer_data.get('email'):
+                    customer_data['email'] = ''
+                
+                # Check for duplicates (only if email is provided)
+                if skip_duplicates and customer_data['email'] and customer_data['email'].lower() in existing_emails:
                     skipped_count += 1
                     continue
                 
@@ -156,8 +160,15 @@ class DataImporter:
                         
                         cylinder_data[target_field] = value
                 
-                # Check required fields
-                required_fields = ['serial_number', 'type', 'size', 'status', 'location']
+                # Set default values for optional fields
+                if not cylinder_data.get('location'):
+                    cylinder_data['location'] = 'Warehouse'
+                
+                if not cylinder_data.get('status'):
+                    cylinder_data['status'] = 'Available'
+                
+                # Check required fields (location and status now have defaults)
+                required_fields = ['serial_number', 'type', 'size']
                 missing_fields = [f for f in required_fields if not cylinder_data.get(f)]
                 
                 if missing_fields:

@@ -454,8 +454,8 @@ def customers():
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
-        # Validate required fields
-        required_fields = ['name', 'email', 'phone', 'address']
+        # Validate required fields (email is now optional)
+        required_fields = ['name', 'phone', 'address']
         customer_data = {}
         
         for field in required_fields:
@@ -464,6 +464,9 @@ def add_customer():
                 flash(f'{field.title()} is required', 'error')
                 return render_template('add_customer.html')
             customer_data[field] = value
+        
+        # Add email (optional)
+        customer_data['email'] = request.form.get('email', '').strip()
         
         # Add optional fields
         customer_data['company'] = request.form.get('company', '').strip()
@@ -488,8 +491,8 @@ def edit_customer(customer_id):
         return redirect(url_for('customers'))
     
     if request.method == 'POST':
-        # Validate required fields
-        required_fields = ['name', 'email', 'phone', 'address']
+        # Validate required fields (email is now optional)
+        required_fields = ['name', 'phone', 'address']
         customer_data = {}
         
         for field in required_fields:
@@ -498,6 +501,9 @@ def edit_customer(customer_id):
                 flash(f'{field.title()} is required', 'error')
                 return render_template('edit_customer.html', customer=customer)
             customer_data[field] = value
+        
+        # Add email (optional)
+        customer_data['email'] = request.form.get('email', '').strip()
         
         # Add optional fields
         customer_data['company'] = request.form.get('company', '').strip()
