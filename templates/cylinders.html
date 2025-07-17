@@ -87,9 +87,9 @@
                                 <label for="rental_duration" class="form-label fs-5">Rental Duration</label>
                                 <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
                                     <option value="">Any Duration</option>
-                                    <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month</option>
-                                    <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months</option>
-                                    <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months</option>
+                                    <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month (30+ days)</option>
+                                    <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months (180+ days)</option>
+                                    <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months (365+ days)</option>
                                 </select>
                             </div>
                         </div>
@@ -178,7 +178,7 @@
                         <span class="badge bg-success ms-2">Type: {{ type_filter }}</span>
                         {% endif %}
                         {% if rental_duration_filter %}
-                        <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Months</span>
+                        <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Month{{ 's' if rental_duration_filter != '1' else '' }}</span>
                         {% endif %}
                     </h5>
                 </div>
@@ -230,8 +230,8 @@
                                             Since: {{ cylinder.date_borrowed[:10] }}
                                             {% endif %}
                                             <br>
-                                            <span class="badge {% if cylinder.rental_days > 30 %}bg-danger{% elif cylinder.rental_days > 14 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                                {{ cylinder.rental_days or 0 }} days
+                                            <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                {{ cylinder.rental_months or 0 }} months ({{ cylinder.rental_days or 0 }} days)
                                             </span>
                                         </small>
                                     </div>

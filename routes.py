@@ -585,22 +585,22 @@ def cylinders():
     if rental_duration_filter:
         try:
             duration_months = int(rental_duration_filter)
-            duration_days = duration_months * 30
             filtered_cylinders = []
             
             for cylinder in cylinders_list:
                 if cylinder.get('status', '').lower() == 'rented':
-                    rental_days = cylinder_model.get_rental_days(cylinder)
-                    if rental_days >= duration_days:
+                    rental_months = cylinder_model.get_rental_months(cylinder)
+                    if rental_months >= duration_months:
                         filtered_cylinders.append(cylinder)
             
             cylinders_list = filtered_cylinders
         except ValueError:
             pass  # Ignore invalid duration values
     
-    # Add rental days calculation and type-specific serial numbers for each cylinder
+    # Add rental days/months calculation and type-specific serial numbers for each cylinder
     for i, cylinder in enumerate(cylinders_list):
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
         # Generate type-specific serial number for display
         cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
         # Customer name should already be stored in the cylinder data

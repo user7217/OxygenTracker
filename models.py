@@ -509,6 +509,29 @@ class Cylinder:
         except:
             return 0
     
+    def get_rental_months(self, cylinder: Dict) -> int:
+        """Calculate how many months a cylinder has been rented"""
+        # Try to use date_borrowed first, then fall back to rental_date
+        date_to_use = cylinder.get('date_borrowed') or cylinder.get('rental_date')
+        if not date_to_use:
+            return 0
+        
+        try:
+            from datetime import datetime
+            rental_date = datetime.fromisoformat(date_to_use.replace('Z', '+00:00').split('.')[0])
+            current_date = datetime.now()
+            
+            # Calculate months difference
+            months_diff = (current_date.year - rental_date.year) * 12 + (current_date.month - rental_date.month)
+            
+            # If we haven't reached the same day of the month, subtract 1
+            if current_date.day < rental_date.day:
+                months_diff -= 1
+            
+            return max(0, months_diff)
+        except:
+            return 0
+    
     def get_by_rental_duration(self, duration_months: int) -> List[Dict]:
         """Get cylinders rented for a specific duration or longer"""
         cylinders = self.db.load_data()
