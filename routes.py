@@ -1,3 +1,34 @@
+"""
+Varasai Oxygen Cylinder Tracker - Flask Routes and Application Logic
+
+Flask routes and application logic for the cylinder management system.
+
+Features:
+- Complete CRUD operations for customers and cylinders
+- Advanced pagination system for large datasets (5000+ cylinders)
+- Role-based access control (Admin, User, Viewer)
+- Search and filtering capabilities
+- Bulk cylinder operations and rental management
+- Data import from MS Access databases
+- CSV and PDF export functionality
+- Transaction management for customer-cylinder relationships
+- Responsive web interface with mobile optimization
+
+Route Categories:
+- Authentication: Login, logout, user management
+- Dashboard: Main interface and metrics
+- Customers: Customer management with Access-compatible fields
+- Cylinders: Cylinder inventory with rental tracking and pagination
+- Bulk Operations: Multi-cylinder rental/return operations
+- Import/Export: Data migration and reporting
+- Search: Global search across customers and cylinders
+- Admin: User management and system administration
+
+Author: user7217
+Date: July 2025
+Version: 2.0
+"""
+
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, Response
 import csv
 import io
@@ -15,7 +46,7 @@ from functools import wraps
 import os
 import tempfile
 
-# Try to import Access functionality
+# MS Access import is optional - system works without it
 try:
     from data_importer import DataImporter
     ACCESS_AVAILABLE = True
@@ -24,7 +55,7 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
-# Try to import Email functionality
+# Email service is optional - system works without it
 try:
     from email_service import EmailService
     email_service = EmailService()
@@ -35,11 +66,11 @@ except ImportError as e:
     import logging
     logging.warning(f"Email functionality not available: {e}")
 
-# Initialize user manager
+# Initialize user manager for authentication and authorization
 user_manager = UserManager()
 
 def login_required(f):
-    """Decorator to require login for routes"""
+# Decorator to require login for routes
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -49,7 +80,7 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """Decorator to require admin role"""
+# Decorator to require admin role for routes
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -65,7 +96,7 @@ def admin_required(f):
     return decorated_function
 
 def user_or_admin_required(f):
-    """Decorator to require user or admin role (excludes viewers)"""
+# Decorator to require user or admin role (excludes viewers)
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -81,7 +112,7 @@ def user_or_admin_required(f):
     return decorated_function
 
 def admin_or_user_can_edit(f):
-    """Decorator for routes that only admin can access (users can only rent/return)"""
+# Decorator to allow admin or user with edit permissions to access routes
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -96,31 +127,37 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize models
+# Initialize data models for business logic operations
 customer_model = Customer()
 cylinder_model = Cylinder()
 
-# Authentication routes
+# ============================================================================
+# AUTHENTICATION ROUTES
+# ============================================================================
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
+# User login route
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         
+        # Validate required fields
         if not username or not password:
             flash('Please enter both username and password', 'error')
             return render_template('login.html')
         
+        # Authenticate user credentials
         user = user_manager.authenticate_user(username, password)
         if user:
+            # Create secure session
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user.get('role', 'user')
             
             flash(f'Welcome back, {user["username"]}!', 'success')
             
-            # Redirect to next page if specified
+            # Handle redirect to originally requested page
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
@@ -132,7 +169,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """User logout"""
+
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -193,14 +230,35 @@ def users():
     all_users = user_manager.get_all_users()
     return render_template('users.html', users=all_users)
 
+# ============================================================================
+# DASHBOARD AND MAIN ROUTES
+# ============================================================================
+
 @app.route('/')
 @login_required
 def index():
-    """Dashboard showing overview with fun statistics"""
+    """
+    Main dashboard with system overview and statistics
+    
+    Displays comprehensive system statistics including cylinder inventory,
+    customer counts, utilization rates, and operational metrics. Provides
+    quick access to key system information for all user roles.
+    
+    Features:
+    - Total customers and cylinders count
+    - Cylinder status breakdown (available, rented, maintenance)
+    - Utilization rate calculation
+    - System efficiency metrics
+    - Growth rate and operational days
+    - Role-based information display
+    
+    Returns:
+        Dashboard template with comprehensive system statistics
+    """
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
-    # Get cylinder status counts
+    # Calculate cylinder status distribution
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
     rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
@@ -1460,17 +1518,21 @@ def export_customers_csv():
     writer = csv.writer(output)
     
     # Write headers
-    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Updated At', 'Notes'])
+    writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'APGST', 'CST', 'Created At', 'Updated At', 'Notes'])
     
     # Write customer data
     for customer in customers:
         writer.writerow([
             customer.get('id', ''),
-            customer.get('name', ''),
-            customer.get('email', ''),
-            customer.get('phone', ''),
-            customer.get('address', ''),
-            customer.get('company', ''),
+            customer.get('customer_no', ''),
+            customer.get('customer_name', '') or customer.get('name', ''),
+            customer.get('customer_email', '') or customer.get('email', ''),
+            customer.get('customer_phone', '') or customer.get('phone', ''),
+            customer.get('customer_address', '') or customer.get('address', ''),
+            customer.get('customer_city', ''),
+            customer.get('customer_state', ''),
+            customer.get('customer_apgst', ''),
+            customer.get('customer_cst', ''),
             customer.get('created_at', ''),
             customer.get('updated_at', ''),
             customer.get('notes', '')
@@ -1559,8 +1621,8 @@ def export_rental_activities_csv():
                 cylinder.get('custom_id', ''),
                 cylinder.get('type', ''),
                 cylinder.get('rented_to', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
                 cylinder.get('date_borrowed', ''),
                 cylinder.get('date_returned', ''),
                 cylinder.get('status', ''),
@@ -1595,15 +1657,19 @@ def export_complete_data_csv():
     
     # Customers section
     writer.writerow(['=== CUSTOMERS ==='])
-    writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Company', 'Created At', 'Notes'])
+    writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'APGST', 'CST', 'Created At', 'Notes'])
     for customer in customers:
         writer.writerow([
             customer.get('id', ''),
-            customer.get('name', ''),
-            customer.get('email', ''),
-            customer.get('phone', ''),
-            customer.get('address', ''),
-            customer.get('company', ''),
+            customer.get('customer_no', ''),
+            customer.get('customer_name', '') or customer.get('name', ''),
+            customer.get('customer_email', '') or customer.get('email', ''),
+            customer.get('customer_phone', '') or customer.get('phone', ''),
+            customer.get('customer_address', '') or customer.get('address', ''),
+            customer.get('customer_city', ''),
+            customer.get('customer_state', ''),
+            customer.get('customer_apgst', ''),
+            customer.get('customer_cst', ''),
             customer.get('created_at', ''),
             customer.get('notes', '')
         ])
@@ -1669,15 +1735,18 @@ def export_monthly_report():
     if report_type == 'complete':
         # Complete report - all data
         writer.writerow(['=== CUSTOMERS ==='])
-        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals'])
+        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals'])
         for customer in customers:
             active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
             writer.writerow([
                 customer.get('id', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
-                customer.get('phone', ''),
-                customer.get('company', ''),
+                customer.get('customer_no', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
+                customer.get('customer_phone', '') or customer.get('phone', ''),
+                customer.get('customer_address', '') or customer.get('address', ''),
+                customer.get('customer_city', ''),
+                customer.get('customer_state', ''),
                 active_rentals
             ])
         
@@ -1716,15 +1785,18 @@ def export_monthly_report():
     elif report_type == 'customers':
         # Customer summary
         writer.writerow(['=== CUSTOMER SUMMARY ==='])
-        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Company', 'Active Rentals', 'Total Value'])
+        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals', 'Total Value'])
         for customer in customers:
             active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
             writer.writerow([
                 customer.get('id', ''),
-                customer.get('name', ''),
-                customer.get('email', ''),
-                customer.get('phone', ''),
-                customer.get('company', ''),
+                customer.get('customer_no', ''),
+                customer.get('customer_name', '') or customer.get('name', ''),
+                customer.get('customer_email', '') or customer.get('email', ''),
+                customer.get('customer_phone', '') or customer.get('phone', ''),
+                customer.get('customer_address', '') or customer.get('address', ''),
+                customer.get('customer_city', ''),
+                customer.get('customer_state', ''),
                 active_rentals,
                 f'${active_rentals * 50}'  # Example pricing
             ])
@@ -1787,14 +1859,16 @@ def export_customers_pdf():
     
     # Customer table
     if customers:
-        data = [['Name', 'Email', 'Phone', 'Company', 'Address']]
+        data = [['Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State']]
         for customer in customers:
             data.append([
-                customer.get('name', '')[:25],  # Truncate long names
-                customer.get('email', '')[:30],
-                customer.get('phone', '')[:15],
-                customer.get('company', '')[:20],
-                customer.get('address', '')[:30]
+                customer.get('customer_no', '')[:15],
+                (customer.get('customer_name', '') or customer.get('name', ''))[:25],  # Truncate long names
+                (customer.get('customer_email', '') or customer.get('email', ''))[:30],
+                (customer.get('customer_phone', '') or customer.get('phone', ''))[:15],
+                (customer.get('customer_address', '') or customer.get('address', ''))[:25],
+                customer.get('customer_city', '')[:15],
+                customer.get('customer_state', '')[:10]
             ])
         
         table = Table(data)
@@ -1962,7 +2036,7 @@ def export_rental_activities_pdf():
             data.append([
                 display_serial,
                 cylinder.get('type', '')[:12],
-                customer.get('name', '')[:15],
+                (customer.get('customer_name', '') or customer.get('name', ''))[:15],
                 date_borrowed[:10],
                 cylinder.get('status', '')[:10],
                 str(rental_days)
