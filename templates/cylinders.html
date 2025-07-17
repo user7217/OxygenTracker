@@ -78,7 +78,7 @@
                                     <option value="">All Customers</option>
                                     {% for customer in customers %}
                                         <option value="{{ customer.id }}" {% if customer_filter == customer.id %}selected{% endif %}>
-                                            {{ customer.name }}
+                                            {{ customer.customer_name or customer.name or 'Unknown Customer' }}
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -424,7 +424,7 @@
                         <select class="form-select form-select-lg" id="customer_id" name="customer_id" required style="font-size: 1.1rem;">
                             <option value="">Choose a customer...</option>
                             {% for customer in customers %}
-                            <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.email }}</option>
+                            <option value="{{ customer.id }}">{{ customer.customer_name or customer.name or 'Unknown Customer' }} - {{ customer.customer_email or customer.email or 'No Email' }}</option>
                             {% endfor %}
                         </select>
                     </div>
