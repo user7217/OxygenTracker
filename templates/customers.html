@@ -68,7 +68,7 @@
                                 <th style="width: 120px;">CST</th>
                                 <th style="width: 200px;">Borrowed Cylinders</th>
                                 <th style="width: 100px;">Created</th>
-                                {% if session.role in ['admin', 'user'] %}<th style="width: 130px;">Actions</th>{% endif %}
+                                {% if session.role in ['admin', 'user'] %}<th style="width: 140px;">Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -113,22 +113,22 @@
                                     </small>
                                 </td>
                                 {% if session.role in ['admin', 'user'] %}
-                                <td style="min-width: 130px;">
-                                    <div class="btn-group-vertical btn-group-sm d-flex flex-column gap-1">
+                                <td style="min-width: 140px;">
+                                    <div class="d-flex flex-row gap-1 justify-content-start">
                                         {% if session.role == 'admin' %}
                                         <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-warning btn-sm" title="Edit">
+                                           class="btn btn-outline-warning btn-sm" title="Edit" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% endif %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-info btn-sm" title="Manage Cylinders">
+                                           class="btn btn-outline-info btn-sm" title="Manage Cylinders" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
                                         <form method="POST" action="{{ url_for('delete_customer', customer_id=customer.id) }}" class="d-inline"
                                               onsubmit="return confirm('Are you sure you want to delete customer {{ (customer.customer_name or customer.name or 'Unknown')|replace('\'', '\\\'') }}? This action cannot be undone.')">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -285,13 +285,19 @@
     word-break: break-word;
 }
 
-/* Improve button spacing in vertical groups */
-.btn-group-vertical .btn {
-    margin-bottom: 2px;
+/* Improve button uniformity in action columns */
+.table .btn-sm {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
 }
 
-.btn-group-vertical .btn:last-child {
-    margin-bottom: 0;
+.table .d-flex.gap-1 {
+    flex-wrap: nowrap;
 }
 
 /* Make badges smaller for better fit */
