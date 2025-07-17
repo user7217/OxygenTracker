@@ -610,8 +610,14 @@ def cylinders():
     
     # Add rental days/months calculation and type-specific serial numbers for each paginated cylinder
     for i, cylinder in enumerate(paginated_cylinders):
-        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
+        try:
+            cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+            cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
+        except Exception as e:
+            # Fallback to 0 if calculation fails
+            cylinder['rental_days'] = 0
+            cylinder['rental_months'] = 0
+        
         # Generate type-specific serial number for display (use global index for consistent numbering)
         global_index = start_index + i
         cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), global_index + 1)
