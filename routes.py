@@ -597,19 +597,7 @@ def cylinders():
         except ValueError:
             pass  # Ignore invalid duration values
     
-    # Add rental days/months calculation and type-specific serial numbers for each cylinder
-    for i, cylinder in enumerate(cylinders_list):
-        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
-        # Generate type-specific serial number for display
-        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
-        # Customer name should already be stored in the cylinder data
-        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
-            # Fallback: get customer name if not stored
-            customer = customer_model.get_by_id(cylinder['rented_to'])
-            cylinder['customer_name'] = (customer.get('customer_name', '') or customer.get('name', '') or 'Unknown Customer') if customer else 'Unknown Customer'
-    
-    # Calculate pagination
+    # Calculate pagination first
     total_cylinders = len(cylinders_list)
     total_pages = (total_cylinders + per_page - 1) // per_page  # Ceiling division
     
@@ -619,6 +607,19 @@ def cylinders():
     
     # Get cylinders for current page
     paginated_cylinders = cylinders_list[start_index:end_index]
+    
+    # Add rental days/months calculation and type-specific serial numbers for each paginated cylinder
+    for i, cylinder in enumerate(paginated_cylinders):
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
+        # Generate type-specific serial number for display (use global index for consistent numbering)
+        global_index = start_index + i
+        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), global_index + 1)
+        # Customer name should already be stored in the cylinder data
+        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
+            # Fallback: get customer name if not stored
+            customer = customer_model.get_by_id(cylinder['rented_to'])
+            cylinder['customer_name'] = (customer.get('customer_name', '') or customer.get('name', '') or 'Unknown Customer') if customer else 'Unknown Customer'
     
     # Calculate pagination info
     has_prev = page > 1
