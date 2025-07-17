@@ -1,19 +1,5 @@
 [
   {
-    "customer_no": "CUST-DD1599C0",
-    "customer_name": "John Smith",
-    "customer_address": "123 Main Street",
-    "customer_city": "Cityville",
-    "customer_state": "ST 12345",
-    "customer_phone": "555-123-4567",
-    "customer_apgst": "",
-    "customer_cst": "",
-    "id": "CUST-ABC12345",
-    "created_at": "2025-07-09T11:30:00.000000",
-    "updated_at": "2025-07-17T10:55:33.629994",
-    "migration_notes": "Email: john.smith@email.com | Company: Smith Industries | Notes: Regular customer, good payment history"
-  },
-  {
     "customer_no": "CUST-AC3D9ADA",
     "customer_name": "Medical Center",
     "customer_address": "456 Hospital Avenue",

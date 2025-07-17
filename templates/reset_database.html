@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Reset Database - Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-exclamation-triangle-fill text-danger me-3"></i>Reset Database
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Reset Database</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Warning Alert -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Danger Zone
+                </h4>
+                <p>This action will permanently delete data from your database. Use with extreme caution!</p>
+                <hr>
+                <p class="mb-0">Always create backups before resetting. This action cannot be undone.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Database Statistics -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Current Database Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Customers</h6>
+                        <h3 class="text-primary">{{ stats.customers }} records</h3>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Cylinders</h6>
+                        <h3 class="text-info">{{ stats.cylinders }} records</h3>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Total Records</h6>
+                        <h3 class="text-success">{{ stats.customers + stats.cylinders }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset Options
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('reset_database_action') }}" 
+                          onsubmit="return confirmReset()">
+                        
+                        <!-- Reset Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">What to Reset</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reset_type" 
+                                       id="reset_customers" value="customers">
+                                <label class="form-check-label" for="reset_customers">
+                                    <strong>Customers Only</strong>
+                                    <small class="d-block text-muted">Remove all customer records ({{ stats.customers }} records)</small>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reset_type" 
+                                       id="reset_cylinders" value="cylinders">
+                                <label class="form-check-label" for="reset_cylinders">
+                                    <strong>Cylinders Only</strong>
+                                    <small class="d-block text-muted">Remove all cylinder records ({{ stats.cylinders }} records)</small>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reset_type" 
+                                       id="reset_all" value="all">
+                                <label class="form-check-label" for="reset_all">
+                                    <strong>Everything</strong>
+                                    <small class="d-block text-muted">Remove all customers and cylinders ({{ stats.customers + stats.cylinders }} records)</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Backup Option -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="create_backup" 
+                                       id="create_backup" checked>
+                                <label class="form-check-label" for="create_backup">
+                                    <strong>Create Backup Before Reset</strong>
+                                    <small class="d-block text-muted">
+                                        Recommended: Backup files will be created in the data folder
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-2"></i>Reset Database
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Command Line Instructions -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-terminal me-2"></i>Command Line Alternative
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-2">You can also reset the database using the command line:</p>
+                    <div class="bg-dark text-light p-3 rounded">
+                        <code>
+                            # Reset everything with backup<br>
+                            python reset_database.py --all --backup<br><br>
+                            # Reset only customers<br>
+                            python reset_database.py --customers<br><br>
+                            # Reset only cylinders<br>
+                            python reset_database.py --cylinders<br><br>
+                            # Show current status<br>
+                            python reset_database.py --info
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmReset() {
+    const resetType = document.querySelector('input[name="reset_type"]:checked');
+    const createBackup = document.querySelector('#create_backup').checked;
+    
+    if (!resetType) {
+        alert('Please select what to reset');
+        return false;
+    }
+    
+    let message = `Are you sure you want to reset ${resetType.value}?\n\n`;
+    message += `This will permanently delete data!\n`;
+    
+    if (createBackup) {
+        message += `✓ Backup files will be created before reset.`;
+    } else {
+        message += `⚠ NO BACKUP will be created!`;
+    }
+    
+    return confirm(message);
+}
+</script>
+{% endblock %}
