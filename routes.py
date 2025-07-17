@@ -24,9 +24,6 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
-# Import database reset functionality
-from reset_database import DatabaseResetter
-
 # Try to import Email functionality
 try:
     from email_service import EmailService
@@ -1068,56 +1065,6 @@ def delete_user(user_id):
         flash(f'Error deleting user: {str(e)}', 'error')
     
     return redirect(url_for('users'))
-
-@app.route('/admin/reset-database')
-@admin_required 
-def reset_database_page():
-    """Database reset page (admin only)"""
-    resetter = DatabaseResetter()
-    stats = resetter.get_database_stats()
-    return render_template('reset_database.html', stats=stats)
-
-@app.route('/admin/reset-database', methods=['POST'])
-@admin_required
-def reset_database_action():
-    """Execute database reset (admin only)"""
-    reset_type = request.form.get('reset_type')
-    create_backup = request.form.get('create_backup') == 'on'
-    
-    if not reset_type:
-        flash('Please select what to reset', 'error')
-        return redirect(url_for('reset_database_page'))
-    
-    try:
-        resetter = DatabaseResetter()
-        
-        if reset_type == 'customers':
-            success = resetter.reset_customers(create_backup)
-            if success:
-                flash('Customer database reset successfully', 'success')
-            else:
-                flash('Failed to reset customer database', 'error')
-                
-        elif reset_type == 'cylinders':
-            success = resetter.reset_cylinders(create_backup)
-            if success:
-                flash('Cylinder database reset successfully', 'success')
-            else:
-                flash('Failed to reset cylinder database', 'error')
-                
-        elif reset_type == 'all':
-            success = resetter.reset_all(create_backup)
-            if success:
-                flash('All databases reset successfully', 'success')
-            else:
-                flash('Database reset completed with some errors', 'warning')
-        else:
-            flash('Invalid reset type', 'error')
-            
-    except Exception as e:
-        flash(f'Error during database reset: {str(e)}', 'error')
-    
-    return redirect(url_for('reset_database_page'))
 
 @app.route('/cylinders/rent/<cylinder_id>', methods=['POST'])
 @user_or_admin_required
