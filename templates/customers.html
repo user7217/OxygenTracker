@@ -26,7 +26,7 @@
             <form method="GET" action="{{ url_for('customers') }}">
                 <div class="input-group">
                     <input type="text" class="form-control" name="search" value="{{ search_query }}" 
-                           placeholder="Search customers by name, email, or phone...">
+                           placeholder="Search customers by name, address, phone, customer no...">
                     <button class="btn btn-outline-secondary" type="submit">
                         <i class="bi bi-search"></i>
                     </button>
@@ -58,11 +58,14 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Customer No</th>
                                 <th>Name</th>
-                                <th>Email</th>
+                                <th>Address</th>
+                                <th>City</th>
+                                <th>State</th>
                                 <th>Phone</th>
-                                <th>Company</th>
+                                <th>APGST</th>
+                                <th>CST</th>
                                 <th>Borrowed Cylinders</th>
                                 <th>Created</th>
                                 {% if session.role in ['admin', 'user'] %}<th>Actions</th>{% endif %}
@@ -72,14 +75,17 @@
                             {% for customer in customers %}
                             <tr>
                                 <td>
-                                    <code class="text-info">{{ customer.id }}</code>
+                                    <code class="text-info">{{ customer.customer_no or customer.id }}</code>
                                 </td>
                                 <td>
-                                    <strong>{{ customer.name }}</strong>
+                                    <strong>{{ customer.customer_name or customer.name or 'Unknown' }}</strong>
                                 </td>
-                                <td>{{ customer.email }}</td>
-                                <td>{{ customer.phone }}</td>
-                                <td>{{ customer.company or '-' }}</td>
+                                <td>{{ customer.customer_address or customer.address or '-' }}</td>
+                                <td>{{ customer.customer_city or '-' }}</td>
+                                <td>{{ customer.customer_state or '-' }}</td>
+                                <td>{{ customer.customer_phone or customer.phone or '-' }}</td>
+                                <td>{{ customer.customer_apgst or '-' }}</td>
+                                <td>{{ customer.customer_cst or '-' }}</td>
                                 <td>
                                     {% if customer.rented_cylinders %}
                                         <div class="d-flex align-items-center mb-1">
@@ -136,7 +142,7 @@
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">
-                                                        <i class="bi bi-cylinder me-2"></i>Cylinders Rented by {{ customer.name }}
+                                                        <i class="bi bi-cylinder me-2"></i>Cylinders Rented by {{ customer.customer_name or customer.name }}
                                                     </h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>

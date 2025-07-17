@@ -29,37 +29,53 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('add_customer') }}">
+                        <!-- Customer No and Name -->
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="name" name="name" required>
+                                <label for="customer_no" class="form-label">Customer No <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="customer_no" name="customer_no" required
+                                       placeholder="e.g., CUST-001">
                             </div>
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                                <label for="customer_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="customer_name" name="customer_name" required>
                             </div>
                         </div>
 
+                        <!-- Address -->
+                        <div class="mb-3">
+                            <label for="customer_address" class="form-label">Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="customer_address" name="customer_address" rows="2" required></textarea>
+                        </div>
+
+                        <!-- City, State, Phone -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="customer_city" class="form-label">City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="customer_city" name="customer_city" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="customer_state" class="form-label">State <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="customer_state" name="customer_state" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="customer_phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="customer_phone" name="customer_phone" required>
+                            </div>
+                        </div>
+
+                        <!-- APGST and CST (Optional) -->
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
-                                <input type="tel" class="form-control" id="phone" name="phone" required>
+                                <label for="customer_apgst" class="form-label">APGST Number</label>
+                                <input type="text" class="form-control" id="customer_apgst" name="customer_apgst"
+                                       placeholder="Optional APGST number">
                             </div>
                             <div class="col-md-6">
-                                <label for="company" class="form-label">Company</label>
-                                <input type="text" class="form-control" id="company" name="company">
+                                <label for="customer_cst" class="form-label">CST Number</label>
+                                <input type="text" class="form-control" id="customer_cst" name="customer_cst"
+                                       placeholder="Optional CST number">
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                      placeholder="Additional information about the customer..."></textarea>
                         </div>
 
                         <div class="d-flex gap-2">
