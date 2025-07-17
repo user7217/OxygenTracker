@@ -274,14 +274,14 @@ class DataImporter:
                 return_date = transaction_data.get('return_date', '')
                 transaction_type = transaction_data.get('transaction_type', '').lower()
                 
-                # Determine operation based on available dates and transaction type
+                # Enhanced transaction processing with comprehensive cylinder and customer updates
                 if dispatch_date and return_date:
                     # Complete rental cycle - rent then return
-                    # First rent the cylinder
-                    success_rent = self.cylinder_model.rent_cylinder(
+                    success_rent = self.cylinder_model.rent_cylinder_with_location(
                         cylinder['id'], 
                         customer['id'], 
-                        dispatch_date
+                        dispatch_date,
+                        customer  # Pass full customer data for location update
                     )
                     if success_rent:
                         # Then return the cylinder
@@ -298,33 +298,45 @@ class DataImporter:
                         errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                         
                 elif dispatch_date and not return_date:
-                    # Only dispatch date - rent cylinder
-                    success = self.cylinder_model.rent_cylinder(
+                    # Only dispatch date - cylinder is currently rented (no return date means still with customer)
+                    success = self.cylinder_model.rent_cylinder_with_location(
                         cylinder['id'], 
                         customer['id'], 
-                        dispatch_date
+                        dispatch_date,
+                        customer  # Pass full customer data for location update
                     )
                     if success:
                         linked_count += 1
-                        print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no} on {dispatch_date}")
+                        print(f"Row {row_num}: Currently rented - {cylinder_no} to {customer_no} since {dispatch_date} (no return date - still with customer)")
                     else:
                         errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                         
                 elif return_date and not dispatch_date:
-                    # Only return date - return cylinder
-                    success = self.cylinder_model.return_cylinder(
+                    # Only return date - cylinder was returned (assume it was rented before)
+                    # First rent it to establish the relationship, then return it
+                    success_rent = self.cylinder_model.rent_cylinder_with_location(
                         cylinder['id'], 
-                        return_date
+                        customer['id'], 
+                        None,  # No dispatch date available
+                        customer
                     )
-                    if success:
-                        linked_count += 1
-                        print(f"Row {row_num}: Returned cylinder {cylinder_no} on {return_date}")
+                    if success_rent:
+                        success_return = self.cylinder_model.return_cylinder(
+                            cylinder['id'], 
+                            return_date
+                        )
+                        if success_return:
+                            linked_count += 1
+                            print(f"Row {row_num}: Returned cylinder {cylinder_no} on {return_date}")
+                        else:
+                            errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
-                        errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                        errors.append(f"Row {row_num}: Failed to establish rental for cylinder {cylinder_no}")
                         
                 else:
-                    # No specific dates - use transaction type or default to rental
+                    # No specific dates - determine status based on transaction type or default behavior
                     if transaction_type in ['return', 'returned', 'in', 'receive']:
+                        # Return operation
                         success = self.cylinder_model.return_cylinder(cylinder['id'])
                         if success:
                             linked_count += 1
@@ -332,14 +344,16 @@ class DataImporter:
                         else:
                             errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
-                        # Default to rental
-                        success = self.cylinder_model.rent_cylinder(
+                        # Default to rental with customer location update
+                        success = self.cylinder_model.rent_cylinder_with_location(
                             cylinder['id'], 
-                            customer['id']
+                            customer['id'],
+                            None,  # No date specified
+                            customer  # Pass customer data for location
                         )
                         if success:
                             linked_count += 1
-                            print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no}")
+                            print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no} (location updated to customer address)")
                         else:
                             errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                 

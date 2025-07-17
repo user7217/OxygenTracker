@@ -405,6 +405,69 @@ class Cylinder:
                 return True
         return False
     
+    def rent_cylinder_with_location(self, cylinder_id: str, customer_id: str, rental_date: str = None, customer_data: Dict = None) -> bool:
+        """
+        Rent a cylinder to a customer with comprehensive updates including location
+        Updates cylinder location to customer's address and all related fields
+        """
+        from datetime import datetime
+        from models import Customer
+        
+        cylinders = self.db.load_data()
+        for cylinder in cylinders:
+            if cylinder['id'] == cylinder_id:
+                if cylinder.get('status', '').lower() not in ['available', '']:
+                    return False
+                
+                # Get customer information if not provided
+                if not customer_data:
+                    customer_model = Customer()
+                    customer_data = customer_model.get_by_id(customer_id)
+                    if not customer_data:
+                        return False
+                
+                # Update cylinder status and rental information
+                cylinder['status'] = 'rented'
+                cylinder['rented_to'] = customer_id
+                
+                # Handle both old and new customer field structures for name and contact
+                cylinder['customer_name'] = customer_data.get('customer_name') or customer_data.get('name', '')
+                cylinder['customer_email'] = customer_data.get('customer_email') or customer_data.get('email', '')
+                cylinder['customer_phone'] = customer_data.get('customer_phone') or customer_data.get('phone', '')
+                
+                # Update cylinder location to customer's address (comprehensive address)
+                customer_address = customer_data.get('customer_address') or customer_data.get('address', '')
+                customer_city = customer_data.get('customer_city', '')
+                customer_state = customer_data.get('customer_state', '')
+                
+                # Build full address for cylinder location
+                address_parts = []
+                if customer_address:
+                    address_parts.append(customer_address)
+                if customer_city:
+                    address_parts.append(customer_city)
+                if customer_state:
+                    address_parts.append(customer_state)
+                
+                cylinder['location'] = ', '.join(address_parts) if address_parts else 'Customer Location'
+                
+                # Set rental dates
+                cylinder['rental_date'] = rental_date or datetime.now().isoformat()
+                cylinder['date_borrowed'] = rental_date or datetime.now().isoformat()
+                
+                # Clear any previous return date
+                cylinder['date_returned'] = ''
+                cylinder['updated_at'] = datetime.now().isoformat()
+                
+                # Store additional customer reference data for tracking
+                cylinder['customer_no'] = customer_data.get('customer_no', '')
+                cylinder['customer_city'] = customer_city
+                cylinder['customer_state'] = customer_state
+                
+                self.db.save_data(cylinders)
+                return True
+        return False
+    
     def return_cylinder(self, cylinder_id: str, return_date: str = None) -> bool:
         """Return a cylinder from rental with return date"""
         from datetime import datetime
@@ -415,10 +478,18 @@ class Cylinder:
                 cylinder['status'] = 'available'
                 cylinder['date_returned'] = return_date or datetime.now().isoformat()
                 cylinder['updated_at'] = datetime.now().isoformat()
+                
+                # Reset location to warehouse when returned
+                cylinder['location'] = 'Warehouse'
+                
                 # Clear customer assignment but keep rental history for tracking
                 cylinder['rented_to'] = ''
                 cylinder['customer_name'] = ''
                 cylinder['customer_email'] = ''
+                cylinder['customer_phone'] = ''
+                cylinder['customer_no'] = ''
+                cylinder['customer_city'] = ''
+                cylinder['customer_state'] = ''
                 cylinder['rental_date'] = ''
                 self.db.save_data(cylinders)
                 return True
