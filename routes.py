@@ -36,7 +36,7 @@ except ImportError as e:
 user_manager = UserManager()
 
 def login_required(f):
-    """Decorator to require login for routes"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -46,7 +46,7 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """Decorator to require admin role"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -62,7 +62,7 @@ def admin_required(f):
     return decorated_function
 
 def user_or_admin_required(f):
-    """Decorator to require user or admin role (excludes viewers)"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -78,7 +78,7 @@ def user_or_admin_required(f):
     return decorated_function
 
 def admin_or_user_can_edit(f):
-    """Decorator for routes that only admin can access (users can only rent/return)"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -98,7 +98,7 @@ cylinder_model = Cylinder()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -126,7 +126,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """User logout"""
+    
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -135,7 +135,7 @@ def logout():
 @app.route('/register', methods=['GET', 'POST'])
 @admin_required
 def register():
-    """User registration (admin only)"""
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
@@ -180,14 +180,14 @@ def register():
 @app.route('/users')
 @admin_required
 def users():
-    """List all users (admin only)"""
+    
     all_users = user_manager.get_all_users()
     return render_template('users.html', users=all_users)
 
 @app.route('/')
 @login_required
 def index():
-    """Dashboard showing overview with fun statistics"""
+    
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
@@ -250,7 +250,7 @@ def index():
 @app.route('/metrics')
 @login_required
 def metrics():
-    """Metrics and analytics page"""
+    
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
@@ -314,7 +314,7 @@ def metrics():
 @login_required
 @admin_required
 def send_admin_stats():
-    """Send admin statistics via email"""
+    
     if not EMAIL_AVAILABLE or not email_service:
         flash('Email service not available', 'error')
         return redirect(url_for('metrics'))
@@ -385,7 +385,7 @@ def send_admin_stats():
 @login_required
 @admin_required
 def test_email():
-    """Send a test email to verify configuration"""
+    
     if not EMAIL_AVAILABLE or not email_service:
         flash('Email service not available', 'error')
         return redirect(url_for('metrics'))
@@ -407,7 +407,6 @@ def test_email():
 @app.route('/customers')
 @login_required
 def customers():
-    """List all customers with search functionality"""
 
     search_query = request.args.get('search', '')
     
@@ -421,7 +420,7 @@ def customers():
 @app.route('/customers/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def add_customer():
-    """Add new customer"""
+    
     if request.method == 'POST':
         required_fields = ['customer_no', 'customer_name', 'customer_address', 'customer_city', 'customer_state', 'customer_phone']
         customer_data = {}
@@ -449,7 +448,7 @@ def add_customer():
 @app.route('/customers/edit/<customer_id>', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def edit_customer(customer_id):
-    """Edit existing customer"""
+    
     customer = customer_model.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
@@ -485,7 +484,7 @@ def edit_customer(customer_id):
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
 @admin_or_user_can_edit
 def delete_customer(customer_id):
-    """Delete customer"""
+    
     try:
         if customer_model.delete(customer_id):
             flash('Customer deleted successfully', 'success')
@@ -499,7 +498,6 @@ def delete_customer(customer_id):
 @app.route('/cylinders')
 @login_required
 def cylinders():
-    """List all cylinders with search, filter functionality, and pagination"""
 
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
@@ -595,7 +593,7 @@ def cylinders():
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def add_cylinder():
-    """Add new cylinder"""
+    
     if request.method == 'POST':
         required_fields = ['type', 'size', 'status', 'location']
         cylinder_data = {}
@@ -668,7 +666,7 @@ def add_cylinder():
 @app.route('/cylinders/edit/<cylinder_id>', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def edit_cylinder(cylinder_id):
-    """Edit existing cylinder"""
+    
     cylinder = cylinder_model.get_by_id(cylinder_id)
     if not cylinder:
         flash('Cylinder not found', 'error')
@@ -776,7 +774,7 @@ def edit_cylinder(cylinder_id):
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
 @admin_or_user_can_edit
 def delete_cylinder(cylinder_id):
-    """Delete cylinder"""
+    
     try:
         if cylinder_model.delete(cylinder_id):
             flash('Cylinder deleted successfully', 'success')
@@ -790,7 +788,7 @@ def delete_cylinder(cylinder_id):
 @app.route('/import')
 @login_required
 def import_data():
-    """Data import dashboard"""
+    
     if not ACCESS_AVAILABLE:
         flash('MS Access import functionality is not available on this system', 'error')
         return redirect(url_for('index'))
@@ -798,7 +796,7 @@ def import_data():
 
 @app.route('/import/upload', methods=['POST'])
 def upload_access_file():
-    """Upload and connect to Access database"""
+    
     if not ACCESS_AVAILABLE:
         flash('MS Access import functionality is not available', 'error')
         return redirect(url_for('index'))
@@ -849,7 +847,7 @@ def upload_access_file():
 
 @app.route('/import/preview/<table_name>')
 def preview_table(table_name):
-    """Preview table data and set up field mapping"""
+    
     if 'access_file_path' not in session:
         flash('No Access file connected. Please upload a file first.', 'error')
         return redirect(url_for('import_data'))
@@ -885,7 +883,7 @@ def preview_table(table_name):
 
 @app.route('/import/execute', methods=['POST'])
 def execute_import():
-    """Execute the data import"""
+    
     if 'access_file_path' not in session:
         flash('No Access file connected. Please upload a file first.', 'error')
         return redirect(url_for('import_data'))
@@ -951,7 +949,7 @@ def execute_import():
 
 @app.route('/import/cancel')
 def cancel_import():
-    """Cancel import and clean up"""
+    
     if 'access_file_path' in session:
         if os.path.exists(session['access_file_path']):
             os.remove(session['access_file_path'])
@@ -964,7 +962,7 @@ def cancel_import():
 @app.route('/search')
 @login_required
 def global_search():
-    """Global search across customers and cylinders"""
+    
     query = request.args.get('q', '').strip()
     
     results = {
@@ -988,7 +986,7 @@ def global_search():
 @app.route('/users/delete/<user_id>', methods=['POST'])
 @admin_required
 def delete_user(user_id):
-    """Delete user (admin only)"""
+    
     try:
         if user_manager.delete_user(user_id):
             flash('User deleted successfully', 'success')
@@ -1004,7 +1002,7 @@ def delete_user(user_id):
 @app.route('/cylinders/rent/<cylinder_id>', methods=['POST'])
 @user_or_admin_required
 def rent_cylinder(cylinder_id):
-    """Rent a cylinder to a customer"""
+    
     customer_id = request.form.get('customer_id')
     rental_date = request.form.get('rental_date', '').strip()
     
@@ -1037,7 +1035,7 @@ def rent_cylinder(cylinder_id):
 @app.route('/cylinders/return/<cylinder_id>', methods=['POST'])
 @user_or_admin_required
 def return_cylinder(cylinder_id):
-    """Return a cylinder from rental"""
+    
     return_date = request.form.get('return_date')
     if cylinder_model.return_cylinder(cylinder_id, return_date):
         flash('Cylinder returned successfully', 'success')
@@ -1049,7 +1047,7 @@ def return_cylinder(cylinder_id):
 @app.route('/customers/<customer_id>/bulk_cylinders', methods=['GET', 'POST'])
 @user_or_admin_required
 def bulk_cylinder_management(customer_id):
-    """Bulk cylinder rental/return management"""
+    
     customer = customer_model.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
@@ -1138,7 +1136,7 @@ def bulk_cylinder_management(customer_id):
 @app.route('/api/customer/<customer_id>/rentals')
 @login_required
 def get_customer_rentals(customer_id):
-    """API endpoint to get current rentals for a customer"""
+    
     rentals = cylinder_model.get_by_customer(customer_id)
     
     for rental in rentals:
@@ -1150,7 +1148,7 @@ def get_customer_rentals(customer_id):
 @login_required
 @admin_required
 def archive_data():
-    """Archive old data (admin only)"""
+    
     try:
         months_old = int(request.form.get('months', 6))
         if months_old < 1:
@@ -1179,9 +1177,7 @@ def archive_data():
             flash(f'Successfully archived {total_archived} old records ({cylinder_result.get("archived_count", 0)} cylinders, {customer_result.get("archived_count", 0)} customers). Archives saved.', 'success')
         else:
             flash('No old data found to archive', 'info')
-        
 
-        
     except ValueError:
         flash('Invalid months value provided', 'error')
     except Exception as e:
@@ -1192,14 +1188,14 @@ def archive_data():
 @app.route('/bulk_rental_management')
 @login_required
 def bulk_rental_management():
-    """Dedicated page for bulk cylinder rental management"""
+    
     customers = customer_model.get_all()
     return render_template('bulk_rental_management.html', customers=customers)
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
 def process_bulk_rental():
-    """Process bulk cylinder rental/return operations"""
+    
     customer_id = request.form.get('customer_id', '').strip()
     action = request.form.get('action', 'rent')
     cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
@@ -1289,7 +1285,7 @@ def process_bulk_rental():
 @app.route('/reports')
 @login_required
 def reports():
-    """Data reports and export page"""
+    
     customer_model = Customer()
     cylinder_model = Cylinder()
     
@@ -1321,7 +1317,7 @@ def reports():
 @app.route('/export/customers.csv')
 @login_required
 def export_customers_csv():
-    """Export all customers to CSV"""
+    
     customer_model = Customer()
     customers = customer_model.get_all()
     
@@ -1357,7 +1353,7 @@ def export_customers_csv():
 @app.route('/export/cylinders.csv')
 @login_required
 def export_cylinders_csv():
-    """Export all cylinders to CSV"""
+    
     cylinder_model = Cylinder()
     cylinders = cylinder_model.get_all()
     
@@ -1399,7 +1395,7 @@ def export_cylinders_csv():
 @app.route('/export/rental-activities.csv')
 @login_required
 def export_rental_activities_csv():
-    """Export rental activities to CSV"""
+    
     cylinder_model = Cylinder()
     customer_model = Customer()
     cylinders = cylinder_model.get_all()
@@ -1443,7 +1439,7 @@ def export_rental_activities_csv():
 @app.route('/export/complete-data.csv')
 @login_required
 def export_complete_data_csv():
-    """Export complete database to CSV"""
+    
     customer_model = Customer()
     cylinder_model = Cylinder()
     customers = customer_model.get_all()
@@ -1508,7 +1504,7 @@ def export_complete_data_csv():
 @app.route('/export/monthly-report', methods=['POST'])
 @login_required
 def export_monthly_report():
-    """Export monthly report based on selected month and type"""
+    
     report_month = request.form.get('report_month')
     report_type = request.form.get('report_type')
     
@@ -1624,7 +1620,7 @@ def export_monthly_report():
 @app.route('/export/customers.pdf')
 @login_required
 def export_customers_pdf():
-    """Export all customers to PDF"""
+    
     customer_model = Customer()
     customers = customer_model.get_all()
     
@@ -1686,7 +1682,7 @@ def export_customers_pdf():
 @app.route('/export/cylinders.pdf')
 @login_required
 def export_cylinders_pdf():
-    """Export all cylinders to PDF"""
+    
     cylinder_model = Cylinder()
     cylinders = cylinder_model.get_all()
     
@@ -1759,7 +1755,7 @@ def export_cylinders_pdf():
 @app.route('/export/rental-activities.pdf')
 @login_required
 def export_rental_activities_pdf():
-    """Export rental activities to PDF"""
+    
     cylinder_model = Cylinder()
     customer_model = Customer()
     cylinders = cylinder_model.get_all()

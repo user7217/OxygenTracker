@@ -1,10 +1,6 @@
-"""
-WSGI configuration for PythonAnywhere deployment
-Place this file in your PythonAnywhere web app configuration
-"""
+
 import sys
 import os
-
 
 os.environ.setdefault('SESSION_SECRET', 'pythonanywhere-production-secret-key-change-this')
 

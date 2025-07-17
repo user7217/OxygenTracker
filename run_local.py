@@ -1,7 +1,4 @@
-"""
-Enhanced local development server for Varasai Oxygen
-Includes better error handling and debugging information
-"""
+
 import os
 import sys
 import logging
@@ -13,12 +10,12 @@ logging.basicConfig(
 )
 
 def setup_environment():
-    """Setup environment variables for local development"""
+    
     os.environ.setdefault('SESSION_SECRET', 'local-dev-secret-key-12345')
     print("Environment configured for local development")
 
 def create_required_directories():
-    """Create required directories if they don't exist"""
+    
     directories = ['data', 'static', 'templates']
     for directory in directories:
         if not os.path.exists(directory):
@@ -26,7 +23,7 @@ def create_required_directories():
             print(f"Created directory: {directory}")
 
 def check_dependencies():
-    """Check if all required dependencies are available"""
+    
     required_modules = ['flask', 'werkzeug']
     missing = []
     

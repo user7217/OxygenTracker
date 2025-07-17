@@ -1,15 +1,11 @@
-"""
-Database migration script to add custom_id field to existing cylinders
-Run this script to update existing cylinder records with the new custom_id field
-"""
+
 
 import json
 import os
 from datetime import datetime
 
 def migrate_cylinders():
-    """Add custom_id field to existing cylinder records"""
-    
+
     data_dir = 'data'
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)

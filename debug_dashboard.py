@@ -1,6 +1,4 @@
-"""
-Debug script specifically for dashboard loading issues on PythonAnywhere
-"""
+
 import sys
 import os
 

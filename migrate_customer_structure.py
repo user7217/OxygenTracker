@@ -1,8 +1,4 @@
-"""
-Database migration script to update existing customer records to new structure
-Converts old customer format to new Access-compatible format
-Run this script to update existing customer records with the new field structure
-"""
+
 
 import json
 import os
@@ -11,12 +7,7 @@ from datetime import datetime
 from models import Customer
 
 def migrate_customers():
-    """
-    Migrate existing customer records to new structure
-    Old structure: name, email, phone, address, company, notes
-    New structure: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone, customer_apgst, customer_cst
-    """
-    
+
     customer_model = Customer()
     data_file = customer_model.db.filepath
     
@@ -147,7 +138,7 @@ def migrate_customers():
             print(f"Error restoring backup: {restore_error}")
 
 def verify_migration():
-    """Verify the migration was successful"""
+    
     customer_model = Customer()
     customers = customer_model.get_all()
     

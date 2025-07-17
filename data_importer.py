@@ -6,8 +6,7 @@ import uuid
 from datetime import datetime
 
 class DataImporter:
-    """Import data from MS Access to JSON databases"""
-    
+
     def __init__(self):
         self.access_connector = AccessConnector()
         self.customer_model = Customer()
@@ -15,21 +14,21 @@ class DataImporter:
         self.logger = logging.getLogger(__name__)
     
     def connect_to_access(self, file_path: str) -> bool:
-        """Connect to Access database"""
+        
         return self.access_connector.connect(file_path)
     
     def get_available_tables(self) -> List[str]:
-        """Get list of available tables"""
+        
         return self.access_connector.get_tables()
     
     def preview_table(self, table_name: str, rows: int = 5) -> Tuple[List[Dict], List[Dict]]:
-        """Preview table data and structure"""
+        
         columns = self.access_connector.get_table_columns(table_name)
         data = self.access_connector.preview_table_data(table_name, rows)
         return columns, data
     
     def suggest_field_mapping(self, table_name: str, target_type: str) -> Dict[str, str]:
-        """Suggest field mapping based on column names"""
+        
         columns = self.access_connector.get_table_columns(table_name)
         column_names = [col['name'].lower() for col in columns]
         
@@ -75,7 +74,7 @@ class DataImporter:
     
     def import_customers(self, table_name: str, field_mapping: Dict[str, str], 
                         skip_duplicates: bool = True) -> Tuple[int, int, List[str]]:
-        """Import customers from Access table"""
+        
         data = self.access_connector.import_table_data(table_name)
         imported_count = 0
         skipped_count = 0
@@ -121,7 +120,7 @@ class DataImporter:
     
     def import_cylinders(self, table_name: str, field_mapping: Dict[str, str], 
                         skip_duplicates: bool = True) -> Tuple[int, int, List[str]]:
-        """Import cylinders from Access table"""
+        
         data = self.access_connector.import_table_data(table_name)
         imported_count = 0
         skipped_count = 0
@@ -182,10 +181,7 @@ class DataImporter:
     
     def import_transactions(self, table_name: str, field_mapping: Dict[str, str], 
                            skip_duplicates: bool = True) -> Tuple[int, int, List[str]]:
-        """
-        Import transactions from Access table and link customers to cylinders
-        Expected fields: customer_no, cylinder_no, transaction_date, transaction_type, etc.
-        """
+        
         data = self.access_connector.import_table_data(table_name)
         imported_count = 0
         skipped_count = 0
@@ -328,7 +324,7 @@ class DataImporter:
         return imported_count, skipped_count, errors
     
     def suggest_transaction_field_mapping(self, table_name: str) -> Dict[str, str]:
-        """Suggest field mapping for transaction table"""
+        
         columns = self.access_connector.get_table_columns(table_name)
         column_names = [col['name'].lower() for col in columns]
         
@@ -356,5 +352,5 @@ class DataImporter:
         return mapping
     
     def close_connection(self):
-        """Close Access database connection"""
+        
         self.access_connector.close()

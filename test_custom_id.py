@@ -1,11 +1,9 @@
-"""
-Test script to verify custom ID functionality
-"""
+
 
 from models import Cylinder
 
 def test_custom_id_functionality():
-    """Test the custom ID feature"""
+    
     print("Testing Custom ID Functionality")
     print("=" * 40)
     

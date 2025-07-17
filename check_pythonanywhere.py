@@ -1,7 +1,4 @@
-"""
-Diagnostic script for PythonAnywhere deployment issues
-Run this on PythonAnywhere to identify common problems
-"""
+
 import sys
 import os
 

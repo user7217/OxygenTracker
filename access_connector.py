@@ -15,14 +15,13 @@ from typing import List, Dict, Optional
 import logging
 
 class AccessConnector:
-    """MS Access database connector for importing data"""
-    
+
     def __init__(self):
         self.connection = None
         self.logger = logging.getLogger(__name__)
     
     def connect(self, access_file_path: str) -> bool:
-        """Connect to MS Access database"""
+        
         if not PYODBC_AVAILABLE:
             self.logger.error("pyodbc is not available")
             return False
@@ -53,7 +52,7 @@ class AccessConnector:
             return False
     
     def get_tables(self) -> List[str]:
-        """Get list of tables in the Access database"""
+        
         if not self.connection:
             return []
         
@@ -73,7 +72,7 @@ class AccessConnector:
             return []
     
     def get_table_columns(self, table_name: str) -> List[Dict]:
-        """Get column information from a table"""
+        
         if not self.connection:
             return []
         
@@ -96,7 +95,7 @@ class AccessConnector:
             return []
     
     def import_table_data(self, table_name: str, limit: Optional[int] = None) -> List[Dict]:
-        """Import data from a specific table"""
+        
         if not self.connection or not PANDAS_AVAILABLE:
             return []
         
@@ -126,11 +125,11 @@ class AccessConnector:
             return []
     
     def preview_table_data(self, table_name: str, rows: int = 5) -> List[Dict]:
-        """Preview first few rows of a table"""
+        
         return self.import_table_data(table_name, limit=rows)
     
     def close(self):
-        """Close database connection"""
+        
         if self.connection:
             try:
                 self.connection.close()
@@ -141,7 +140,7 @@ class AccessConnector:
                 self.connection = None
     
     def auto_detect_fields(self, table_name: str, target_type: str) -> Dict[str, str]:
-        """Automatically detect and map fields based on column names and data patterns"""
+        
         try:
             columns = self.get_table_columns(table_name)
             if not columns:
@@ -176,7 +175,7 @@ class AccessConnector:
             return {}
     
     def get_sample_data_with_analysis(self, table_name: str, rows: int = 10) -> Dict:
-        """Get sample data with field analysis for better mapping"""
+        
         try:
             if not self.connection:
                 return {}
@@ -210,7 +209,7 @@ class AccessConnector:
             return {}
     
     def _analyze_column_data(self, col_name: str, values: List[str]) -> Dict:
-        """Analyze column data to determine likely field type"""
+        
         import re
         
         analysis = {
@@ -244,5 +243,5 @@ class AccessConnector:
         return analysis
     
     def __del__(self):
-        """Cleanup when object is destroyed"""
+        
         self.close()

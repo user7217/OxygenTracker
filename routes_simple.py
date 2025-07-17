@@ -27,7 +27,7 @@ except ImportError as e:
 user_manager = UserManager()
 
 def login_required(f):
-    """Decorator to require login for routes"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -37,7 +37,7 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """Decorator to require admin role"""
+    
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -57,7 +57,7 @@ cylinder_model = Cylinder()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -82,7 +82,7 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    """User logout"""
+    
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -91,7 +91,7 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    """Simplified Dashboard - removed complex calculations that might fail on PythonAnywhere"""
+    
     try:
         customers = customer_model.get_all()
         cylinders = cylinder_model.get_all()
@@ -139,11 +139,10 @@ def index():
         flash('Dashboard temporarily unavailable. Please try again.', 'error')
         return render_template('login.html')
 
-
 @app.route('/customers')
 @login_required
 def customers():
-    """List all customers with search functionality"""
+    
     search_query = request.args.get('search', '').strip()
     customers = customer_model.get_all()
     
@@ -160,7 +159,7 @@ def customers():
 @app.route('/cylinders')
 @login_required
 def cylinders():
-    """List all cylinders with search and filter functionality"""
+    
     search_query = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '').strip()
     customer_filter = request.args.get('customer', '').strip()
