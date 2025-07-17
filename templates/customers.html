@@ -3,7 +3,7 @@
 {% block title %}Customers - Varasai Oxygen{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid" style="max-width: none; padding: 0 15px;">
     <div class="row mb-4">
         <div class="col">
             <h1 class="display-4 mb-3">
@@ -55,20 +55,20 @@
                     </h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0" style="min-width: 1400px;">
                         <thead>
                             <tr>
-                                <th>Customer No</th>
-                                <th>Name</th>
-                                <th>Address</th>
-                                <th>City</th>
-                                <th>State</th>
-                                <th>Phone</th>
-                                <th>APGST</th>
-                                <th>CST</th>
-                                <th>Borrowed Cylinders</th>
-                                <th>Created</th>
-                                {% if session.role in ['admin', 'user'] %}<th>Actions</th>{% endif %}
+                                <th style="width: 100px;">Customer No</th>
+                                <th style="width: 180px;">Name</th>
+                                <th style="width: 250px;">Address</th>
+                                <th style="width: 120px;">City</th>
+                                <th style="width: 80px;">State</th>
+                                <th style="width: 130px;">Phone</th>
+                                <th style="width: 120px;">APGST</th>
+                                <th style="width: 120px;">CST</th>
+                                <th style="width: 200px;">Borrowed Cylinders</th>
+                                <th style="width: 100px;">Created</th>
+                                {% if session.role in ['admin', 'user'] %}<th style="width: 130px;">Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -77,30 +77,32 @@
                                 <td>
                                     <code class="text-info">{{ customer.customer_no or customer.id }}</code>
                                 </td>
-                                <td>
+                                <td style="word-wrap: break-word;">
                                     <strong>{{ customer.customer_name or customer.name or 'Unknown' }}</strong>
                                 </td>
-                                <td>{{ customer.customer_address or customer.address or '-' }}</td>
-                                <td>{{ customer.customer_city or '-' }}</td>
-                                <td>{{ customer.customer_state or '-' }}</td>
-                                <td>{{ customer.customer_phone or customer.phone or '-' }}</td>
-                                <td>{{ customer.customer_apgst or '-' }}</td>
-                                <td>{{ customer.customer_cst or '-' }}</td>
-                                <td>
+                                <td style="word-wrap: break-word; max-width: 250px;">{{ customer.customer_address or customer.address or '-' }}</td>
+                                <td style="word-wrap: break-word;">{{ customer.customer_city or '-' }}</td>
+                                <td style="word-wrap: break-word;">{{ customer.customer_state or '-' }}</td>
+                                <td style="word-wrap: break-word;">{{ customer.customer_phone or customer.phone or '-' }}</td>
+                                <td style="word-wrap: break-word;">{{ customer.customer_apgst or '-' }}</td>
+                                <td style="word-wrap: break-word;">{{ customer.customer_cst or '-' }}</td>
+                                <td style="min-width: 200px;">
                                     {% if customer.rented_cylinders %}
-                                        <div class="d-flex align-items-center mb-1">
-                                            <span class="badge bg-warning text-dark me-2">{{ customer.rented_cylinders|length }} cylinders</span>
-                                            <button type="button" class="btn btn-outline-info btn-sm" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#rentalsModal{{ loop.index }}" 
-                                                    title="View Details">
-                                                <i class="bi bi-eye"></i> View All
-                                            </button>
+                                        <div class="d-flex flex-column">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <span class="badge bg-warning text-dark me-2">{{ customer.rented_cylinders|length }}</span>
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#rentalsModal{{ loop.index }}" 
+                                                        title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">
+                                                {{ customer.rented_cylinders[:2]|map(attribute='serial_number')|join(', ') }}
+                                                {% if customer.rented_cylinders|length > 2 %}...{% endif %}
+                                            </small>
                                         </div>
-                                        <small class="text-muted d-block">
-                                            {{ customer.rented_cylinders[:2]|map(attribute='serial_number')|join(', ') }}
-                                            {% if customer.rented_cylinders|length > 2 %}...{% endif %}
-                                        </small>
                                     {% else %}
                                         <span class="text-muted">No rentals</span>
                                     {% endif %}
@@ -111,22 +113,22 @@
                                     </small>
                                 </td>
                                 {% if session.role in ['admin', 'user'] %}
-                                <td>
-                                    <div class="btn-group btn-group-sm">
+                                <td style="min-width: 130px;">
+                                    <div class="btn-group-vertical btn-group-sm d-flex flex-column gap-1">
                                         {% if session.role == 'admin' %}
                                         <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-warning" title="Edit">
+                                           class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% endif %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-info" title="Manage Cylinders">
+                                           class="btn btn-outline-info btn-sm" title="Manage Cylinders">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
                                         <form method="POST" action="{{ url_for('delete_customer', customer_id=customer.id) }}" class="d-inline"
                                               onsubmit="return confirm('Are you sure you want to delete customer {{ (customer.customer_name or customer.name or 'Unknown')|replace('\'', '\\\'') }}? This action cannot be undone.')">
-                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -266,6 +268,53 @@
 
 
 <style>
+/* Customer table improvements */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table th, .table td {
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+.table td[style*="word-wrap: break-word"] {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* Improve button spacing in vertical groups */
+.btn-group-vertical .btn {
+    margin-bottom: 2px;
+}
+
+.btn-group-vertical .btn:last-child {
+    margin-bottom: 0;
+}
+
+/* Make badges smaller for better fit */
+.badge {
+    font-size: 0.7em;
+}
+
+/* Improve table header styling */
+.table thead th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Better hover effects */
+.table-hover tbody tr:hover {
+    background-color: rgba(0,123,255,.075);
+}
+
 .current-rentals .card-sm {
     font-size: 0.85rem;
 }
@@ -296,6 +345,23 @@
     transform: none !important;
 }
 
+/* Responsive table improvements */
+@media (max-width: 1200px) {
+    .container-fluid {
+        padding: 0 10px !important;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem 0.3rem;
+        font-size: 0.9rem;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+    }
+}
+
 @media (max-width: 768px) {
     .modal-lg {
         max-width: 95%;
@@ -303,6 +369,11 @@
     
     textarea {
         font-size: 16px !important;
+    }
+    
+    .table th, .table td {
+        padding: 0.4rem 0.2rem;
+        font-size: 0.8rem;
     }
 }
 </style>
