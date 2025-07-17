@@ -920,8 +920,11 @@ def preview_table(table_name):
         # Determine import type based on user selection
         import_type = request.args.get('type', 'customer')
         
-        # Get suggested field mapping
-        suggested_mapping = importer.suggest_field_mapping(table_name, import_type)
+        # Get suggested field mapping based on import type
+        if import_type == 'transaction':
+            suggested_mapping = importer.suggest_transaction_field_mapping(table_name)
+        else:
+            suggested_mapping = importer.suggest_field_mapping(table_name, import_type)
         
         importer.close_connection()
         
@@ -972,6 +975,9 @@ def execute_import():
         elif import_type == 'cylinder':
             imported, skipped, errors = importer.import_cylinders(table_name, field_mapping, skip_duplicates)
             item_type = 'cylinders'
+        elif import_type == 'transaction':
+            imported, skipped, errors = importer.import_transactions(table_name, field_mapping, skip_duplicates)
+            item_type = 'transactions'
         else:
             flash('Invalid import type', 'error')
             return redirect(url_for('import_data'))

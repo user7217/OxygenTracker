@@ -393,8 +393,9 @@ class Cylinder:
                 
                 cylinder['status'] = 'rented'
                 cylinder['rented_to'] = customer_id
-                cylinder['customer_name'] = customer.get('name', '')
-                cylinder['customer_email'] = customer.get('email', '')
+                # Handle both old and new customer field structures
+                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                cylinder['customer_email'] = customer.get('customer_email') or customer.get('email', '')
                 cylinder['rental_date'] = rental_date or datetime.now().isoformat()
                 cylinder['date_borrowed'] = rental_date or datetime.now().isoformat()
                 # Clear any previous return date

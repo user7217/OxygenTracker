@@ -198,6 +198,147 @@ class DataImporter:
         
         return imported_count, skipped_count, errors
     
+    def import_transactions(self, table_name: str, field_mapping: Dict[str, str], 
+                           skip_duplicates: bool = True) -> Tuple[int, int, List[str]]:
+        """
+        Import transactions from Access table and link customers to cylinders
+        Expected fields: customer_no, cylinder_no, transaction_date, transaction_type, etc.
+        """
+        data = self.access_connector.import_table_data(table_name)
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+        linked_count = 0
+        
+        # Get existing customers and cylinders for validation
+        existing_customers = self.customer_model.get_all()
+        existing_cylinders = self.cylinder_model.get_all()
+        
+        # Create lookup dictionaries for faster searching
+        customer_lookup = {c.get('customer_no', '').upper(): c for c in existing_customers}
+        cylinder_lookup = {cyl.get('serial_number', '').upper(): cyl for cyl in existing_cylinders}
+        
+        # Also check by custom_id for cylinders
+        for cyl in existing_cylinders:
+            if cyl.get('custom_id'):
+                cylinder_lookup[cyl.get('custom_id', '').upper()] = cyl
+        
+        print(f"Found {len(customer_lookup)} customers and {len(cylinder_lookup)} cylinders for linking")
+        
+        for row_num, row in enumerate(data, 1):
+            try:
+                # Map fields from Access table
+                transaction_data = {}
+                for target_field, source_field in field_mapping.items():
+                    if source_field in row and row[source_field] is not None:
+                        transaction_data[target_field] = str(row[source_field]).strip()
+                
+                # Check required fields for transaction processing
+                required_fields = ['customer_no', 'cylinder_no']
+                missing_fields = [f for f in required_fields if not transaction_data.get(f)]
+                
+                if missing_fields:
+                    errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing_fields)}")
+                    skipped_count += 1
+                    continue
+                
+                customer_no = transaction_data['customer_no'].upper()
+                cylinder_no = transaction_data['cylinder_no'].upper()
+                
+                # Find customer by customer_no
+                customer = customer_lookup.get(customer_no)
+                if not customer:
+                    errors.append(f"Row {row_num}: Customer '{customer_no}' not found")
+                    skipped_count += 1
+                    continue
+                
+                # Find cylinder by cylinder_no (could be serial_number or custom_id)
+                cylinder = cylinder_lookup.get(cylinder_no)
+                if not cylinder:
+                    errors.append(f"Row {row_num}: Cylinder '{cylinder_no}' not found")
+                    skipped_count += 1
+                    continue
+                
+                # Determine transaction type and update cylinder status accordingly
+                transaction_type = transaction_data.get('transaction_type', '').lower()
+                transaction_date = transaction_data.get('transaction_date', '')
+                
+                if transaction_type in ['rent', 'rental', 'out', 'issue']:
+                    # Rent cylinder to customer
+                    success = self.cylinder_model.rent_cylinder(
+                        cylinder['id'], 
+                        customer['id'], 
+                        transaction_date
+                    )
+                    if success:
+                        linked_count += 1
+                        print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no}")
+                    else:
+                        errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
+                        
+                elif transaction_type in ['return', 'returned', 'in', 'receive']:
+                    # Return cylinder from customer
+                    success = self.cylinder_model.return_cylinder(
+                        cylinder['id'], 
+                        transaction_date
+                    )
+                    if success:
+                        linked_count += 1
+                        print(f"Row {row_num}: Returned cylinder {cylinder_no} from customer {customer_no}")
+                    else:
+                        errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                else:
+                    # Default to rental if transaction type is unclear
+                    success = self.cylinder_model.rent_cylinder(
+                        cylinder['id'], 
+                        customer['id'], 
+                        transaction_date
+                    )
+                    if success:
+                        linked_count += 1
+                        print(f"Row {row_num}: Linked cylinder {cylinder_no} to customer {customer_no} (default rental)")
+                    else:
+                        errors.append(f"Row {row_num}: Failed to link cylinder {cylinder_no}")
+                
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
+                skipped_count += 1
+        
+        print(f"Transaction import completed: {imported_count} processed, {linked_count} linked, {skipped_count} skipped")
+        return imported_count, skipped_count, errors
+    
+    def suggest_transaction_field_mapping(self, table_name: str) -> Dict[str, str]:
+        """Suggest field mapping for transaction table"""
+        columns = self.access_connector.get_table_columns(table_name)
+        column_names = [col['name'].lower() for col in columns]
+        
+        mapping = {}
+        
+        # Transaction field mappings
+        field_suggestions = {
+            'customer_no': ['customer_no', 'customer_number', 'cust_no', 'customer_id', 'customer_code'],
+            'cylinder_no': ['cylinder_no', 'cylinder_number', 'cylinder_id', 'serial_number', 'cylinder_serial'],
+            'transaction_date': ['transaction_date', 'date', 'trans_date', 'issue_date', 'rental_date'],
+            'transaction_type': ['transaction_type', 'type', 'trans_type', 'operation', 'action'],
+            'quantity': ['quantity', 'qty', 'amount', 'count'],
+            'notes': ['notes', 'comments', 'remarks', 'description', 'details']
+        }
+        
+        # Find best matches
+        for target_field, suggestions in field_suggestions.items():
+            for suggestion in suggestions:
+                if suggestion in column_names:
+                    # Find the actual column name (with original case)
+                    for col in columns:
+                        if col['name'].lower() == suggestion:
+                            mapping[target_field] = col['name']
+                            break
+                    break
+        
+        return mapping
+    
     def close_connection(self):
         """Close Access database connection"""
         self.access_connector.close()

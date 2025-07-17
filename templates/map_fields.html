@@ -18,7 +18,7 @@
             </nav>
             <p class="lead">
                 Table: <strong>{{ table_name }}</strong> → 
-                <span class="badge bg-{{ 'primary' if import_type == 'customer' else 'info' }}">
+                <span class="badge bg-{{ 'primary' if import_type == 'customer' else ('info' if import_type == 'cylinder' else 'success') }}">
                     {{ import_type.title() }} Data
                 </span>
             </p>
@@ -53,8 +53,10 @@
                                 <div class="form-text">
                                     {% if import_type == 'customer' %}
                                     Skip customers with duplicate email addresses
-                                    {% else %}
+                                    {% elif import_type == 'cylinder' %}
                                     Skip cylinders with duplicate serial numbers
+                                    {% else %}
+                                    Skip duplicate transaction records
                                     {% endif %}
                                 </div>
                             </div>
@@ -64,23 +66,34 @@
 
                         {% if import_type == 'customer' %}
                         {% set target_fields = [
-                            ('name', 'Name', true),
-                            ('email', 'Email', true),
-                            ('phone', 'Phone', true),
-                            ('address', 'Address', true),
-                            ('company', 'Company', false),
-                            ('notes', 'Notes', false)
+                            ('customer_no', 'Customer No', true),
+                            ('customer_name', 'Customer Name', true),
+                            ('customer_address', 'Address', true),
+                            ('customer_city', 'City', true),
+                            ('customer_state', 'State', true),
+                            ('customer_phone', 'Phone', true),
+                            ('customer_apgst', 'APGST Number', false),
+                            ('customer_cst', 'CST Number', false)
                         ] %}
-                        {% else %}
+                        {% elif import_type == 'cylinder' %}
                         {% set target_fields = [
                             ('serial_number', 'Serial Number', true),
                             ('type', 'Type', true),
                             ('size', 'Size', true),
-                            ('status', 'Status', true),
-                            ('location', 'Location', true),
+                            ('status', 'Status', false),
+                            ('location', 'Location', false),
                             ('pressure', 'Pressure', false),
                             ('last_inspection', 'Last Inspection', false),
                             ('next_inspection', 'Next Inspection', false),
+                            ('notes', 'Notes', false)
+                        ] %}
+                        {% else %}
+                        {% set target_fields = [
+                            ('customer_no', 'Customer No', true),
+                            ('cylinder_no', 'Cylinder No', true),
+                            ('transaction_date', 'Transaction Date', false),
+                            ('transaction_type', 'Transaction Type', false),
+                            ('quantity', 'Quantity', false),
                             ('notes', 'Notes', false)
                         ] %}
                         {% endif %}
