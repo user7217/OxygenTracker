@@ -1,34 +1,3 @@
-"""
-Varasai Oxygen Cylinder Tracker - Flask Routes and Application Logic
-
-Flask routes and application logic for the cylinder management system.
-
-Features:
-- Complete CRUD operations for customers and cylinders
-- Advanced pagination system for large datasets (5000+ cylinders)
-- Role-based access control (Admin, User, Viewer)
-- Search and filtering capabilities
-- Bulk cylinder operations and rental management
-- Data import from MS Access databases
-- CSV and PDF export functionality
-- Transaction management for customer-cylinder relationships
-- Responsive web interface with mobile optimization
-
-Route Categories:
-- Authentication: Login, logout, user management
-- Dashboard: Main interface and metrics
-- Customers: Customer management with Access-compatible fields
-- Cylinders: Cylinder inventory with rental tracking and pagination
-- Bulk Operations: Multi-cylinder rental/return operations
-- Import/Export: Data migration and reporting
-- Search: Global search across customers and cylinders
-- Admin: User management and system administration
-
-Author: Development Team
-Date: July 2025
-Version: 2.0
-"""
-
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, Response
 import csv
 import io
@@ -46,8 +15,7 @@ from functools import wraps
 import os
 import tempfile
 
-# Try to import Access functionality with graceful degradation
-# MS Access import is optional - system works without it
+# Try to import Access functionality
 try:
     from data_importer import DataImporter
     ACCESS_AVAILABLE = True
@@ -56,8 +24,7 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
-# Try to import Email functionality with graceful degradation
-# Email service is optional - system works without it
+# Try to import Email functionality
 try:
     from email_service import EmailService
     email_service = EmailService()
@@ -68,11 +35,11 @@ except ImportError as e:
     import logging
     logging.warning(f"Email functionality not available: {e}")
 
-# Initialize user manager for authentication and authorization
+# Initialize user manager
 user_manager = UserManager()
 
 def login_required(f):
-    """Decorator to require user authentication for routes"""
+    """Decorator to require login for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -82,7 +49,7 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """Decorator to require admin role for routes"""
+    """Decorator to require admin role"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -114,7 +81,7 @@ def user_or_admin_required(f):
     return decorated_function
 
 def admin_or_user_can_edit(f):
-    """Decorator for admin-only data modification routes"""
+    """Decorator for routes that only admin can access (users can only rent/return)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -129,50 +96,31 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize data models for business logic operations
+# Initialize models
 customer_model = Customer()
 cylinder_model = Cylinder()
 
-# ============================================================================
-# AUTHENTICATION ROUTES
-# ============================================================================
-
+# Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    User authentication and session management
-    
-    Handles user login with username/password authentication. Creates secure
-    session with user ID, username, and role information. Supports redirect
-    to requested page after successful login.
-    
-    GET: Display login form
-    POST: Process login credentials and create session
-    
-    Returns:
-        GET: Login template
-        POST: Redirect to dashboard or requested page on success, login form on failure
-    """
+    """User login"""
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         
-        # Validate required fields
         if not username or not password:
             flash('Please enter both username and password', 'error')
             return render_template('login.html')
         
-        # Authenticate user credentials
         user = user_manager.authenticate_user(username, password)
         if user:
-            # Create secure session
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user.get('role', 'user')
             
             flash(f'Welcome back, {user["username"]}!', 'success')
             
-            # Handle redirect to originally requested page
+            # Redirect to next page if specified
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
@@ -184,15 +132,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """
-    User logout and session cleanup
-    
-    Clears all session data and redirects to login page with farewell message.
-    Ensures complete session cleanup for security.
-    
-    Returns:
-        Redirect to login page with logout message
-    """
+    """User logout"""
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -253,35 +193,14 @@ def users():
     all_users = user_manager.get_all_users()
     return render_template('users.html', users=all_users)
 
-# ============================================================================
-# DASHBOARD AND MAIN ROUTES
-# ============================================================================
-
 @app.route('/')
 @login_required
 def index():
-    """
-    Main dashboard with system overview and statistics
-    
-    Displays comprehensive system statistics including cylinder inventory,
-    customer counts, utilization rates, and operational metrics. Provides
-    quick access to key system information for all user roles.
-    
-    Features:
-    - Total customers and cylinders count
-    - Cylinder status breakdown (available, rented, maintenance)
-    - Utilization rate calculation
-    - System efficiency metrics
-    - Growth rate and operational days
-    - Role-based information display
-    
-    Returns:
-        Dashboard template with comprehensive system statistics
-    """
+    """Dashboard showing overview with fun statistics"""
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
-    # Calculate cylinder status distribution
+    # Get cylinder status counts
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
     rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])

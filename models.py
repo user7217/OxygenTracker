@@ -1,21 +1,3 @@
-"""
-Varasai Oxygen Cylinder Tracker - Data Models
-
-JSON-based database system for customers, cylinders, and user data.
-
-Features:
-- JSONDatabase: Base class for file-based JSON storage
-- Customer: Customer management with Access-compatible fields
-- Cylinder: Cylinder inventory with rental tracking
-- User: Authentication and role-based access control
-
-Uses JSON files in 'data/' directory for persistence.
-
-Author: Development Team
-Date: July 2025
-Version: 2.0
-"""
-
 import json
 import os
 import uuid
@@ -23,20 +5,9 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 class JSONDatabase:
-    """
-    Base class for JSON database operations
-    
-    Provides fundamental database operations for JSON file-based storage.
-    Handles file creation, data loading, and saving with error handling.
-    
-    Attributes:
-        filename (str): JSON file name
-        data_dir (str): Data directory path
-        filepath (str): Full file path
-    """
+    """Base class for JSON database operations"""
     
     def __init__(self, filename: str):
-        """Initialize JSON database with filename"""
         self.filename = filename
         self.data_dir = "data"
         self.filepath = os.path.join(self.data_dir, filename)
@@ -44,18 +15,18 @@ class JSONDatabase:
         self._ensure_file_exists()
     
     def _ensure_data_directory(self):
-        """Create data directory if missing"""
+        """Create data directory if it doesn't exist"""
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
     
     def _ensure_file_exists(self):
-        """Create JSON file with empty list if missing"""
+        """Create file with empty list if it doesn't exist"""
         if not os.path.exists(self.filepath):
             with open(self.filepath, 'w') as f:
                 json.dump([], f)
     
     def load_data(self) -> List[Dict]:
-        """Load data from JSON file, return empty list if error"""
+        """Load data from JSON file"""
         try:
             with open(self.filepath, 'r') as f:
                 return json.load(f)
@@ -63,38 +34,26 @@ class JSONDatabase:
             return []
     
     def save_data(self, data: List[Dict]):
-        """Save data to JSON file with indentation"""
+        """Save data to JSON file"""
         with open(self.filepath, 'w') as f:
             json.dump(data, f, indent=2, default=str)
 
 class Customer:
-    """
-    Customer model for managing customer data
-    
-    Handles CRUD operations, search, and data validation.
-    Supports both legacy format (name, email, phone, address, company) 
-    and new Access-compatible format (customer_no, customer_name, etc.).
-    
-    Maintains backward compatibility with existing data.
-    
-    Attributes:
-        db (JSONDatabase): JSON database instance
-    """
+    """Customer model for managing customer data"""
     
     def __init__(self):
-        """Initialize Customer model with JSON database"""
         self.db = JSONDatabase("customers.json")
     
     def generate_id(self) -> str:
-        """Generate unique customer ID in format 'CUST-XXXXXXXX'"""
+        """Generate unique customer ID"""
         return f"CUST-{str(uuid.uuid4())[:8].upper()}"
     
     def get_all(self) -> List[Dict]:
-        """Get all customer records"""
+        """Get all customers"""
         return self.db.load_data()
     
     def get_by_id(self, customer_id: str) -> Optional[Dict]:
-        """Get customer by ID, return None if not found"""
+        """Get customer by ID"""
         customers = self.db.load_data()
         for customer in customers:
             if customer.get('id') == customer_id:
@@ -102,10 +61,10 @@ class Customer:
         return None
     
     def add(self, customer_data: Dict) -> Dict:
-        """Add new customer with auto-generated ID and timestamps"""
+        """Add new customer"""
         customers = self.db.load_data()
         
-        # Generate ID and timestamps
+        # Generate unique ID
         customer_data['id'] = self.generate_id()
         customer_data['created_at'] = datetime.now().isoformat()
         customer_data['updated_at'] = datetime.now().isoformat()

@@ -1,21 +1,3 @@
-"""
-Varasai Oxygen Cylinder Tracker - Authentication Models
-
-User authentication, authorization, and user management.
-
-Features:
-- Role-based access control (Admin, User, Viewer)
-- Secure password hashing (Werkzeug scrypt)
-- Session management and authentication
-- Default admin user creation
-- User CRUD operations with validation
-- Login tracking and audit logs
-
-Author: Development Team
-Date: July 2025
-Version: 2.0
-"""
-
 import json
 import os
 import uuid
@@ -25,24 +7,9 @@ from typing import List, Dict, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class UserManager:
-    """
-    User management for authentication and authorization
-    
-    Handles user operations including authentication, user creation, 
-    role management, and session handling.
-    
-    Three-tier role system: Admin (full access), User (operations), 
-    Viewer (read-only access).
-    
-    Auto-creates default admin user (admin/admin123) if none exist.
-    
-    Attributes:
-        data_dir (str): Data storage directory
-        users_file (str): Users JSON file path
-    """
+    """User management for authentication"""
     
     def __init__(self):
-        """Initialize UserManager with file setup and default admin creation"""
         self.data_dir = "data"
         self.users_file = os.path.join(self.data_dir, "users.json")
         self._ensure_data_directory()
@@ -50,18 +17,18 @@ class UserManager:
         self._create_default_admin()
     
     def _ensure_data_directory(self):
-        """Create data directory if missing"""
+        """Create data directory if it doesn't exist"""
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
     
     def _ensure_users_file(self):
-        """Create users file with empty list if missing"""
+        """Create users file with empty list if it doesn't exist"""
         if not os.path.exists(self.users_file):
             with open(self.users_file, 'w') as f:
                 json.dump([], f)
     
     def _create_default_admin(self):
-        """Create default admin user if none exist (admin/admin123)"""
+        """Create default admin user if no users exist"""
         users = self.load_users()
         if not users:
             admin_user = {

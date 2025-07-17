@@ -1,26 +1,3 @@
-"""
-Varasai Oxygen Cylinder Tracker - Data Import System
-
-Imports data from MS Access databases to JSON storage.
-
-Features:
-- MS Access database connectivity via pyodbc
-- Intelligent field mapping with suggestions
-- Data validation and duplicate checking
-- Transaction import for customer-cylinder relationships
-- Error handling and logging
-- Preview functionality for data validation
-
-Import Types:
-- Customer data: Complete customer info with new field structure
-- Cylinder data: Cylinder inventory with rental tracking
-- Transaction data: Customer-cylinder relationships and activities
-
-Author: Development Team
-Date: July 2025
-Version: 2.0
-"""
-
 from access_connector import AccessConnector
 from models import Customer, Cylinder
 from typing import List, Dict, Optional, Tuple
@@ -29,42 +6,24 @@ import uuid
 from datetime import datetime
 
 class DataImporter:
-    """
-    Import data from MS Access databases to JSON storage
-    
-    Provides data import functionality from MS Access to JSON storage.
-    Handles field mapping, data validation, duplicate checking, and 
-    maintains data integrity during import process.
-    
-    Supports three import types:
-    1. Customer data - Complete customer information
-    2. Cylinder data - Cylinder inventory and specifications
-    3. Transaction data - Customer-cylinder relationships and activities
-    
-    Attributes:
-        access_connector (AccessConnector): MS Access database connector
-        customer_model (Customer): Customer data model
-        cylinder_model (Cylinder): Cylinder data model
-        logger (logging.Logger): Import operation logger
-    """
+    """Import data from MS Access to JSON databases"""
     
     def __init__(self):
-        """Initialize DataImporter with Access connector, models, and logger"""
         self.access_connector = AccessConnector()
         self.customer_model = Customer()
         self.cylinder_model = Cylinder()
         self.logger = logging.getLogger(__name__)
     
     def connect_to_access(self, file_path: str) -> bool:
-        """Connect to MS Access database file"""
+        """Connect to Access database"""
         return self.access_connector.connect(file_path)
     
     def get_available_tables(self) -> List[str]:
-        """Get list of available tables from connected database"""
+        """Get list of available tables"""
         return self.access_connector.get_tables()
     
     def preview_table(self, table_name: str, rows: int = 5) -> Tuple[List[Dict], List[Dict]]:
-        """Preview table data and structure with specified number of rows"""
+        """Preview table data and structure"""
         columns = self.access_connector.get_table_columns(table_name)
         data = self.access_connector.preview_table_data(table_name, rows)
         return columns, data
