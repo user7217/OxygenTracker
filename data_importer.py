@@ -1,3 +1,28 @@
+"""
+Varasai Oxygen Cylinder Tracker - Data Import System
+
+This module handles importing data from MS Access databases to the JSON-based
+storage system. It provides intelligent field mapping, data validation, and
+comprehensive import capabilities for customers, cylinders, and transactions.
+
+Key Features:
+- MS Access database connectivity via pyodbc
+- Intelligent field mapping with suggestions
+- Data validation and duplicate checking
+- Transaction import for customer-cylinder relationships
+- Comprehensive error handling and logging
+- Preview functionality for data validation
+
+Import Types Supported:
+- Customer data: Complete customer information with new field structure
+- Cylinder data: Cylinder inventory with rental tracking
+- Transaction data: Customer-cylinder relationships and rental activities
+
+Author: Development Team
+Date: July 2025
+Version: 2.0
+"""
+
 from access_connector import AccessConnector
 from models import Customer, Cylinder
 from typing import List, Dict, Optional, Tuple
@@ -6,24 +31,70 @@ import uuid
 from datetime import datetime
 
 class DataImporter:
-    """Import data from MS Access to JSON databases"""
+    """
+    Import data from MS Access databases to JSON storage
+    
+    This class provides comprehensive data import functionality from MS Access
+    databases to the JSON-based storage system. It handles field mapping,
+    data validation, duplicate checking, and maintains data integrity during
+    the import process.
+    
+    The system supports three types of imports:
+    1. Customer data - Complete customer information
+    2. Cylinder data - Cylinder inventory and specifications
+    3. Transaction data - Customer-cylinder relationships and rental activities
+    
+    Attributes:
+        access_connector (AccessConnector): MS Access database connector
+        customer_model (Customer): Customer data model
+        cylinder_model (Cylinder): Cylinder data model
+        logger (logging.Logger): Logger for tracking import operations
+    """
     
     def __init__(self):
+        """
+        Initialize DataImporter with necessary components
+        
+        Sets up the Access connector, data models, and logging system
+        for comprehensive data import operations.
+        """
         self.access_connector = AccessConnector()
         self.customer_model = Customer()
         self.cylinder_model = Cylinder()
         self.logger = logging.getLogger(__name__)
     
     def connect_to_access(self, file_path: str) -> bool:
-        """Connect to Access database"""
+        """
+        Connect to MS Access database
+        
+        Args:
+            file_path (str): Path to the MS Access database file
+            
+        Returns:
+            bool: True if connection successful, False otherwise
+        """
         return self.access_connector.connect(file_path)
     
     def get_available_tables(self) -> List[str]:
-        """Get list of available tables"""
+        """
+        Get list of available tables from connected database
+        
+        Returns:
+            List[str]: List of table names in the database
+        """
         return self.access_connector.get_tables()
     
     def preview_table(self, table_name: str, rows: int = 5) -> Tuple[List[Dict], List[Dict]]:
-        """Preview table data and structure"""
+        """
+        Preview table data and structure
+        
+        Args:
+            table_name (str): Name of the table to preview
+            rows (int): Number of rows to preview (default: 5)
+            
+        Returns:
+            Tuple[List[Dict], List[Dict]]: Column information and sample data
+        """
         columns = self.access_connector.get_table_columns(table_name)
         data = self.access_connector.preview_table_data(table_name, rows)
         return columns, data

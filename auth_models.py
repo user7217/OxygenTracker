@@ -1,3 +1,28 @@
+"""
+Varasai Oxygen Cylinder Tracker - Authentication Models
+
+This module handles user authentication, authorization, and user management
+for the Varasai Oxygen Cylinder Tracker application.
+
+Key Features:
+- Role-based access control (Admin, User, Viewer)
+- Secure password hashing using Werkzeug
+- Session management and user authentication
+- Default admin user creation
+- User CRUD operations with proper validation
+
+Security Features:
+- Password hashing using scrypt algorithm (Werkzeug default)
+- Session-based authentication
+- Role-based permission system
+- Account activation/deactivation
+- Login tracking and audit logs
+
+Author: Development Team
+Date: July 2025
+Version: 2.0
+"""
+
 import json
 import os
 import uuid
@@ -7,9 +32,29 @@ from typing import List, Dict, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class UserManager:
-    """User management for authentication"""
+    """
+    User management for authentication and authorization
+    
+    This class handles all user-related operations including authentication,
+    user creation, role management, and session handling. It implements a
+    three-tier role system: Admin (full access), User (operations), and
+    Viewer (read-only access).
+    
+    The system automatically creates a default admin user (admin/admin123)
+    if no users exist in the system.
+    
+    Attributes:
+        data_dir (str): Directory for data storage
+        users_file (str): Path to users JSON file
+    """
     
     def __init__(self):
+        """
+        Initialize UserManager with file setup and default admin creation
+        
+        Sets up the data directory, ensures users file exists, and creates
+        a default admin user if the system is empty.
+        """
         self.data_dir = "data"
         self.users_file = os.path.join(self.data_dir, "users.json")
         self._ensure_data_directory()
@@ -17,18 +62,38 @@ class UserManager:
         self._create_default_admin()
     
     def _ensure_data_directory(self):
-        """Create data directory if it doesn't exist"""
+        """
+        Create data directory if it doesn't exist
+        
+        Ensures the data directory exists for storing user data.
+        Called automatically during initialization.
+        """
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
     
     def _ensure_users_file(self):
-        """Create users file with empty list if it doesn't exist"""
+        """
+        Create users file with empty list if it doesn't exist
+        
+        Initializes the users.json file with an empty array if it doesn't exist.
+        This prevents file not found errors during user operations.
+        """
         if not os.path.exists(self.users_file):
             with open(self.users_file, 'w') as f:
                 json.dump([], f)
     
     def _create_default_admin(self):
-        """Create default admin user if no users exist"""
+        """
+        Create default admin user if no users exist
+        
+        Creates a default admin user with credentials:
+        - Username: admin
+        - Password: admin123
+        - Role: admin
+        - Email: admin@oxygentracker.com
+        
+        This ensures the system is always accessible even on fresh installations.
+        """
         users = self.load_users()
         if not users:
             admin_user = {

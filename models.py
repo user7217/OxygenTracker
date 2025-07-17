@@ -1,3 +1,24 @@
+"""
+Varasai Oxygen Cylinder Tracker - Data Models
+
+This module contains the data models for the Varasai Oxygen Cylinder Tracker application.
+It implements a JSON-based database system for storing and managing customers, cylinders,
+and user authentication data.
+
+Key Features:
+- JSONDatabase: Base class for file-based JSON data storage
+- Customer: Model for managing customer information with new Access-compatible fields
+- Cylinder: Model for managing cylinder inventory with rental tracking
+- User: Model for user authentication and role-based access control
+
+The system uses JSON files stored in the 'data/' directory for persistence,
+providing a simple yet effective database solution without external dependencies.
+
+Author: Development Team
+Date: July 2025
+Version: 2.0
+"""
+
 import json
 import os
 import uuid
@@ -5,9 +26,26 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 class JSONDatabase:
-    """Base class for JSON database operations"""
+    """
+    Base class for JSON database operations
+    
+    This class provides the fundamental database operations for JSON file-based storage.
+    It handles file creation, data loading, and saving with proper error handling.
+    All model classes inherit from this base class to ensure consistent data operations.
+    
+    Attributes:
+        filename (str): Name of the JSON file for this database
+        data_dir (str): Directory path where JSON files are stored
+        filepath (str): Full path to the JSON file
+    """
     
     def __init__(self, filename: str):
+        """
+        Initialize JSON database with specified filename
+        
+        Args:
+            filename (str): Name of the JSON file (e.g., 'customers.json')
+        """
         self.filename = filename
         self.data_dir = "data"
         self.filepath = os.path.join(self.data_dir, filename)
@@ -15,18 +53,35 @@ class JSONDatabase:
         self._ensure_file_exists()
     
     def _ensure_data_directory(self):
-        """Create data directory if it doesn't exist"""
+        """
+        Create data directory if it doesn't exist
+        
+        This method ensures the 'data' directory exists before any file operations.
+        Called automatically during initialization.
+        """
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
     
     def _ensure_file_exists(self):
-        """Create file with empty list if it doesn't exist"""
+        """
+        Create JSON file with empty list if it doesn't exist
+        
+        This method initializes the JSON file with an empty array if the file
+        doesn't exist. This prevents FileNotFoundError during data operations.
+        """
         if not os.path.exists(self.filepath):
             with open(self.filepath, 'w') as f:
                 json.dump([], f)
     
     def load_data(self) -> List[Dict]:
-        """Load data from JSON file"""
+        """
+        Load data from JSON file
+        
+        Returns:
+            List[Dict]: List of dictionaries representing data records
+            
+        Returns empty list if file doesn't exist or contains invalid JSON.
+        """
         try:
             with open(self.filepath, 'r') as f:
                 return json.load(f)
@@ -34,26 +89,69 @@ class JSONDatabase:
             return []
     
     def save_data(self, data: List[Dict]):
-        """Save data to JSON file"""
+        """
+        Save data to JSON file
+        
+        Args:
+            data (List[Dict]): List of dictionaries to save
+            
+        The data is saved with proper indentation for readability.
+        The default=str parameter handles datetime objects and other non-serializable types.
+        """
         with open(self.filepath, 'w') as f:
             json.dump(data, f, indent=2, default=str)
 
 class Customer:
-    """Customer model for managing customer data"""
+    """
+    Customer model for managing customer data
+    
+    This model handles all customer-related operations including CRUD operations,
+    search functionality, and data validation. It supports both the legacy customer
+    format (name, email, phone, address, company) and the new Access-compatible 
+    format (customer_no, customer_name, customer_email, customer_phone, 
+    customer_address, customer_city, customer_state, customer_apgst, customer_cst).
+    
+    The system maintains backward compatibility with existing customer data
+    while supporting the enhanced field structure required for Access database imports.
+    
+    Attributes:
+        db (JSONDatabase): JSON database instance for customer data storage
+    """
     
     def __init__(self):
+        """Initialize Customer model with JSON database"""
         self.db = JSONDatabase("customers.json")
     
     def generate_id(self) -> str:
-        """Generate unique customer ID"""
+        """
+        Generate unique customer ID
+        
+        Returns:
+            str: Unique customer ID in format 'CUST-XXXXXXXX'
+            
+        Uses UUID4 for uniqueness and truncates to 8 characters for readability.
+        """
         return f"CUST-{str(uuid.uuid4())[:8].upper()}"
     
     def get_all(self) -> List[Dict]:
-        """Get all customers"""
+        """
+        Get all customers
+        
+        Returns:
+            List[Dict]: List of all customer records
+        """
         return self.db.load_data()
     
     def get_by_id(self, customer_id: str) -> Optional[Dict]:
-        """Get customer by ID"""
+        """
+        Get customer by ID
+        
+        Args:
+            customer_id (str): Unique customer ID
+            
+        Returns:
+            Optional[Dict]: Customer record if found, None otherwise
+        """
         customers = self.db.load_data()
         for customer in customers:
             if customer.get('id') == customer_id:
@@ -61,10 +159,20 @@ class Customer:
         return None
     
     def add(self, customer_data: Dict) -> Dict:
-        """Add new customer"""
+        """
+        Add new customer
+        
+        Args:
+            customer_data (Dict): Customer information dictionary
+            
+        Returns:
+            Dict: Complete customer record with generated ID and timestamps
+            
+        Automatically generates unique ID and adds creation/update timestamps.
+        """
         customers = self.db.load_data()
         
-        # Generate unique ID
+        # Generate unique ID and add timestamps
         customer_data['id'] = self.generate_id()
         customer_data['created_at'] = datetime.now().isoformat()
         customer_data['updated_at'] = datetime.now().isoformat()
