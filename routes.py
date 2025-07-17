@@ -607,7 +607,7 @@ def cylinders():
         if not cylinder.get('customer_name') and cylinder.get('rented_to'):
             # Fallback: get customer name if not stored
             customer = customer_model.get_by_id(cylinder['rented_to'])
-            cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
+            cylinder['customer_name'] = (customer.get('customer_name', '') or customer.get('name', '') or 'Unknown Customer') if customer else 'Unknown Customer'
     
     # Calculate pagination
     total_cylinders = len(cylinders_list)
@@ -702,8 +702,8 @@ def add_cylinder():
                 return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
-            cylinder_data['customer_name'] = customer.get('name', '')
-            cylinder_data['customer_email'] = customer.get('email', '')
+            cylinder_data['customer_name'] = customer.get('customer_name', '') or customer.get('name', '')
+            cylinder_data['customer_email'] = customer.get('customer_email', '') or customer.get('email', '')
             
             # Handle rental date from form or use current date
             rental_date = request.form.get('rental_date', '').strip()
