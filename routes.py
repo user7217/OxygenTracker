@@ -454,27 +454,28 @@ def customers():
 def add_customer():
     """Add new customer"""
     if request.method == 'POST':
-        # Validate required fields (email is now optional)
-        required_fields = ['name', 'phone', 'address']
+        # Validate required fields for new customer structure
+        # Required: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone
+        # Optional: customer_apgst, customer_cst
+        required_fields = ['customer_no', 'customer_name', 'customer_address', 'customer_city', 'customer_state', 'customer_phone']
         customer_data = {}
         
         for field in required_fields:
             value = request.form.get(field, '').strip()
             if not value:
-                flash(f'{field.title()} is required', 'error')
+                # Create user-friendly field names for error messages
+                display_name = field.replace('customer_', '').replace('_', ' ').title()
+                flash(f'{display_name} is required', 'error')
                 return render_template('add_customer.html')
             customer_data[field] = value
         
-        # Add email (optional)
-        customer_data['email'] = request.form.get('email', '').strip()
-        
         # Add optional fields
-        customer_data['company'] = request.form.get('company', '').strip()
-        customer_data['notes'] = request.form.get('notes', '').strip()
+        customer_data['customer_apgst'] = request.form.get('customer_apgst', '').strip()
+        customer_data['customer_cst'] = request.form.get('customer_cst', '').strip()
         
         try:
             new_customer = customer_model.add(customer_data)
-            flash(f'Customer {new_customer["name"]} added successfully with ID: {new_customer["id"]}', 'success')
+            flash(f'Customer {new_customer["customer_name"]} added successfully with ID: {new_customer["id"]}', 'success')
             return redirect(url_for('customers'))
         except Exception as e:
             flash(f'Error adding customer: {str(e)}', 'error')
@@ -491,28 +492,29 @@ def edit_customer(customer_id):
         return redirect(url_for('customers'))
     
     if request.method == 'POST':
-        # Validate required fields (email is now optional)
-        required_fields = ['name', 'phone', 'address']
+        # Validate required fields for new customer structure
+        # Required: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone
+        # Optional: customer_apgst, customer_cst
+        required_fields = ['customer_no', 'customer_name', 'customer_address', 'customer_city', 'customer_state', 'customer_phone']
         customer_data = {}
         
         for field in required_fields:
             value = request.form.get(field, '').strip()
             if not value:
-                flash(f'{field.title()} is required', 'error')
+                # Create user-friendly field names for error messages
+                display_name = field.replace('customer_', '').replace('_', ' ').title()
+                flash(f'{display_name} is required', 'error')
                 return render_template('edit_customer.html', customer=customer)
             customer_data[field] = value
         
-        # Add email (optional)
-        customer_data['email'] = request.form.get('email', '').strip()
-        
         # Add optional fields
-        customer_data['company'] = request.form.get('company', '').strip()
-        customer_data['notes'] = request.form.get('notes', '').strip()
+        customer_data['customer_apgst'] = request.form.get('customer_apgst', '').strip()
+        customer_data['customer_cst'] = request.form.get('customer_cst', '').strip()
         
         try:
             updated_customer = customer_model.update(customer_id, customer_data)
             if updated_customer:
-                flash(f'Customer {updated_customer["name"]} updated successfully', 'success')
+                flash(f'Customer {updated_customer["customer_name"]} updated successfully', 'success')
                 return redirect(url_for('customers'))
             else:
                 flash('Error updating customer', 'error')

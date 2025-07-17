@@ -36,14 +36,16 @@ class DataImporter:
         mapping = {}
         
         if target_type == 'customer':
-            # Customer field mappings
+            # Customer field mappings - Updated to match Access database structure
             field_suggestions = {
-                'name': ['name', 'customer_name', 'fullname', 'full_name', 'client_name'],
-                'email': ['email', 'email_address', 'e_mail'],
-                'phone': ['phone', 'telephone', 'mobile', 'phone_number', 'contact'],
-                'address': ['address', 'street_address', 'full_address', 'location'],
-                'company': ['company', 'organization', 'business', 'firm'],
-                'notes': ['notes', 'comments', 'remarks', 'description']
+                'customer_no': ['customer_no', 'customer_number', 'cust_no', 'customer_id', 'customer_code'],
+                'customer_name': ['customer_name', 'name', 'fullname', 'full_name', 'client_name'],
+                'customer_address': ['customer_address', 'address', 'street_address', 'full_address'],
+                'customer_city': ['customer_city', 'city', 'town', 'location_city'],
+                'customer_state': ['customer_state', 'state', 'province', 'location_state'],
+                'customer_phone': ['customer_phone', 'phone', 'telephone', 'mobile', 'phone_number', 'contact'],
+                'customer_apgst': ['customer_apgst', 'apgst', 'ap_gst', 'gst_number', 'gst_no'],
+                'customer_cst': ['customer_cst', 'cst', 'cst_number', 'cst_no', 'central_tax']
             }
         elif target_type == 'cylinder':
             # Cylinder field mappings
@@ -82,10 +84,10 @@ class DataImporter:
         skipped_count = 0
         errors = []
         
-        existing_emails = []
+        # Get existing customers for duplicate checking
+        existing_customers = []
         if skip_duplicates:
             existing_customers = self.customer_model.get_all()
-            existing_emails = [c.get('email', '').lower() for c in existing_customers]
         
         for row in data:
             try:
@@ -95,8 +97,10 @@ class DataImporter:
                     if source_field in row and row[source_field] is not None:
                         customer_data[target_field] = str(row[source_field]).strip()
                 
-                # Check required fields (email is now optional)
-                required_fields = ['name', 'phone', 'address']
+                # Check required fields for new customer structure
+                # Required: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone
+                # Optional: customer_apgst, customer_cst
+                required_fields = ['customer_no', 'customer_name', 'customer_address', 'customer_city', 'customer_state', 'customer_phone']
                 missing_fields = [f for f in required_fields if not customer_data.get(f)]
                 
                 if missing_fields:
@@ -104,18 +108,20 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Set default email if not provided
-                if not customer_data.get('email'):
-                    customer_data['email'] = ''
+                # Set default values for optional fields
+                if not customer_data.get('customer_apgst'):
+                    customer_data['customer_apgst'] = ''
+                if not customer_data.get('customer_cst'):
+                    customer_data['customer_cst'] = ''
                 
-                # Check for duplicates (only if email is provided)
-                if skip_duplicates and customer_data['email'] and customer_data['email'].lower() in existing_emails:
+                # Check for duplicates using customer_no (unique identifier)
+                existing_customer_nos = [c.get('customer_no', '').lower() for c in existing_customers] if skip_duplicates else []
+                if skip_duplicates and customer_data['customer_no'].lower() in existing_customer_nos:
                     skipped_count += 1
                     continue
                 
                 # Add customer
                 self.customer_model.add(customer_data)
-                existing_emails.append(customer_data['email'].lower())
                 imported_count += 1
                 
             except Exception as e:

@@ -104,21 +104,28 @@ class Customer:
         return False
     
     def search(self, query: str) -> List[Dict]:
-        """Search customers by name, email, phone, address, company, and other fields"""
+        """Search customers by customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone, and other fields"""
         customers = self.db.load_data()
         query = query.lower()
         
         results = []
         for customer in customers:
-            # Search across multiple fields
+            # Search across multiple fields - updated for new customer structure
             searchable_fields = [
+                customer.get('customer_no', ''),
+                customer.get('customer_name', ''),
+                customer.get('customer_address', ''),
+                customer.get('customer_city', ''),
+                customer.get('customer_state', ''),
+                customer.get('customer_phone', ''),
+                customer.get('customer_apgst', ''),
+                customer.get('customer_cst', ''),
+                customer.get('id', ''),
+                # Legacy fields support for backward compatibility
                 customer.get('name', ''),
                 customer.get('email', ''),
                 customer.get('phone', ''),
-                customer.get('address', ''),
-                customer.get('company', ''),
-                customer.get('notes', ''),
-                customer.get('id', '')
+                customer.get('address', '')
             ]
             
             # Check if query matches any field
