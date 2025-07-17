@@ -1715,7 +1715,7 @@ def export_cylinders_pdf():
     story.append(Spacer(1, 12))
     
     if cylinders:
-        data = [['Serial#', 'Type', 'Size', 'Status', 'Location', 'Customer']]
+        data = [['Serial Number', 'Type', 'Size', 'Status', 'Location', 'Customer']]
         for i, cylinder in enumerate(cylinders):
             cylinder_type = cylinder.get('type', 'Other')
             display_serial = cylinder_model.get_serial_number(cylinder_type, i + 1)
