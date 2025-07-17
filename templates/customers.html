@@ -124,11 +124,12 @@
                                             <i class="bi bi-cylinder"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
-                                        <button type="button" class="btn btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <form method="POST" action="{{ url_for('delete_customer', customer_id=customer.id) }}" class="d-inline"
+                                              onsubmit="return confirm('Are you sure you want to delete customer {{ (customer.customer_name or customer.name or 'Unknown')|replace('\'', '\\\'') }}? This action cannot be undone.')">
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                         {% endif %}
                                     </div>
                                 {% endif %}
@@ -222,27 +223,7 @@
                                     </div>
                                     {% endif %}
 
-                                    <!-- Delete Confirmation Modal -->
-                                    <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Confirm Delete</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    Are you sure you want to delete customer <strong>{{ customer.name }}</strong>?
-                                                    <br><small class="text-muted">This action cannot be undone.</small>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form method="POST" action="{{ url_for('delete_customer', customer_id=customer.id) }}" class="d-inline">
-                                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+
                                 </td>
                             </tr>
                             {% endfor %}
