@@ -78,7 +78,6 @@ class UserManager:
         user = self.get_user_by_username(username)
         if user and user.get('is_active', True):
             if check_password_hash(user.get('password_hash', ''), password):
-                # Update last login
                 self.update_last_login(user['id'])
                 return user
         return None
@@ -96,7 +95,6 @@ class UserManager:
         """Create a new user"""
         users = self.load_users()
         
-        # Check if username or email already exists
         for user in users:
             if user.get('username') == username:
                 raise ValueError("Username already exists")
@@ -125,7 +123,7 @@ class UserManager:
         safe_users = []
         for user in users:
             safe_user = user.copy()
-            safe_user.pop('password_hash', None)  # Remove password hash
+            safe_user.pop('password_hash', None)
             safe_users.append(safe_user)
         return safe_users
     
@@ -135,19 +133,16 @@ class UserManager:
         
         for i, user in enumerate(users):
             if user.get('id') == user_id:
-                # Update allowed fields
                 allowed_fields = ['email', 'role', 'is_active']
                 for field, value in kwargs.items():
                     if field in allowed_fields:
                         users[i][field] = value
                 
-                # Handle password update separately
                 if 'password' in kwargs:
                     users[i]['password_hash'] = generate_password_hash(kwargs['password'])
                 
                 self.save_users(users)
                 
-                # Return safe user data
                 safe_user = users[i].copy()
                 safe_user.pop('password_hash', None)
                 return safe_user
@@ -160,7 +155,6 @@ class UserManager:
         
         for i, user in enumerate(users):
             if user.get('id') == user_id:
-                # Don't allow deleting the last admin
                 if user.get('role') == 'admin':
                     admin_count = sum(1 for u in users if u.get('role') == 'admin' and u.get('is_active'))
                     if admin_count <= 1:

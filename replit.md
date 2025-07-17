@@ -115,6 +115,9 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 17, 2025: Removed all comments from Python code files for cleaner, more readable code with minimal file size. Updated user preference for clean code style without comments.
+- July 17, 2025: Fixed export system to use new customer field names (customer_name, customer_email, customer_phone, customer_address, customer_city, customer_state, customer_apgst, customer_cst) in CSV and PDF exports. Updated customer filter dropdown in cylinders page to display proper customer names with both old and new field format support.
+- July 17, 2025: Fixed customer table button uniformity by changing from vertical to horizontal layout with consistent 32x32px button sizes and proper spacing for professional appearance.
 - July 17, 2025: Implemented pagination system for cylinders page to handle 5000+ cylinders efficiently. Added configurable items per page (25, 50, 100, 200), navigation controls with previous/next buttons, page number display, and item count information. Pagination preserves all search filters and sorting options for seamless user experience. Significantly improves loading performance for large datasets.
 - July 17, 2025: Enhanced transaction import system with comprehensive cylinder and customer relationship management. Transaction imports now automatically update cylinder locations to customer addresses, handle rental status based on return date presence, and maintain complete customer information on cylinders. Added rent_cylinder_with_location method for full address tracking. System intelligently determines rental status: if return_date is empty, cylinder remains "rented" with customer location; if return_date exists, cylinder is returned to "available" status at warehouse. All customer fields (name, phone, address, city, state) are tracked on rented cylinders.
 - July 17, 2025: Implemented transaction import system for linking customers and cylinders via foreign keys. Added comprehensive transaction import functionality using customer_no and cylinder_no as foreign keys to establish relationships between customers and cylinders. Transaction imports support rental/return operations with automatic status updates and date tracking. Updated field mapping interface to support transaction data imports alongside customer and cylinder data.
@@ -143,7 +146,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
-Code style: Add comprehensive comments to all code files going forward for better maintainability and understanding.
+Code style: Clean code without comments for minimal file size and better readability.
 Dashboard design: Clean and simple dashboard with core functionality only. Complex tools (bulk operations, barcode generator, calculator) removed. Metrics moved to separate dedicated tab for users who want detailed analytics.
 Email functionality: SendGrid integration added for sending admin statistics reports via email. Accessible from metrics page for administrators.
 Cylinder management: Enhanced with customer-wise filtering, rental tracking with start dates and duration calculation, touch-screen optimization with larger fonts and buttons for mobile/tablet use. Card-based layout for better touch interaction.

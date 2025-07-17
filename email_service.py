@@ -22,10 +22,8 @@ class EmailService:
             return False
         
         try:
-            # Create HTML email content
             html_content = self._generate_stats_html(stats)
             
-            # Create plain text version
             text_content = self._generate_stats_text(stats)
             
             message = Mail(
@@ -35,7 +33,6 @@ class EmailService:
                 html_content=Content("text/html", html_content)
             )
             
-            # Add plain text version
             message.add_content(Content("text/plain", text_content))
             
             response = self.sg.send(message)
@@ -55,14 +52,14 @@ class EmailService:
         <html>
         <head>
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; }}
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color:
                 .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-                .header {{ background: #007bff; color: white; padding: 20px; text-align: center; }}
+                .header {{ background:
                 .content {{ padding: 30px; }}
-                .stat-card {{ background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 10px 0; }}
-                .stat-number {{ font-size: 24px; font-weight: bold; color: #007bff; }}
-                .stat-label {{ color: #666; font-size: 14px; }}
-                .footer {{ background: #f8f9fa; padding: 15px; text-align: center; color: #666; font-size: 12px; }}
+                .stat-card {{ background:
+                .stat-number {{ font-size: 24px; font-weight: bold; color:
+                .stat-label {{ color:
+                .footer {{ background:
             </style>
         </head>
         <body>

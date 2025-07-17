@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test script to diagnose local development issues with Varasai Oxygen
 """
@@ -35,7 +34,6 @@ def test_data_directory():
     else:
         print("✓ Data directory exists")
     
-    # Check for required files
     files = ['customers.json', 'cylinders.json', 'users.json']
     for file in files:
         path = os.path.join('data', file)
@@ -98,7 +96,6 @@ def main():
     print(f"Working directory: {os.getcwd()}")
     print()
     
-    # Run tests
     app = test_imports()
     test_data_directory()
     test_default_user()

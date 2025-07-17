@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Enhanced local development server for Varasai Oxygen
 Includes better error handling and debugging information
@@ -8,7 +7,6 @@ import sys
 import logging
 from datetime import datetime
 
-# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -52,7 +50,6 @@ def main():
     print(f"Working directory: {os.getcwd()}")
     print()
     
-    # Setup
     setup_environment()
     create_required_directories()
     
@@ -60,7 +57,6 @@ def main():
         sys.exit(1)
     
     try:
-        # Import and configure the app
         print("Importing Flask application...")
         from app import app
         
@@ -72,9 +68,8 @@ def main():
         print("Press Ctrl+C to stop the server")
         print("=" * 50)
         
-        # Run the development server
         app.run(
-            host='127.0.0.1',  # Use localhost for local development
+            host='127.0.0.1',
             port=5000,
             debug=True,
             use_reloader=True

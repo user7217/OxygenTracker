@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Debug script specifically for dashboard loading issues on PythonAnywhere
 """
@@ -14,23 +13,19 @@ def test_dashboard_route():
         with app.app_context():
             print("✓ App context created")
             
-            # Test model imports
             customer_model = Customer()
             cylinder_model = Cylinder()
             print("✓ Models imported")
             
-            # Test data loading
             customers = customer_model.get_all()
             cylinders = cylinder_model.get_all()
             print(f"✓ Loaded {len(customers)} customers, {len(cylinders)} cylinders")
             
-            # Test statistics calculation (what might be failing)
             available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
             rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
             maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
             print(f"✓ Statistics: {available_cylinders} available, {rented_cylinders} rented, {maintenance_cylinders} maintenance")
             
-            # Test utilization calculation
             total_cylinders = len(cylinders)
             utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
             print(f"✓ Utilization rate: {utilization_rate}%")
@@ -49,7 +44,6 @@ def test_template_rendering():
         from flask import render_template
         
         with app.app_context():
-            # Create mock stats data
             stats = {
                 'total_customers': 0,
                 'total_cylinders': 0,
@@ -64,7 +58,6 @@ def test_template_rendering():
                 'growth_rate': 10
             }
             
-            # Test template rendering
             html = render_template('index.html', stats=stats)
             print("✓ Template rendered successfully")
             print(f"✓ HTML length: {len(html)} characters")
@@ -79,7 +72,6 @@ def test_json_data_access():
     try:
         import json
         
-        # Test customers.json
         if os.path.exists('data/customers.json'):
             with open('data/customers.json', 'r') as f:
                 customers = json.load(f)
@@ -87,7 +79,6 @@ def test_json_data_access():
         else:
             print("! customers.json doesn't exist (will be created)")
             
-        # Test cylinders.json
         if os.path.exists('data/cylinders.json'):
             with open('data/cylinders.json', 'r') as f:
                 cylinders = json.load(f)

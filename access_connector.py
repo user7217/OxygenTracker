@@ -28,12 +28,10 @@ class AccessConnector:
             return False
             
         try:
-            # Check if file exists
             if not os.path.exists(access_file_path):
                 self.logger.error(f"Access file not found: {access_file_path}")
                 return False
             
-            # Connection string for MS Access
             conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={access_file_path};"
             
             self.connection = pyodbc.connect(conn_str)
@@ -42,7 +40,6 @@ class AccessConnector:
             
         except pyodbc.Error as e:
             self.logger.error(f"Failed to connect to Access database: {str(e)}")
-            # Try alternative driver
             try:
                 conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb)}};DBQ={access_file_path};"
                 self.connection = pyodbc.connect(conn_str)
@@ -64,10 +61,9 @@ class AccessConnector:
             cursor = self.connection.cursor()
             tables = []
             
-            # Get user tables (not system tables)
             for table_info in cursor.tables(tableType='TABLE'):
                 table_name = table_info.table_name
-                if not table_name.startswith('MSys'):  # Skip system tables
+                if not table_name.startswith('MSys'):
                     tables.append(table_name)
             
             return tables
@@ -105,18 +101,14 @@ class AccessConnector:
             return []
         
         try:
-            # Build query
             query = f"SELECT * FROM [{table_name}]"
             if limit:
                 query += f" LIMIT {limit}"
             
-            # Use pandas for easier data handling
             df = pd.read_sql(query, self.connection)
             
-            # Convert to list of dictionaries
             data = df.to_dict('records')
             
-            # Clean up data - convert NaN to None
             cleaned_data = []
             for row in data:
                 cleaned_row = {}
@@ -162,7 +154,6 @@ class AccessConnector:
                 col_name = column['name'].lower()
                 col_type = column.get('type', '').lower()
                 
-                # Map fields based on patterns
                 for field_key, pattern_list in patterns.items():
                     target_field = field_key.replace('_patterns', '')
                     
@@ -172,7 +163,6 @@ class AccessConnector:
                                 field_mapping[column['name']] = target_field
                                 break
                 
-                # Special handling for name fields (combine first/last names)
                 if target_type == 'customer' and 'name' not in field_mapping.values():
                     if any(x in col_name for x in ['first', 'fname', 'given']):
                         field_mapping[column['name']] = 'first_name'
@@ -197,7 +187,6 @@ class AccessConnector:
             columns = [desc[0] for desc in cursor.description]
             rows_data = cursor.fetchall()
             
-            # Analyze data patterns
             analysis = {
                 'columns': columns,
                 'sample_data': [],
@@ -210,7 +199,6 @@ class AccessConnector:
                     row_dict[columns[i]] = str(value) if value is not None else ''
                 analysis['sample_data'].append(row_dict)
             
-            # Analyze each column
             for col in columns:
                 col_values = [row.get(col, '') for row in analysis['sample_data']]
                 analysis['field_analysis'][col] = self._analyze_column_data(col, col_values)
@@ -231,19 +219,16 @@ class AccessConnector:
             'sample_values': values[:3]
         }
         
-        # Email pattern detection
         email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         if any(email_pattern.match(str(v)) for v in values if v):
             analysis['likely_type'] = 'email'
             analysis['patterns'].append('email_format')
         
-        # Phone pattern detection
         phone_pattern = re.compile(r'[\d\s\-\(\)\+]{7,}')
         if any(phone_pattern.match(str(v)) for v in values if v):
             analysis['likely_type'] = 'phone'
             analysis['patterns'].append('phone_format')
         
-        # Date pattern detection
         date_patterns = [
             re.compile(r'\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}'),
             re.compile(r'\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}')
@@ -252,7 +237,6 @@ class AccessConnector:
             analysis['likely_type'] = 'date'
             analysis['patterns'].append('date_format')
         
-        # Numeric pattern detection
         if all(str(v).replace('.', '').replace('-', '').isdigit() for v in values if v):
             analysis['likely_type'] = 'numeric'
             analysis['patterns'].append('numeric_format')
