@@ -230,8 +230,8 @@
                                             Since: {{ cylinder.date_borrowed[:10] }}
                                             {% endif %}
                                             <br>
-                                            <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                                {{ cylinder.rental_months or 0 }} months ({{ cylinder.rental_days or 0 }} days)
+                                            <span class="badge {% if cylinder.get('rental_months', 0) >= 6 %}bg-danger{% elif cylinder.get('rental_months', 0) >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                {{ cylinder.get('rental_months', 0) }} months ({{ cylinder.get('rental_days', 0) }} days)
                                             </span>
                                         </small>
                                     </div>
