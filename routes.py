@@ -1,3 +1,34 @@
+"""
+Varasai Oxygen Cylinder Tracker - Flask Routes and Application Logic
+
+Flask routes and application logic for the cylinder management system.
+
+Features:
+- Complete CRUD operations for customers and cylinders
+- Advanced pagination system for large datasets (5000+ cylinders)
+- Role-based access control (Admin, User, Viewer)
+- Search and filtering capabilities
+- Bulk cylinder operations and rental management
+- Data import from MS Access databases
+- CSV and PDF export functionality
+- Transaction management for customer-cylinder relationships
+- Responsive web interface with mobile optimization
+
+Route Categories:
+- Authentication: Login, logout, user management
+- Dashboard: Main interface and metrics
+- Customers: Customer management with Access-compatible fields
+- Cylinders: Cylinder inventory with rental tracking and pagination
+- Bulk Operations: Multi-cylinder rental/return operations
+- Import/Export: Data migration and reporting
+- Search: Global search across customers and cylinders
+- Admin: User management and system administration
+
+Author: Development Team
+Date: July 2025
+Version: 2.0
+"""
+
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, Response
 import csv
 import io
@@ -15,7 +46,8 @@ from functools import wraps
 import os
 import tempfile
 
-# Try to import Access functionality
+# Try to import Access functionality with graceful degradation
+# MS Access import is optional - system works without it
 try:
     from data_importer import DataImporter
     ACCESS_AVAILABLE = True
@@ -24,7 +56,8 @@ except ImportError as e:
     import logging
     logging.warning(f"MS Access functionality not available: {e}")
 
-# Try to import Email functionality
+# Try to import Email functionality with graceful degradation
+# Email service is optional - system works without it
 try:
     from email_service import EmailService
     email_service = EmailService()
@@ -35,11 +68,22 @@ except ImportError as e:
     import logging
     logging.warning(f"Email functionality not available: {e}")
 
-# Initialize user manager
+# Initialize user manager for authentication and authorization
 user_manager = UserManager()
 
 def login_required(f):
-    """Decorator to require login for routes"""
+    """
+    Decorator to require user authentication for routes
+    
+    This decorator ensures that only authenticated users can access protected routes.
+    Redirects unauthenticated users to the login page with appropriate flash message.
+    
+    Args:
+        f (function): The route function to protect
+        
+    Returns:
+        function: Wrapped function with authentication check
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -49,7 +93,19 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """Decorator to require admin role"""
+    """
+    Decorator to require admin role for routes
+    
+    This decorator ensures that only users with admin role can access admin-only routes.
+    Provides the highest level of access control for sensitive operations like user
+    management, data exports, and system administration.
+    
+    Args:
+        f (function): The route function to protect
+        
+    Returns:
+        function: Wrapped function with admin role check
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -65,7 +121,19 @@ def admin_required(f):
     return decorated_function
 
 def user_or_admin_required(f):
-    """Decorator to require user or admin role (excludes viewers)"""
+    """
+    Decorator to require user or admin role (excludes viewers)
+    
+    This decorator allows access to users with 'user' or 'admin' roles while
+    excluding viewers from operational functions like cylinder rental/return,
+    bulk operations, and data modifications.
+    
+    Args:
+        f (function): The route function to protect
+        
+    Returns:
+        function: Wrapped function with user/admin role check
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -81,7 +149,19 @@ def user_or_admin_required(f):
     return decorated_function
 
 def admin_or_user_can_edit(f):
-    """Decorator for routes that only admin can access (users can only rent/return)"""
+    """
+    Decorator for routes that require admin access for data modification
+    
+    This decorator restricts access to admin-only operations like adding,
+    editing, or deleting customers and cylinders. Users can only perform
+    rental/return operations but cannot modify core data.
+    
+    Args:
+        f (function): The route function to protect
+        
+    Returns:
+        function: Wrapped function with admin-only access check
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -96,31 +176,50 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize models
+# Initialize data models for business logic operations
 customer_model = Customer()
 cylinder_model = Cylinder()
 
-# Authentication routes
+# ============================================================================
+# AUTHENTICATION ROUTES
+# ============================================================================
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
+    """
+    User authentication and session management
+    
+    Handles user login with username/password authentication. Creates secure
+    session with user ID, username, and role information. Supports redirect
+    to requested page after successful login.
+    
+    GET: Display login form
+    POST: Process login credentials and create session
+    
+    Returns:
+        GET: Login template
+        POST: Redirect to dashboard or requested page on success, login form on failure
+    """
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         
+        # Validate required fields
         if not username or not password:
             flash('Please enter both username and password', 'error')
             return render_template('login.html')
         
+        # Authenticate user credentials
         user = user_manager.authenticate_user(username, password)
         if user:
+            # Create secure session
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user.get('role', 'user')
             
             flash(f'Welcome back, {user["username"]}!', 'success')
             
-            # Redirect to next page if specified
+            # Handle redirect to originally requested page
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
@@ -132,7 +231,15 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """User logout"""
+    """
+    User logout and session cleanup
+    
+    Clears all session data and redirects to login page with farewell message.
+    Ensures complete session cleanup for security.
+    
+    Returns:
+        Redirect to login page with logout message
+    """
     username = session.get('username', 'User')
     session.clear()
     flash(f'Goodbye, {username}!', 'info')
@@ -193,14 +300,35 @@ def users():
     all_users = user_manager.get_all_users()
     return render_template('users.html', users=all_users)
 
+# ============================================================================
+# DASHBOARD AND MAIN ROUTES
+# ============================================================================
+
 @app.route('/')
 @login_required
 def index():
-    """Dashboard showing overview with fun statistics"""
+    """
+    Main dashboard with system overview and statistics
+    
+    Displays comprehensive system statistics including cylinder inventory,
+    customer counts, utilization rates, and operational metrics. Provides
+    quick access to key system information for all user roles.
+    
+    Features:
+    - Total customers and cylinders count
+    - Cylinder status breakdown (available, rented, maintenance)
+    - Utilization rate calculation
+    - System efficiency metrics
+    - Growth rate and operational days
+    - Role-based information display
+    
+    Returns:
+        Dashboard template with comprehensive system statistics
+    """
     customers = customer_model.get_all()
     cylinders = cylinder_model.get_all()
     
-    # Get cylinder status counts
+    # Calculate cylinder status distribution
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
     rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
@@ -585,19 +713,31 @@ def cylinders():
     if rental_duration_filter:
         try:
             duration_months = int(rental_duration_filter)
+            duration_days = duration_months * 30
             filtered_cylinders = []
             
             for cylinder in cylinders_list:
                 if cylinder.get('status', '').lower() == 'rented':
-                    rental_months = cylinder_model.get_rental_months(cylinder)
-                    if rental_months >= duration_months:
+                    rental_days = cylinder_model.get_rental_days(cylinder)
+                    if rental_days >= duration_days:
                         filtered_cylinders.append(cylinder)
             
             cylinders_list = filtered_cylinders
         except ValueError:
             pass  # Ignore invalid duration values
     
-    # Calculate pagination first
+    # Add rental days calculation and type-specific serial numbers for each cylinder
+    for i, cylinder in enumerate(cylinders_list):
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        # Generate type-specific serial number for display
+        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
+        # Customer name should already be stored in the cylinder data
+        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
+            # Fallback: get customer name if not stored
+            customer = customer_model.get_by_id(cylinder['rented_to'])
+            cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
+    
+    # Calculate pagination
     total_cylinders = len(cylinders_list)
     total_pages = (total_cylinders + per_page - 1) // per_page  # Ceiling division
     
@@ -607,25 +747,6 @@ def cylinders():
     
     # Get cylinders for current page
     paginated_cylinders = cylinders_list[start_index:end_index]
-    
-    # Add rental days/months calculation and type-specific serial numbers for each paginated cylinder
-    for i, cylinder in enumerate(paginated_cylinders):
-        try:
-            cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-            cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
-        except Exception as e:
-            # Fallback to 0 if calculation fails
-            cylinder['rental_days'] = 0
-            cylinder['rental_months'] = 0
-        
-        # Generate type-specific serial number for display (use global index for consistent numbering)
-        global_index = start_index + i
-        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), global_index + 1)
-        # Customer name should already be stored in the cylinder data
-        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
-            # Fallback: get customer name if not stored
-            customer = customer_model.get_by_id(cylinder['rented_to'])
-            cylinder['customer_name'] = (customer.get('customer_name', '') or customer.get('name', '') or 'Unknown Customer') if customer else 'Unknown Customer'
     
     # Calculate pagination info
     has_prev = page > 1
@@ -709,8 +830,8 @@ def add_cylinder():
                 return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
-            cylinder_data['customer_name'] = customer.get('customer_name', '') or customer.get('name', '')
-            cylinder_data['customer_email'] = customer.get('customer_email', '') or customer.get('email', '')
+            cylinder_data['customer_name'] = customer.get('name', '')
+            cylinder_data['customer_email'] = customer.get('email', '')
             
             # Handle rental date from form or use current date
             rental_date = request.form.get('rental_date', '').strip()
