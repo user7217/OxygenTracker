@@ -1298,9 +1298,14 @@ def bulk_cylinder_management(customer_id):
     
     cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
     action = request.form.get('action', 'rent')
+    date = request.form.get('date', '').strip()
     
     if not cylinder_ids_text:
         flash('Please enter at least one cylinder ID', 'error')
+        return redirect(url_for('bulk_cylinder_management', customer_id=customer_id))
+    
+    if not date:
+        flash('Please select a date', 'error')
         return redirect(url_for('bulk_cylinder_management', customer_id=customer_id))
     
     # Parse cylinder IDs from text (support both comma-separated and line-separated)
@@ -1337,12 +1342,14 @@ def bulk_cylinder_management(customer_id):
                 skipped += 1
                 continue
             
-            # Rent the cylinder
-            success = cylinder_model.rent_cylinder(actual_cylinder_id, customer_id)
+            # Rent the cylinder with custom date
+            # Convert date from YYYY-MM-DD to datetime ISO format
+            rental_datetime = f"{date}T00:00:00"
+            success = cylinder_model.rent_cylinder(actual_cylinder_id, customer_id, rental_datetime)
             if success:
                 processed += 1
             else:
-                errors.append(f'"{cylinder_display}": Failed to rent')
+                errors.append(f'"{cylinder_display}": Failed to dispatch')
                 skipped += 1
         
         elif action == 'return':
@@ -1352,8 +1359,10 @@ def bulk_cylinder_management(customer_id):
                 skipped += 1
                 continue
             
-            # Return the cylinder
-            success = cylinder_model.return_cylinder(actual_cylinder_id)
+            # Return the cylinder with custom date
+            # Convert date from YYYY-MM-DD to datetime ISO format
+            return_datetime = f"{date}T00:00:00"
+            success = cylinder_model.return_cylinder(actual_cylinder_id, return_datetime)
             if success:
                 processed += 1
             else:
@@ -1361,8 +1370,9 @@ def bulk_cylinder_management(customer_id):
                 skipped += 1
     
     # Create summary message
+    customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
     if action == 'rent':
-        flash(f'Successfully rented {processed} cylinders to {customer["name"]}', 'success')
+        flash(f'Successfully dispatched {processed} cylinders to {customer_name}', 'success')
     else:
         flash(f'Successfully returned {processed} cylinders from {customer["name"]}', 'success')
     

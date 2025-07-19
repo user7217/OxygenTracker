@@ -187,7 +187,7 @@
                         <thead>
                             <tr>
                                 <th>Serial Number</th>
-                                <th>Custom ID</th>
+                                <th>ID</th>
                                 <th>Type</th>
                                 <th>Size</th>
                                 <th>Location</th>
@@ -202,7 +202,6 @@
                             <tr>
                                 <td>
                                     <strong>{{ cylinder.display_serial }}</strong>
-                                    <br><small class="text-muted">ID: {{ cylinder.id }}</small>
                                 </td>
                                 <td>
                                     {% if cylinder.get('custom_id') %}

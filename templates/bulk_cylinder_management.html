@@ -23,57 +23,7 @@
                 </a>
             </div>
 
-            <!-- Current Rentals Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-info-circle me-2"></i>Current Rentals 
-                        <span class="badge bg-primary">{{ current_rentals|length }}</span>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if current_rentals %}
-                        <div class="row g-3">
-                            {% for cylinder in current_rentals %}
-                            <div class="col-md-6 col-lg-4 col-xl-3">
-                                <div class="card border-info">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <div>
-                                                {% if cylinder.custom_id %}
-                                                    <span class="badge bg-primary me-1">{{ cylinder.custom_id }}</span>
-                                                {% endif %}
-                                                <code class="text-primary fw-bold">{{ cylinder.id }}</code>
-                                            </div>
-                                            <span class="badge bg-success">{{ cylinder.rental_days or 0 }}d</span>
-                                        </div>
-                                        <div class="small text-muted mb-1">
-                                            <strong>Serial:</strong> {{ cylinder.serial_number }}
-                                        </div>
-                                        <div class="small text-muted mb-1">
-                                            <strong>Type:</strong> {{ cylinder.type }} - {{ cylinder.size }}
-                                        </div>
-                                        {% if cylinder.date_borrowed %}
-                                        <div class="small text-muted">
-                                            <strong>Rented:</strong> {{ cylinder.date_borrowed.split('T')[0] }}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="text-center py-4">
-                            <div class="text-muted mb-2">
-                                <i class="bi bi-info-circle-fill" style="font-size: 2rem;"></i>
-                            </div>
-                            <h6 class="text-muted">No cylinders currently rented to this customer</h6>
-                            <p class="text-muted small mb-0">Use the form below to rent cylinders to this customer</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+
 
             <!-- Bulk Operations Form -->
             <div class="card">
@@ -85,7 +35,7 @@
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}">
                         <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="cylinder_ids" class="form-label">
                                         <strong>Cylinder IDs</strong>
@@ -103,27 +53,43 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="action" class="form-label">
-                                        <strong>Action</strong>
-                                    </label>
-                                    <select class="form-select form-select-lg" 
-                                            id="action" 
-                                            name="action" 
-                                            style="font-size: 1.1rem;">
-                                        <option value="rent">Rent cylinders to this customer</option>
-                                        <option value="return">Return cylinders from this customer</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
-                                        <i class="bi bi-arrow-repeat me-2"></i>Process Cylinders
-                                    </button>
-                                    <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary btn-lg">
-                                        <i class="bi bi-x-circle me-2"></i>Cancel
-                                    </a>
+                            <div class="col-md-6">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label for="action" class="form-label">
+                                                <strong>Action</strong>
+                                            </label>
+                                            <select class="form-select form-select-lg" 
+                                                    id="action" 
+                                                    name="action" 
+                                                    style="font-size: 1.1rem;"
+                                                    onchange="toggleDateLabel()">
+                                                <option value="rent">Dispatch cylinders to this customer</option>
+                                                <option value="return">Return cylinders from this customer</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label for="date" class="form-label">
+                                                <strong><span id="dateLabel">Dispatch Date</span></strong>
+                                            </label>
+                                            <input type="date" class="form-control form-control-lg" 
+                                                   id="date" name="date" 
+                                                   style="font-size: 1.1rem;" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
+                                                <i class="bi bi-arrow-repeat me-2"></i>Process Cylinders
+                                            </button>
+                                            <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary btn-lg">
+                                                <i class="bi bi-x-circle me-2"></i>Cancel
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -180,4 +146,25 @@ code {
     border-bottom: 1px solid #dee2e6;
 }
 </style>
+
+<script>
+function toggleDateLabel() {
+    const actionSelect = document.getElementById('action');
+    const dateLabel = document.getElementById('dateLabel');
+    
+    if (actionSelect.value === 'rent') {
+        dateLabel.textContent = 'Dispatch Date';
+    } else if (actionSelect.value === 'return') {
+        dateLabel.textContent = 'Return Date';
+    }
+}
+
+// Set today's date as default
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('date');
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+});
+</script>
+
 {% endblock %}
