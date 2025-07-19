@@ -1441,7 +1441,16 @@ def archive_data():
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
     customers = customer_model.get_all()
-    return render_template('bulk_rental_management.html', customers=customers)
+    cylinders = cylinder_model.get_all()
+    
+    # Add customer names to cylinders for display
+    for cylinder in cylinders:
+        if cylinder.get('rented_to'):
+            customer = customer_model.get_by_id(cylinder['rented_to'])
+            if customer:
+                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+    
+    return render_template('bulk_rental_management.html', customers=customers, cylinders=cylinders)
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
@@ -1449,6 +1458,7 @@ def process_bulk_rental():
     """Process bulk cylinder rental/return operations"""
     customer_id = request.form.get('customer_id', '').strip()
     action = request.form.get('action', 'rent')
+    date = request.form.get('date', '').strip()
     cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
     
     if not customer_id:
@@ -1462,6 +1472,10 @@ def process_bulk_rental():
     
     if not cylinder_ids_text:
         flash('Please enter at least one cylinder ID', 'error')
+        return redirect(url_for('bulk_rental_management'))
+    
+    if not date:
+        flash('Please select a date', 'error')
         return redirect(url_for('bulk_rental_management'))
     
     # Parse cylinder IDs from text (support both comma-separated and line-separated)
@@ -1495,13 +1509,15 @@ def process_bulk_rental():
                 skipped += 1
                 continue
             
-            # Rent the cylinder
-            success = cylinder_model.rent_cylinder(cylinder_id, customer_id)
+            # Rent the cylinder with custom date
+            # Convert date from YYYY-MM-DD to datetime ISO format
+            rental_datetime = f"{date}T00:00:00"
+            success = cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_datetime)
             if success:
                 processed += 1
                 success_cylinders.append(cylinder_id)
             else:
-                errors.append(f'Cylinder {cylinder_id}: Failed to rent')
+                errors.append(f'Cylinder {cylinder_id}: Failed to dispatch')
                 skipped += 1
         
         elif action == 'return':
@@ -1511,8 +1527,10 @@ def process_bulk_rental():
                 skipped += 1
                 continue
             
-            # Return the cylinder
-            success = cylinder_model.return_cylinder(cylinder_id)
+            # Return the cylinder with custom date
+            # Convert date from YYYY-MM-DD to datetime ISO format  
+            return_datetime = f"{date}T00:00:00"
+            success = cylinder_model.return_cylinder(cylinder_id, return_datetime)
             if success:
                 processed += 1
                 success_cylinders.append(cylinder_id)
@@ -1521,12 +1539,13 @@ def process_bulk_rental():
                 skipped += 1
     
     # Create summary message
+    customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
     if action == 'rent':
         if processed > 0:
-            flash(f'Successfully rented {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer["name"]}', 'success')
+            flash(f'Successfully dispatched {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer_name}', 'success')
     else:
         if processed > 0:
-            flash(f'Successfully returned {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) from {customer["name"]}', 'success')
+            flash(f'Successfully returned {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) from {customer_name}', 'success')
     
     if skipped > 0:
         flash(f'{skipped} cylinders were skipped due to errors', 'warning')
