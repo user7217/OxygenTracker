@@ -75,7 +75,7 @@
                             {% for customer in customers %}
                             <tr>
                                 <td>
-                                    <code style="background-color: #e7f3ff; color: #0066cc; padding: 2px 6px; border-radius: 4px; font-weight: bold;">{{ customer.customer_no or customer.id }}</code>
+                                    <strong>{{ customer.customer_no or customer.id }}</strong>
                                 </td>
                                 <td style="word-wrap: break-word;">
                                     <strong>{{ customer.customer_name or customer.name or 'Unknown' }}</strong>
