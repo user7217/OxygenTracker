@@ -55,8 +55,8 @@
                     </h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table mb-0" style="min-width: 1400px;">
-                        <thead>
+                    <table class="table mb-0" style="min-width: 1400px; background-color: white;">
+                        <thead style="background-color: black;">
                             <tr style="background-color: black; color: white;">
                                 <th style="width: 100px; background-color: black; color: white; border: none;">Customer No</th>
                                 <th style="width: 180px; background-color: black; color: white; border: none;">Name</th>
@@ -69,7 +69,7 @@
                                 {% if session.role in ['admin', 'user'] %}<th style="width: 140px; background-color: black; color: white; border: none;">Actions</th>{% endif %}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody style="background-color: white;">
                             {% for customer in customers %}
                             <tr style="background-color: white; border: none;">
                                 <td style="border: none;">
