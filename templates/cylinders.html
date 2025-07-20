@@ -2,43 +2,7 @@
 
 {% block title %}Cylinders - Varasai Oxygen{% endblock %}
 
-{% block extra_css %}
-<style>
-/* Custom stable info button - match Bootstrap btn-sm exactly */
-.btn-custom-info {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0;
-    font-size: 0.875rem;
-    font-weight: 400;
-    line-height: 1.5;
-    color: #6c757d;
-    text-align: center;
-    text-decoration: none;
-    vertical-align: middle;
-    cursor: pointer;
-    background-color: transparent;
-    border: 1px solid #6c757d;
-    border-radius: 0.375rem;
-    transition: none !important;
-    transform: none !important;
-    animation: none !important;
-}
 
-.btn-custom-info:hover,
-.btn-custom-info:focus,
-.btn-custom-info:active {
-    color: #fff;
-    background-color: #6c757d;
-    border-color: #6c757d;
-    text-decoration: none;
-    transition: none !important;
-    transform: none !important;
-    animation: none !important;
-    box-shadow: none !important;
-}
-</style>
-{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4">
@@ -298,8 +262,7 @@
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
-                                        <a href="javascript:void(0)" class="btn-custom-info" 
-                                           onclick="showCylinderDetails{{ loop.index }}()" title="View Details">
+                                        <a href="{{ url_for('cylinder_details', cylinder_id=cylinder.id) }}" class="btn btn-outline-secondary btn-sm" title="View Details">
                                             <i class="bi bi-info-circle"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
@@ -312,128 +275,7 @@
                                     </div>
                                 {% endif %}
                                     
-                                    <!-- Cylinder Details Card (Hidden by default) -->
-                                    <div id="detailsCard{{ loop.index }}" class="card mt-3" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1055; width: 70%; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                                        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                                            <h5 class="mb-0 fs-4">
-                                                <i class="bi bi-info-circle me-2"></i>Cylinder Details
-                                            </h5>
-                                            <button type="button" class="btn btn-sm btn-outline-light" onclick="hideCylinderDetails{{ loop.index }}()">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Serial Number:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    {% if cylinder.get('custom_id') %}
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">ID:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.custom_id }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    {% endif %}
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Type:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('type', 'N/A') }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Size:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('size', 'N/A') }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Status:</label>
-                                                        <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
-                                                            <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                                                {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Location:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('location', 'N/A') }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Pressure:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('pressure', 'N/A') }}{% if cylinder.get('pressure') %} PSI{% endif %}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    {% if cylinder.get('status', '').lower() == 'rented' %}
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Customer:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_name or 'N/A' }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Customer Phone:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_phone or 'N/A' }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Dispatch Date:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.date_borrowed[:10] if cylinder.get('date_borrowed') else 'N/A' }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Days Dispatched:</label>
-                                                        <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
-                                                            {% set rental_days = cylinder.get('rental_days', 0) %}
-                                                            {% set rental_months = cylinder.get('rental_months', 0) %}
-                                                            <span class="badge {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                                                {{ rental_days }} days ({{ rental_months }} months)
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    {% else %}
-                                                    <div class="alert alert-info">
-                                                        <i class="bi bi-info-circle me-2"></i>Not currently dispatched
-                                                    </div>
-                                                    {% endif %}
-                                                    
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Last Inspection:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('last_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Next Inspection:</label>
-                                                        <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('next_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fs-5">Notes:</label>
-                                                        <textarea class="form-control form-control-lg" rows="3" readonly style="font-size: 1.1rem;">{{ cylinder.get('notes', 'None') }}</textarea>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card-footer bg-light text-center">
-                                            <button type="button" class="btn btn-secondary btn-lg" onclick="hideCylinderDetails{{ loop.index }}()" style="font-size: 1.1rem;">Close</button>
-                                        </div>
-                                    </div>
 
-                                    <script>
-                                    function showCylinderDetails{{ loop.index }}() {
-                                        // Hide all other detail cards
-                                        document.querySelectorAll('[id^="detailsCard"]').forEach(card => card.style.display = 'none');
-                                        // Show overlay
-                                        if (!document.getElementById('detailsOverlay')) {
-                                            const overlay = document.createElement('div');
-                                            overlay.id = 'detailsOverlay';
-                                            overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050;';
-                                            overlay.onclick = () => hideCylinderDetails{{ loop.index }}();
-                                            document.body.appendChild(overlay);
-                                        }
-                                        // Show this card
-                                        document.getElementById('detailsCard{{ loop.index }}').style.display = 'block';
-                                        document.body.style.overflow = 'hidden';
-                                    }
-
-                                    function hideCylinderDetails{{ loop.index }}() {
-                                        document.getElementById('detailsCard{{ loop.index }}').style.display = 'none';
-                                        const overlay = document.getElementById('detailsOverlay');
-                                        if (overlay) overlay.remove();
-                                        document.body.style.overflow = 'auto';
-                                    }
-                                    </script>
 
                                     <!-- Delete Confirmation Modal -->
                                     <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">

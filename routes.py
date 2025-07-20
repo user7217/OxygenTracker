@@ -781,6 +781,31 @@ def cylinders():
                          rental_duration_filter=rental_duration_filter,
                          cylinder_model=cylinder_model)
 
+@app.route('/cylinders/<cylinder_id>/details')
+@login_required
+def cylinder_details(cylinder_id):
+    """Display detailed information for a specific cylinder"""
+    cylinder = cylinder_model.get_by_id(cylinder_id)
+    if not cylinder:
+        flash('Cylinder not found', 'error')
+        return redirect(url_for('cylinders'))
+    
+    # Add display serial number
+    cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), 1)
+    
+    # Add rental days calculation
+    cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+    cylinder['rental_months'] = cylinder['rental_days'] // 30
+    
+    # Get customer info if cylinder is rented
+    if cylinder.get('rented_to'):
+        customer = customer_model.get_by_id(cylinder['rented_to'])
+        if customer:
+            cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+            cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', 'N/A')
+    
+    return render_template('cylinder_details.html', cylinder=cylinder)
+
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def add_cylinder():
