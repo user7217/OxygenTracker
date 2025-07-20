@@ -56,17 +56,17 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0" style="min-width: 1400px;">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
-                                <th style="width: 100px;">Customer No</th>
-                                <th style="width: 180px;">Name</th>
-                                <th style="width: 250px;">Address</th>
-                                <th style="width: 120px;">City</th>
-                                <th style="width: 80px;">State</th>
-                                <th style="width: 130px;">Phone</th>
-                                <th style="width: 200px;">Active Dispatches</th>
-                                <th style="width: 100px;">Created</th>
-                                {% if session.role in ['admin', 'user'] %}<th style="width: 140px;">Actions</th>{% endif %}
+                                <th style="width: 100px; color: inherit;">Customer No</th>
+                                <th style="width: 180px; color: inherit;">Name</th>
+                                <th style="width: 250px; color: inherit;">Address</th>
+                                <th style="width: 120px; color: inherit;">City</th>
+                                <th style="width: 80px; color: inherit;">State</th>
+                                <th style="width: 130px; color: inherit;">Phone</th>
+                                <th style="width: 200px; color: inherit;">Active Dispatches</th>
+                                <th style="width: 100px; color: inherit;">Created</th>
+                                {% if session.role in ['admin', 'user'] %}<th style="width: 140px; color: inherit;">Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
