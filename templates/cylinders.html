@@ -178,7 +178,7 @@
                         <span class="badge bg-success ms-2">Type: {{ type_filter }}</span>
                         {% endif %}
                         {% if rental_duration_filter %}
-                        <span class="badge bg-danger ms-2">Rented {{ rental_duration_filter }}+ Month{{ 's' if rental_duration_filter != '1' else '' }}</span>
+                        <span class="badge bg-danger ms-2">Dispatched {{ rental_duration_filter }}+ Month{{ 's' if rental_duration_filter != '1' else '' }}</span>
                         {% endif %}
                     </h5>
                 </div>
@@ -186,14 +186,13 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Serial Number</th>
                                 <th>ID</th>
                                 <th>Type</th>
                                 <th>Size</th>
-                                <th>Location</th>
+                                <th>Customer Name</th>
                                 <th>Pressure</th>
                                 <th>Status</th>
-                                <th>Current Rental</th>
+                                <th>Current Dispatch</th>
                                 {% if session.role in ['admin', 'user'] %}<th>Actions</th>{% endif %}
                             </tr>
                         </thead>
@@ -201,29 +200,30 @@
                             {% for cylinder in cylinders %}
                             <tr>
                                 <td>
-                                    <strong>{{ cylinder.display_serial }}</strong>
-                                </td>
-                                <td>
                                     {% if cylinder.get('custom_id') %}
-                                    <span class="badge bg-info">{{ cylinder.custom_id }}</span>
+                                    <strong>{{ cylinder.custom_id }}</strong>
                                     {% else %}
-                                    <span class="text-muted">-</span>
+                                    <strong>{{ cylinder.display_serial }}</strong>
                                     {% endif %}
                                 </td>
                                 <td>{{ cylinder.get('type', 'N/A') }}</td>
                                 <td>{{ cylinder.get('size', 'N/A') }}</td>
-                                <td>{{ cylinder.get('location', 'N/A') }}</td>
+                                <td>
+                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
+                                    <strong>{{ cylinder.customer_name }}</strong>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ cylinder.get('pressure', 'N/A') }}</td>
                                 <td>
                                     <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                        {{ cylinder.get('status', 'Unknown').title() }}
+                                        {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
                                     </span>
                                 </td>
                                 <td>
                                     {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
-                                    <div class="rental-info">
-                                        <strong class="text-warning">{{ cylinder.customer_name }}</strong>
-                                        <br>
+                                    <div class="dispatch-info">
                                         <small class="text-muted">
                                             {% if cylinder.get('date_borrowed') %}
                                             Since: {{ cylinder.date_borrowed[:10] }}
@@ -252,7 +252,7 @@
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Rent">
+                                                data-cylinder-serial="{{ cylinder.display_serial }}" title="Dispatch">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
                                         {% elif cylinder.get('status', '').lower() == 'rented' %}
@@ -410,7 +410,7 @@
         <div class="modal-content bg-white border-0 shadow-lg">
             <div class="modal-header bg-warning text-dark border-0">
                 <h5 class="modal-title fs-4" id="rentModalLabel">
-                    <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
+                    <i class="bi bi-arrow-right-circle me-2"></i>Dispatch Cylinder
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -430,7 +430,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="rental_date" class="form-label fs-5">Rental Date:</label>
+                        <label for="rental_date" class="form-label fs-5">Dispatch Date:</label>
                         <input type="datetime-local" class="form-control form-control-lg" id="rental_date" name="rental_date" style="font-size: 1.1rem;">
                         <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
                     </div>
@@ -438,7 +438,7 @@
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
                     <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
-                        <i class="bi bi-arrow-right-circle me-2"></i>Rent Cylinder
+                        <i class="bi bi-arrow-right-circle me-2"></i>Dispatch Cylinder
                     </button>
                 </div>
             </form>
