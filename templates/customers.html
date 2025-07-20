@@ -91,7 +91,7 @@
                                         <div class="d-flex flex-column">
                                             <div class="d-flex align-items-center mb-1">
                                                 <span class="badge bg-warning text-dark me-2">{{ customer.rented_cylinders|length }}</span>
-                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                <button type="button" class="btn btn-outline-dark btn-sm" 
                                                         data-bs-toggle="modal" 
                                                         data-bs-target="#rentalsModal{{ loop.index }}" 
                                                         title="View Details">
@@ -122,7 +122,7 @@
                                         </a>
                                         {% endif %}
                                         <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-info btn-sm" title="Manage Cylinders" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                           class="btn btn-outline-dark btn-sm" title="Manage Cylinders" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-cylinder"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
