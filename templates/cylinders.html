@@ -307,90 +307,83 @@
                                                 <div class="modal-body">
                                                     <div class="row">
                                                         <div class="col-md-6">
-                                                            <h6 class="text-muted mb-3">Basic Information</h6>
-                                                            <table class="table table-borderless table-sm">
-                                                                <tr>
-                                                                    <td><strong>Serial Number:</strong></td>
-                                                                    <td>{{ cylinder.display_serial }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>ID:</strong></td>
-                                                                    <td>{{ cylinder.custom_id or '-' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Type:</strong></td>
-                                                                    <td>{{ cylinder.get('type', 'N/A') }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Size:</strong></td>
-                                                                    <td>{{ cylinder.get('size', 'N/A') }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Status:</strong></td>
-                                                                    <td>
-                                                                        <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                                                            {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Location:</strong></td>
-                                                                    <td>{{ cylinder.get('location', 'N/A') }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Pressure:</strong></td>
-                                                                    <td>{{ cylinder.get('pressure', 'N/A') }} {% if cylinder.get('pressure') %}PSI{% endif %}</td>
-                                                                </tr>
-                                                            </table>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Serial Number:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            {% if cylinder.get('custom_id') %}
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">ID:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.custom_id }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            {% endif %}
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Type:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('type', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Size:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('size', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Status:</label>
+                                                                <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
+                                                                    <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                                                        {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Location:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('location', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Pressure:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('pressure', 'N/A') }}{% if cylinder.get('pressure') %} PSI{% endif %}" readonly style="font-size: 1.1rem;">
+                                                            </div>
                                                         </div>
                                                         <div class="col-md-6">
-                                                            <h6 class="text-muted mb-3">Dispatch Information</h6>
-                                                            <table class="table table-borderless table-sm">
-                                                                {% if cylinder.get('status', '').lower() == 'rented' %}
-                                                                <tr>
-                                                                    <td><strong>Customer:</strong></td>
-                                                                    <td>{{ cylinder.customer_name or 'N/A' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Customer Phone:</strong></td>
-                                                                    <td>{{ cylinder.customer_phone or 'N/A' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Dispatch Date:</strong></td>
-                                                                    <td>{{ cylinder.date_borrowed[:10] if cylinder.get('date_borrowed') else 'N/A' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Days Dispatched:</strong></td>
-                                                                    <td>
-                                                                        {% set rental_days = cylinder.get('rental_days', 0) %}
-                                                                        {% set rental_months = cylinder.get('rental_months', 0) %}
-                                                                        <span class="badge {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                                                            {{ rental_days }} days ({{ rental_months }} months)
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                                {% else %}
-                                                                <tr>
-                                                                    <td colspan="2" class="text-muted">Not currently dispatched</td>
-                                                                </tr>
-                                                                {% endif %}
-                                                            </table>
+                                                            {% if cylinder.get('status', '').lower() == 'rented' %}
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Customer:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_name or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Customer Phone:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_phone or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Dispatch Date:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.date_borrowed[:10] if cylinder.get('date_borrowed') else 'N/A' }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Days Dispatched:</label>
+                                                                <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
+                                                                    {% set rental_days = cylinder.get('rental_days', 0) %}
+                                                                    {% set rental_months = cylinder.get('rental_months', 0) %}
+                                                                    <span class="badge {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                                        {{ rental_days }} days ({{ rental_months }} months)
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {% else %}
+                                                            <div class="alert alert-info">
+                                                                <i class="bi bi-info-circle me-2"></i>Not currently dispatched
+                                                            </div>
+                                                            {% endif %}
                                                             
-                                                            <h6 class="text-muted mb-3 mt-4">Maintenance</h6>
-                                                            <table class="table table-borderless table-sm">
-                                                                <tr>
-                                                                    <td><strong>Last Inspection:</strong></td>
-                                                                    <td>{{ cylinder.get('last_inspection', 'N/A') }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Next Inspection:</strong></td>
-                                                                    <td>{{ cylinder.get('next_inspection', 'N/A') }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td><strong>Notes:</strong></td>
-                                                                    <td>{{ cylinder.get('notes', 'None') }}</td>
-                                                                </tr>
-                                                            </table>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Last Inspection:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('last_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Next Inspection:</label>
+                                                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('next_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fs-5">Notes:</label>
+                                                                <textarea class="form-control form-control-lg" rows="3" readonly style="font-size: 1.1rem;">{{ cylinder.get('notes', 'None') }}</textarea>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
