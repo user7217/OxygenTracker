@@ -55,34 +55,34 @@
                     </h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" style="min-width: 1400px;">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 100px; color: inherit;">Customer No</th>
-                                <th style="width: 180px; color: inherit;">Name</th>
-                                <th style="width: 250px; color: inherit;">Address</th>
-                                <th style="width: 120px; color: inherit;">City</th>
-                                <th style="width: 80px; color: inherit;">State</th>
-                                <th style="width: 130px; color: inherit;">Phone</th>
-                                <th style="width: 200px; color: inherit;">Active Dispatches</th>
-                                <th style="width: 100px; color: inherit;">Created</th>
-                                {% if session.role in ['admin', 'user'] %}<th style="width: 140px; color: inherit;">Actions</th>{% endif %}
+                    <table class="table mb-0" style="min-width: 1400px; background-color: black; color: white;">
+                        <thead>
+                            <tr style="background-color: black; color: white;">
+                                <th style="width: 100px; background-color: black; color: white; border: none;">Customer No</th>
+                                <th style="width: 180px; background-color: black; color: white; border: none;">Name</th>
+                                <th style="width: 250px; background-color: black; color: white; border: none;">Address</th>
+                                <th style="width: 120px; background-color: black; color: white; border: none;">City</th>
+                                <th style="width: 80px; background-color: black; color: white; border: none;">State</th>
+                                <th style="width: 130px; background-color: black; color: white; border: none;">Phone</th>
+                                <th style="width: 200px; background-color: black; color: white; border: none;">Active Dispatches</th>
+                                <th style="width: 100px; background-color: black; color: white; border: none;">Created</th>
+                                {% if session.role in ['admin', 'user'] %}<th style="width: 140px; background-color: black; color: white; border: none;">Actions</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for customer in customers %}
-                            <tr>
-                                <td>
+                            <tr style="background-color: black; color: white; border: none;">
+                                <td style="border: none; background-color: black; color: white;">
                                     <strong>{{ customer.customer_no or customer.id }}</strong>
                                 </td>
-                                <td style="word-wrap: break-word;">
+                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">
                                     <strong>{{ customer.customer_name or customer.name or 'Unknown' }}</strong>
                                 </td>
-                                <td style="word-wrap: break-word; max-width: 250px;">{{ customer.customer_address or customer.address or '-' }}</td>
-                                <td style="word-wrap: break-word;">{{ customer.customer_city or '-' }}</td>
-                                <td style="word-wrap: break-word;">{{ customer.customer_state or '-' }}</td>
-                                <td style="word-wrap: break-word;">{{ customer.customer_phone or customer.phone or '-' }}</td>
-                                <td style="min-width: 200px;">
+                                <td style="word-wrap: break-word; max-width: 250px; border: none; background-color: black; color: white;">{{ customer.customer_address or customer.address or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_city or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_state or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_phone or customer.phone or '-' }}</td>
+                                <td style="min-width: 200px; border: none; background-color: black; color: white;">
                                     {% if customer.rented_cylinders %}
                                         <div class="d-flex flex-column">
                                             <div class="d-flex align-items-center mb-1">
@@ -103,13 +103,13 @@
                                         <span class="text-muted">No dispatches</span>
                                     {% endif %}
                                 </td>
-                                <td>
-                                    <small class="text-muted">
+                                <td style="border: none; background-color: black; color: white;">
+                                    <small style="color: #ccc;">
                                         {{ customer.created_at[:10] if customer.created_at else '-' }}
                                     </small>
                                 </td>
                                 {% if session.role in ['admin', 'user'] %}
-                                <td style="min-width: 140px;">
+                                <td style="min-width: 140px; border: none; background-color: black; color: white;">
                                     <div class="d-flex flex-row gap-1 justify-content-start">
                                         <a href="{{ url_for('customer_details', customer_id=customer.id) }}" class="btn btn-outline-secondary btn-sm" title="View Details" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-info-circle"></i>
