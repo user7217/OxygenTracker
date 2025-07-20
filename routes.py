@@ -577,7 +577,7 @@ def customers():
     
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
-@app.route('/customers/<customer_id>/details')
+@app.route('/customer/<customer_id>/details')
 @login_required
 def customer_details(customer_id):
     """Display detailed information for a specific customer"""
