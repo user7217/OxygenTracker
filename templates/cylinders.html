@@ -2,6 +2,25 @@
 
 {% block title %}Cylinders - Varasai Oxygen{% endblock %}
 
+{% block extra_css %}
+<style>
+.btn-outline-secondary {
+    transition: none !important;
+}
+.btn-outline-secondary:hover {
+    transition: none !important;
+    transform: none !important;
+}
+.modal.fade {
+    transition: opacity 0.1s linear !important;
+}
+.modal.fade .modal-dialog {
+    transition: transform 0.1s ease-out !important;
+    transform: translate(0, 0) !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-4">
     <div class="row mb-4">
