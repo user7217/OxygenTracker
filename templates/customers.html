@@ -55,7 +55,7 @@
                     </h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table mb-0" style="min-width: 1400px; background-color: black; color: white;">
+                    <table class="table mb-0" style="min-width: 1400px;">
                         <thead>
                             <tr style="background-color: black; color: white;">
                                 <th style="width: 100px; background-color: black; color: white; border: none;">Customer No</th>
@@ -71,18 +71,18 @@
                         </thead>
                         <tbody>
                             {% for customer in customers %}
-                            <tr style="background-color: black; color: white; border: none;">
-                                <td style="border: none; background-color: black; color: white;">
+                            <tr style="background-color: white; border: none;">
+                                <td style="border: none;">
                                     <strong>{{ customer.customer_no or customer.id }}</strong>
                                 </td>
-                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">
+                                <td style="word-wrap: break-word; border: none;">
                                     <strong>{{ customer.customer_name or customer.name or 'Unknown' }}</strong>
                                 </td>
-                                <td style="word-wrap: break-word; max-width: 250px; border: none; background-color: black; color: white;">{{ customer.customer_address or customer.address or '-' }}</td>
-                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_city or '-' }}</td>
-                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_state or '-' }}</td>
-                                <td style="word-wrap: break-word; border: none; background-color: black; color: white;">{{ customer.customer_phone or customer.phone or '-' }}</td>
-                                <td style="min-width: 200px; border: none; background-color: black; color: white;">
+                                <td style="word-wrap: break-word; max-width: 250px; border: none;">{{ customer.customer_address or customer.address or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none;">{{ customer.customer_city or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none;">{{ customer.customer_state or '-' }}</td>
+                                <td style="word-wrap: break-word; border: none;">{{ customer.customer_phone or customer.phone or '-' }}</td>
+                                <td style="min-width: 200px; border: none;">
                                     {% if customer.rented_cylinders %}
                                         <div class="d-flex flex-column">
                                             <div class="d-flex align-items-center mb-1">
@@ -103,13 +103,13 @@
                                         <span class="text-muted">No dispatches</span>
                                     {% endif %}
                                 </td>
-                                <td style="border: none; background-color: black; color: white;">
-                                    <small style="color: #ccc;">
+                                <td style="border: none;">
+                                    <small class="text-muted">
                                         {{ customer.created_at[:10] if customer.created_at else '-' }}
                                     </small>
                                 </td>
                                 {% if session.role in ['admin', 'user'] %}
-                                <td style="min-width: 140px; border: none; background-color: black; color: white;">
+                                <td style="min-width: 140px; border: none;">
                                     <div class="d-flex flex-row gap-1 justify-content-start">
                                         <a href="{{ url_for('customer_details', customer_id=customer.id) }}" class="btn btn-outline-secondary btn-sm" title="View Details" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-info-circle"></i>
