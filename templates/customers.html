@@ -64,8 +64,6 @@
                                 <th style="width: 120px;">City</th>
                                 <th style="width: 80px;">State</th>
                                 <th style="width: 130px;">Phone</th>
-                                <th style="width: 120px;">APGST</th>
-                                <th style="width: 120px;">CST</th>
                                 <th style="width: 200px;">Borrowed Cylinders</th>
                                 <th style="width: 100px;">Created</th>
                                 {% if session.role in ['admin', 'user'] %}<th style="width: 140px;">Actions</th>{% endif %}
@@ -84,8 +82,6 @@
                                 <td style="word-wrap: break-word;">{{ customer.customer_city or '-' }}</td>
                                 <td style="word-wrap: break-word;">{{ customer.customer_state or '-' }}</td>
                                 <td style="word-wrap: break-word;">{{ customer.customer_phone or customer.phone or '-' }}</td>
-                                <td style="word-wrap: break-word;">{{ customer.customer_apgst or '-' }}</td>
-                                <td style="word-wrap: break-word;">{{ customer.customer_cst or '-' }}</td>
                                 <td style="min-width: 200px;">
                                     {% if customer.rented_cylinders %}
                                         <div class="d-flex flex-column">
@@ -115,6 +111,9 @@
                                 {% if session.role in ['admin', 'user'] %}
                                 <td style="min-width: 140px;">
                                     <div class="d-flex flex-row gap-1 justify-content-start">
+                                        <a href="{{ url_for('customer_details', customer_id=customer.id) }}" class="btn btn-outline-secondary btn-sm" title="View Details" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-info-circle"></i>
+                                        </a>
                                         {% if session.role == 'admin' %}
                                         <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" 
                                            class="btn btn-outline-warning btn-sm" title="Edit" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">

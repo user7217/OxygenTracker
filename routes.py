@@ -577,6 +577,37 @@ def customers():
     
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
+@app.route('/customers/<customer_id>/details')
+@login_required
+def customer_details(customer_id):
+    """Display detailed information for a specific customer"""
+    customer = customer_model.get_by_id(customer_id)
+    if not customer:
+        flash('Customer not found', 'error')
+        return redirect(url_for('customers'))
+    
+    # Get all cylinders rented to this customer
+    all_cylinders = cylinder_model.get_all()
+    rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer_id]
+    
+    # Add rental days and display serial for each cylinder
+    for i, cylinder in enumerate(rented_cylinders):
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        cylinder['rental_months'] = cylinder['rental_days'] // 30
+        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
+    
+    # Calculate summary statistics
+    total_cylinders = len(rented_cylinders)
+    avg_rental_days = sum(c.get('rental_days', 0) for c in rented_cylinders) // total_cylinders if total_cylinders > 0 else 0
+    long_term_count = len([c for c in rented_cylinders if c.get('rental_days', 0) > 90])  # 3+ months
+    
+    return render_template('customer_details.html', 
+                         customer=customer, 
+                         rented_cylinders=rented_cylinders,
+                         total_cylinders=total_cylinders,
+                         avg_rental_days=avg_rental_days,
+                         long_term_count=long_term_count)
+
 @app.route('/customers/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def add_customer():

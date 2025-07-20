@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Details - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3" style="font-size: 2.5rem;">
+                <i class="bi bi-person me-3"></i>Customer Details
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('customers') }}">Customers</a></li>
+                    <li class="breadcrumb-item active">Details</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('customers') }}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left me-2"></i>Back to Customers
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0 fs-4">
+                        <i class="bi bi-person-badge me-2"></i>Customer Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fs-5 mb-3 text-primary">
+                                <i class="bi bi-person me-2"></i>Basic Information
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Customer No:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_no or customer.id }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Name:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_name or customer.name or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Phone:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_phone or customer.phone or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% if customer.customer_email or customer.email %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Email:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_email or customer.email or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="fs-5 mb-3 text-primary">
+                                <i class="bi bi-geo-alt me-2"></i>Address Information
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Address:</label>
+                                <textarea class="form-control form-control-lg" rows="3" readonly style="font-size: 1.1rem;">{{ customer.customer_address or customer.address or 'N/A' }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">City:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_city or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">State:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_state or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% if customer.customer_apgst %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">APGST:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_apgst }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% endif %}
+                            {% if customer.customer_cst %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">CST:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_cst }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if customer.created_at or customer.updated_at %}
+                    <hr>
+                    <h6 class="fs-5 mb-3 text-secondary">
+                        <i class="bi bi-clock me-2"></i>Record Information
+                    </h6>
+                    <div class="row">
+                        {% if customer.created_at %}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Created:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.created_at[:10] }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if customer.updated_at %}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Last Updated:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ customer.updated_at[:10] }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-light d-flex justify-content-between">
+                    <a href="{{ url_for('customers') }}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Customers
+                    </a>
+                    
+                    <div class="btn-group">
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" class="btn btn-warning btn-lg">
+                            <i class="bi bi-pencil me-2"></i>Edit
+                        </a>
+                        {% endif %}
+                        
+                        {% if session.role in ['admin', 'user'] %}
+                        <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-cylinder me-2"></i>Manage Cylinders
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0 fs-4">
+                        <i class="bi bi-graph-up me-2"></i>Cylinder Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="display-6 fw-bold text-success">{{ total_cylinders }}</div>
+                        <p class="text-muted">Total Active Dispatches</p>
+                    </div>
+                    
+                    {% if total_cylinders > 0 %}
+                    <div class="row text-center">
+                        <div class="col">
+                            <div class="fw-bold fs-5 text-info">{{ avg_rental_days }}</div>
+                            <small class="text-muted">Average Days</small>
+                        </div>
+                        <div class="col">
+                            <div class="fw-bold fs-5 text-warning">{{ long_term_count }}</div>
+                            <small class="text-muted">Long-term (3+ months)</small>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No active cylinders
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if total_cylinders > 0 %}
+            <div class="card mt-4">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="bi bi-cylinder me-2"></i>Active Cylinders
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for cylinder in rented_cylinders[:5] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <code class="text-primary">{{ cylinder.display_serial }}</code>
+                                <br>
+                                <small class="text-muted">{{ cylinder.type }}</small>
+                            </div>
+                            <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">
+                                {{ cylinder.rental_days }}d
+                            </span>
+                        </div>
+                        {% endfor %}
+                        {% if rented_cylinders|length > 5 %}
+                        <div class="list-group-item text-center text-muted">
+                            <small>... and {{ rented_cylinders|length - 5 }} more</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-cylinder me-2"></i>Manage All Cylinders
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if rented_cylinders %}
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list me-2"></i>All Dispatched Cylinders
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Serial Number</th>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Location</th>
+                                <th>Dispatch Date</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cylinder in rented_cylinders %}
+                            <tr>
+                                <td>
+                                    <code class="text-primary">{{ cylinder.display_serial }}</code>
+                                </td>
+                                <td>
+                                    {% if cylinder.custom_id %}
+                                        <strong>{{ cylinder.custom_id }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cylinder.type }}</td>
+                                <td>{{ cylinder.size }}</td>
+                                <td>{{ cylinder.location or 'N/A' }}</td>
+                                <td>
+                                    {% if cylinder.date_borrowed %}
+                                        {{ cylinder.date_borrowed[:10] }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {{ cylinder.rental_days }} days ({{ cylinder.rental_months }} months)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">Dispatched</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
