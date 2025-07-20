@@ -4,10 +4,28 @@
 
 {% block extra_css %}
 <style>
-/* Simple clean styles for details cards */
-.details-card {
+/* Completely disable hover effects on details button */
+.btn-outline-secondary {
     transition: none !important;
     animation: none !important;
+    transform: none !important;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active,
+.btn-outline-secondary.focus,
+.btn-outline-secondary.active {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Prevent any CSS transforms or transitions on hover */
+.btn-group .btn-outline-secondary:hover {
+    z-index: auto !important;
+    transform: none !important;
 }
 </style>
 {% endblock %}
