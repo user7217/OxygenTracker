@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Add Cylinder - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-plus-circle me-3"></i>Add Cylinder
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('cylinders') }}">Cylinders</a></li>
+                    <li class="breadcrumb-item active">Add Cylinder</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cylinder me-2"></i>Cylinder Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('add_cylinder') }}">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="custom_id" class="form-label">
+                                    ID
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" 
+                                       title="Set a memorable ID like 'A1', 'B2', '001' for easier bulk operations"></i>
+                                </label>
+                                <input type="text" class="form-control" id="custom_id" name="custom_id" 
+                                       placeholder="Cylinder ID" maxlength="20">
+                                <small class="form-text text-muted">Use for easier bulk rental/return operations</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="type" name="type" required>
+                                    <option value="">Select cylinder type</option>
+                                    <option value="Medical Oxygen">Medical Oxygen</option>
+                                    <option value="Industrial Oxygen">Industrial Oxygen</option>
+                                    <option value="Carbon Dioxide">Carbon Dioxide</option>
+                                    <option value="Argon">Argon</option>
+                                    <option value="Nitrogen">Nitrogen</option>
+                                    <option value="Compressed Air">Compressed Air</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="size" class="form-label">Size <span class="text-danger">*</span></label>
+                                <select class="form-select" id="size" name="size" required>
+                                    <option value="">Select cylinder size</option>
+                                    <option value="Small (5L)">Small (5L)</option>
+                                    <option value="Medium (10L)">Medium (10L)</option>
+                                    <option value="Large (20L)">Large (20L)</option>
+                                    <option value="Extra Large (50L)">Extra Large (50L)</option>
+                                    <option value="Custom">Custom</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                                <select class="form-select" id="status" name="status" required onchange="toggleCustomerSelection()">
+                                    <option value="">Select status</option>
+                                    <option value="Available" selected>Available</option>
+                                    <option value="Rented">Rented</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Out of Service">Out of Service</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       value="Warehouse" placeholder="e.g., Warehouse A, Shelf 2" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="pressure" class="form-label">Current Pressure (PSI)</label>
+                                <input type="number" class="form-control" id="pressure" name="pressure" 
+                                       placeholder="e.g., 2000">
+                            </div>
+                        </div>
+
+                        <!-- Customer Selection (for Rented status) -->
+                        <div class="row mb-3" id="customer-selection" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="rented_to" class="form-label">Rented to Customer</label>
+                                <select class="form-select" id="rented_to" name="rented_to">
+                                    <option value="">Select customer...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.email }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Required when status is 'Rented'</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rental_date" class="form-label">Rental Date</label>
+                                <input type="date" class="form-control" id="rental_date" name="rental_date" 
+                                       value="{{ today_date }}">
+                                <small class="form-text text-muted">Date when cylinder was rented out</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="last_inspection" class="form-label">Last Inspection Date</label>
+                                <input type="date" class="form-control" id="last_inspection" name="last_inspection">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="next_inspection" class="form-label">Next Inspection Date</label>
+                                <input type="date" class="form-control" id="next_inspection" name="next_inspection">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Additional information about the cylinder..."></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Add Cylinder
+                            </button>
+                            <a href="{{ url_for('cylinders') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Information Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle me-2"></i>Information
+                    </h6>
+                    <ul class="mb-0">
+                        <li>A unique cylinder ID will be automatically generated</li>
+                        <li>Fields marked with <span class="text-danger">*</span> are required</li>
+                        <li>Cylinder information can be updated later if needed</li>
+                        <li>Regular inspections are required for safety compliance</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleCustomerSelection() {
+    const statusSelect = document.getElementById('status');
+    const customerSelection = document.getElementById('customer-selection');
+    const rentedToSelect = document.getElementById('rented_to');
+    const locationInput = document.getElementById('location');
+    
+    if (statusSelect.value === 'Rented') {
+        customerSelection.style.display = 'block';
+        rentedToSelect.required = true;
+        locationInput.value = ''; // Clear location when rented
+        locationInput.placeholder = 'Will be set to customer location';
+    } else {
+        customerSelection.style.display = 'none';
+        rentedToSelect.required = false;
+        rentedToSelect.value = '';
+        if (locationInput.value === '') {
+            locationInput.value = 'Warehouse'; // Reset to warehouse if empty
+        }
+        locationInput.placeholder = 'e.g., Warehouse A, Shelf 2';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomerSelection();
+});
+</script>
+{% endblock %}
