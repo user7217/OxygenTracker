@@ -64,7 +64,7 @@
                                 <th style="width: 120px;">City</th>
                                 <th style="width: 80px;">State</th>
                                 <th style="width: 130px;">Phone</th>
-                                <th style="width: 200px;">Borrowed Cylinders</th>
+                                <th style="width: 200px;">Dispatched Cylinders</th>
                                 <th style="width: 100px;">Created</th>
                                 {% if session.role in ['admin', 'user'] %}<th style="width: 140px;">Actions</th>{% endif %}
                             </tr>
@@ -100,7 +100,7 @@
                                             </small>
                                         </div>
                                     {% else %}
-                                        <span class="text-muted">No rentals</span>
+                                        <span class="text-muted">No dispatches</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -144,7 +144,7 @@
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">
-                                                        <i class="bi bi-cylinder me-2"></i>Cylinders Rented by {{ customer.customer_name or customer.name }}
+                                                        <i class="bi bi-cylinder me-2"></i>Cylinders Dispatched to {{ customer.customer_name or customer.name }}
                                                     </h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
@@ -157,8 +157,8 @@
                                                                     <th>Type</th>
                                                                     <th>Size</th>
                                                                     <th>Location</th>
-                                                                    <th>Rental Date</th>
-                                                                    <th>Days Rented</th>
+                                                                    <th>Dispatch Date</th>
+                                                                    <th>Days Dispatched</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -199,14 +199,14 @@
                                                                 <strong>Total Cylinders:</strong> {{ customer.rented_cylinders|length }}
                                                             </div>
                                                             <div class="col-md-4">
-                                                                <strong>Average Rental:</strong> 
+                                                                <strong>Average Dispatch:</strong> 
                                                                 {% set total_days = customer.rented_cylinders|sum(attribute='rental_days') or 0 %}
                                                                 {% set avg_days = (total_days / customer.rented_cylinders|length)|round|int if customer.rented_cylinders|length > 0 else 0 %}
                                                                 {{ avg_days }} days
                                                             </div>
                                                             <div class="col-md-4">
-                                                                <strong>Long-term Rentals:</strong> 
-                                                                {% set long_term = customer.rented_cylinders|selectattr('rental_days', 'gt', 30)|list|length %}
+                                                                <strong>Long-term Dispatches:</strong> 
+                                                                {% set long_term = customer.rented_cylinders|selectattr('rental_days', 'gt', 90)|list|length %}
                                                                 {{ long_term }} cylinders
                                                             </div>
                                                         </div>
