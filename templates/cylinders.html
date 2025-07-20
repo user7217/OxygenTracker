@@ -4,18 +4,48 @@
 
 {% block extra_css %}
 <style>
-.btn-outline-secondary {
-    transition: none !important;
-}
-.btn-outline-secondary:hover {
+/* Disable all transitions and animations on buttons */
+.btn-outline-secondary, 
+.btn-outline-secondary:hover, 
+.btn-outline-secondary:focus, 
+.btn-outline-secondary:active {
     transition: none !important;
     transform: none !important;
+    animation: none !important;
 }
-.modal.fade {
-    transition: opacity 0.1s linear !important;
+
+/* Completely disable modal animations */
+.modal,
+.modal.fade,
+.modal.show {
+    transition: none !important;
+    animation: none !important;
 }
-.modal.fade .modal-dialog {
-    transition: transform 0.1s ease-out !important;
+
+.modal .modal-dialog,
+.modal.fade .modal-dialog,
+.modal.show .modal-dialog {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Disable any hover effects on modal content */
+.modal-content,
+.modal-content:hover {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Disable backdrop animation */
+.modal-backdrop {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Force static positioning */
+#detailsModal .modal-dialog {
     transform: translate(0, 0) !important;
 }
 </style>
