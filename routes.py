@@ -785,6 +785,10 @@ def cylinders():
             customer = customer_model.get_by_id(cylinder['rented_to'])
             cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
     
+    # Sort cylinders by rental days in descending order (longest rentals first)
+    # Available cylinders (0 rental days) will appear last
+    cylinders_list.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
+    
     # Calculate pagination
     total_cylinders = len(cylinders_list)
     total_pages = (total_cylinders + per_page - 1) // per_page  # Ceiling division
