@@ -575,6 +575,17 @@ def customers():
     else:
         customers_list = customer_model.get_all()
     
+    # Add rental count for each customer and sort by number of rentals (descending)
+    all_cylinders = cylinder_model.get_all()
+    for customer in customers_list:
+        # Count rented cylinders for this customer
+        rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer['id']]
+        customer['rented_cylinders'] = rented_cylinders
+        customer['rental_count'] = len(rented_cylinders)
+    
+    # Sort customers by rental count in descending order
+    customers_list.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
+    
     return render_template('customers.html', customers=customers_list, search_query=search_query)
 
 @app.route('/customer/<customer_id>/details')
