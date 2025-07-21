@@ -39,31 +39,30 @@ def create_test_data():
         }
     ]
     
-    # Test cylinder data
+    # Test cylinder data (custom_id is now required, serial_number optional)
     test_cylinders = [
         {
-            "serial_number": "OXY001",
+            "id": "A1",  # Required custom ID
+            "serial_number": "OXY001",  # Optional serial number
             "type": "Medical Oxygen",
             "size": "Large",
             "location": "Warehouse",
-            "status": "Available",
-            "custom_id": "A1"
+            "status": "Available"
         },
         {
-            "serial_number": "OXY002",
+            "id": "A2",  # Required custom ID
+            "serial_number": "OXY002",  # Optional serial number
             "type": "Medical Oxygen", 
             "size": "Medium",
             "location": "Warehouse",
-            "status": "Available",
-            "custom_id": "A2"
+            "status": "Available"
         },
         {
-            "serial_number": "CO2001",
-            "type": "CO2",
+            "id": "B1",  # Required custom ID
+            "type": "CO2",  # No serial number provided (optional)
             "size": "Small",
             "location": "Warehouse", 
-            "status": "Available",
-            "custom_id": "B1"
+            "status": "Available"
         }
     ]
     
@@ -124,13 +123,14 @@ def test_direct_import():
                     # Add cylinder
                     added_cylinder = importer.cylinder_model.add(mapped_cylinder)
                     imported_cylinder_count += 1
-                    cylinder_id = added_cylinder.get('id', 'Unknown')
-                    serial_number = cylinder_data.get('serial_number', 'Unknown')
-                    custom_id = cylinder_data.get('custom_id', '')
-                    display_id = custom_id if custom_id else serial_number
-                    print(f"✅ Imported cylinder: {display_id} (System ID: {cylinder_id})")
+                    system_id = added_cylinder.get('id', 'Unknown')
+                    custom_id = cylinder_data.get('id', 'Unknown')  # Updated to use 'id' field
+                    serial_number = cylinder_data.get('serial_number', '')
+                    serial_info = f" (Serial: {serial_number})" if serial_number else ""
+                    print(f"✅ Imported cylinder: {custom_id}{serial_info} (System ID: {system_id})")
                 else:
-                    print(f"⚠️  Skipping duplicate cylinder: {cylinder_data.get('serial_number', 'Unknown')}")
+                    custom_id = cylinder_data.get('id', 'Unknown')  # Updated to use 'id' field
+                    print(f"⚠️  Skipping duplicate cylinder: {custom_id}")
                     
             except Exception as e:
                 print(f"❌ Error importing cylinder: {e}")

@@ -195,17 +195,18 @@ class StandaloneImporter:
                     
                     if is_duplicate:
                         duplicate_count += 1
-                        print(f"⚠️  Skipping duplicate cylinder: {cylinder_data.get('serial_number', 'Unknown')}")
+                        custom_id = cylinder_data.get('custom_id', 'Unknown')
+                        print(f"⚠️  Skipping duplicate cylinder: {custom_id}")
                         continue
                     
-                    # Add cylinder (this will generate a proper unique ID)
+                    # Add cylinder (this will generate a proper unique system ID)
                     added_cylinder = self.cylinder_model.add(cylinder_data)
                     imported_count += 1
-                    cylinder_id = added_cylinder.get('id', 'Unknown')
-                    serial_number = cylinder_data.get('serial_number', 'Unknown')
-                    custom_id = cylinder_data.get('custom_id', '')
-                    display_id = custom_id if custom_id else serial_number
-                    print(f"✅ Imported cylinder: {display_id} (System ID: {cylinder_id})")
+                    system_id = added_cylinder.get('id', 'Unknown')
+                    custom_id = cylinder_data.get('custom_id', 'Unknown')
+                    serial_number = cylinder_data.get('serial_number', '')
+                    serial_info = f" (Serial: {serial_number})" if serial_number else ""
+                    print(f"✅ Imported cylinder: {custom_id}{serial_info} (System ID: {system_id})")
                     
                 except Exception as e:
                     error_count += 1
@@ -289,12 +290,12 @@ class StandaloneImporter:
     def _get_default_cylinder_mapping(self) -> Dict[str, str]:
         """Get default field mapping for cylinders"""
         return {
-            'serial_number': 'serial_number',
+            'custom_id': 'id',  # Now required - renamed from custom_id to just id
+            'serial_number': 'serial_number',  # Now optional
             'type': 'type',
             'size': 'size',
             'location': 'location',
-            'status': 'status',
-            'custom_id': 'custom_id'
+            'status': 'status'
         }
     
     def _get_default_transaction_mapping(self) -> Dict[str, str]:
@@ -332,13 +333,17 @@ class StandaloneImporter:
             if access_field in row_data and row_data[access_field] is not None:
                 cylinder_data[model_field] = str(row_data[access_field]).strip()
         
+        # Check if required custom_id is provided
+        if not cylinder_data.get('custom_id'):
+            raise ValueError("Custom ID (id) is required for each cylinder")
+        
         # Set defaults for missing fields
         cylinder_data.setdefault('location', 'Warehouse')
         cylinder_data.setdefault('status', 'Available')
         cylinder_data.setdefault('type', 'Medical Oxygen')
-        cylinder_data.setdefault('custom_id', '')
+        cylinder_data.setdefault('serial_number', '')  # Serial number is now optional
         
-        # Generate unique ID (will be overridden by model.add() but good to have)
+        # Generate unique system ID (will be overridden by model.add() but good to have)
         cylinder_data['id'] = self.cylinder_model.generate_id()
         cylinder_data['created_at'] = datetime.now().isoformat()
         cylinder_data['updated_at'] = datetime.now().isoformat()
@@ -382,13 +387,17 @@ class StandaloneImporter:
         return False
     
     def _check_cylinder_duplicate(self, cylinder_data: Dict, existing_cylinders: List[Dict]) -> bool:
-        """Check if cylinder already exists"""
-        serial_number = cylinder_data.get('serial_number', '')
-        custom_id = cylinder_data.get('custom_id', '')
+        """Check if cylinder already exists (primarily by custom_id, optionally by serial_number)"""
+        custom_id = cylinder_data.get('custom_id', '')  # This is now required
+        serial_number = cylinder_data.get('serial_number', '')  # This is now optional
         
         for existing in existing_cylinders:
-            if (serial_number and existing.get('serial_number') == serial_number) or \
-               (custom_id and existing.get('custom_id') == custom_id):
+            # Primary check: custom_id (required field)
+            if custom_id and existing.get('custom_id') == custom_id:
+                return True
+            # Secondary check: serial_number (if both exist and match)
+            if (serial_number and existing.get('serial_number') and 
+                existing.get('serial_number') == serial_number):
                 return True
         
         return False
@@ -405,10 +414,10 @@ class StandaloneImporter:
             customer = customer_lookup.get(customer_no)
             cylinder = None
             
-            # Try to find cylinder by different identifiers
+            # Try to find cylinder by different identifiers (prioritize custom_id)
             for cyl in cylinder_lookup.values():
-                if (cyl.get('serial_number') == cylinder_no or 
-                    cyl.get('custom_id') == cylinder_no or
+                if (cyl.get('custom_id') == cylinder_no or 
+                    cyl.get('serial_number') == cylinder_no or
                     cyl.get('id') == cylinder_no):
                     cylinder = cyl
                     break

@@ -82,17 +82,17 @@ Your Access table should have these columns (or similar):
 
 ### Cylinder Table
 Your Access table should have these columns (or similar):
-- `serial_number` - Cylinder serial number
+- `id` - Custom cylinder ID (REQUIRED - simple memorable ID like "A1", "B2", "001")
 - `type` - Type (Medical Oxygen, CO2, etc.)
 - `size` - Cylinder size
 - `location` - Current location (defaults to "Warehouse")
 - `status` - Status (defaults to "Available")
-- `custom_id` - Custom ID (optional)
+- `serial_number` - Manufacturer serial number (optional)
 
 ### Transaction Table
 Your Access table should have these columns (or similar):
 - `customer_no` - Customer number (must match customer table)
-- `cylinder_no` - Cylinder serial number (must match cylinder table)
+- `cylinder_no` - Cylinder ID (must match cylinder custom ID or serial number)
 - `rental_date` - Date when cylinder was rented
 - `return_date` - Date when cylinder was returned (leave empty if still rented)
 
@@ -105,10 +105,10 @@ The importer follows this process:
    - Original customer numbers are preserved in the `customer_no` field
    - System generates timestamps for created_at and updated_at
 
-2. **Cylinders**: Import all cylinders, skip duplicates based on serial number or custom ID  
+2. **Cylinders**: Import all cylinders, skip duplicates based on custom ID (required field)
    - Each cylinder gets a unique system ID in format: `CYL-XXXXXXXX`
-   - Original serial numbers are preserved in the `serial_number` field
-   - Custom IDs are preserved in the `custom_id` field (if provided)
+   - Custom ID is REQUIRED - this becomes your primary cylinder identifier (like "A1", "B2", "001")
+   - Serial numbers are optional and preserved in the `serial_number` field
    - System generates timestamps for created_at and updated_at
 
 3. **Transactions**: Link customers and cylinders based on the transaction data
@@ -247,11 +247,17 @@ This test script verifies that:
 This standalone importer gives you the same powerful import capabilities as the web interface, but in a command-line tool that you can use independently or integrate into your own workflows.
 
 ### Key Features:
-- **Unique ID Generation**: Every customer gets CUST-XXXXXXXX, every cylinder gets CYL-XXXXXXXX
-- **Duplicate Detection**: Prevents importing the same data twice
-- **Preserve Original Data**: Your original customer numbers and serial numbers are preserved
-- **Transaction Linking**: Links customers to cylinders based on rental transactions
+- **Unique System ID Generation**: Every customer gets CUST-XXXXXXXX, every cylinder gets CYL-XXXXXXXX
+- **Required Custom IDs**: Cylinders must have memorable custom IDs (like "A1", "B2", "001") for easy bulk operations
+- **Duplicate Detection**: Prevents importing the same data twice based on custom IDs
+- **Preserve Original Data**: Customer numbers and optional cylinder serial numbers are preserved
+- **Transaction Linking**: Links customers to cylinders using custom IDs or serial numbers
 - **Comprehensive Logging**: Shows exactly what was imported, skipped, or failed
 - **Data Summary**: Shows current data status before and after imports
+
+### Important Changes:
+- **Cylinder ID Field**: The "custom_id" field is now called "id" and is REQUIRED for all cylinders
+- **Serial Numbers**: Cylinder serial numbers are now OPTIONAL (many users don't need them)
+- **Primary Identification**: Cylinders are primarily identified by their custom ID (like "A1", "B2")
 
 The importer handles all the same field mapping, validation, and relationship management as the web application, making it perfect for bulk imports, automated workflows, or when you prefer command-line tools.

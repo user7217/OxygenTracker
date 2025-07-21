@@ -26,20 +26,20 @@
     },
     "cylinders": {
       "default": {
+        "custom_id": "id",
         "serial_number": "serial_number",
         "type": "type",
         "size": "size",
         "location": "location",
-        "status": "status",
-        "custom_id": "custom_id"
+        "status": "status"
       },
       "alternative": {
+        "custom_id": "ID",
         "serial_number": "SerialNumber",
         "type": "CylinderType",
         "size": "Size",
         "location": "Location",
-        "status": "Status",
-        "custom_id": "CustomID"
+        "status": "Status"
       }
     },
     "transactions": {
