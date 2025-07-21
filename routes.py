@@ -1661,27 +1661,21 @@ def reports():
     # Calculate stats
     active_rentals = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     
-    # Calculate available months (last 12 months)
-    available_months = []
-    current_date = datetime.now()
-    for i in range(12):
-        month_date = current_date - timedelta(days=30*i)
-        available_months.append({
-            'value': month_date.strftime('%Y-%m'),
-            'label': month_date.strftime('%B %Y')
-        })
+    # Add rental count for sorting customers
+    for customer in customers:
+        rented_cylinders = [c for c in cylinders if c.get('rented_to') == customer['id']]
+        customer['rental_count'] = len(rented_cylinders)
     
-    # Calculate months of data
-    data_months = 12  # Assume we have data for 12 months
+    # Sort customers by rental count descending
+    customers.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
     
     stats = {
         'total_customers': len(customers),
         'total_cylinders': len(cylinders),
-        'active_rentals': active_rentals,
-        'data_months': data_months
+        'active_rentals': active_rentals
     }
     
-    return render_template('reports.html', stats=stats, available_months=available_months)
+    return render_template('reports.html', stats=stats, customers=customers)
 
 @app.route('/export/customers.csv')
 @login_required
@@ -1880,126 +1874,98 @@ def export_complete_data_csv():
         headers={'Content-Disposition': f'attachment; filename=complete_database_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
     )
 
-@app.route('/export/monthly-report', methods=['POST'])
+@app.route('/export/customer-report', methods=['POST'])
 @login_required
-def export_monthly_report():
-    """Export monthly report based on selected month and type"""
-    report_month = request.form.get('report_month')
-    report_type = request.form.get('report_type')
+def export_customer_report():
+    """Export individual customer report with dispatched cylinders sorted by rental days"""
+    customer_id = request.form.get('customer_id')
     
-    if not report_month or not report_type:
-        flash('Please select both month and report type', 'error')
+    if not customer_id:
+        flash('Please select a customer', 'error')
         return redirect(url_for('reports'))
     
     customer_model = Customer()
     cylinder_model = Cylinder()
-    customers = customer_model.get_all()
-    cylinders = cylinder_model.get_all()
     
-    # Filter data by month (simplified - in real implementation, you'd filter by actual dates)
-    year, month = report_month.split('-')
-    month_name = datetime(int(year), int(month), 1).strftime('%B %Y')
+    # Get customer details
+    customer = customer_model.get_by_id(customer_id)
+    if not customer:
+        flash('Customer not found', 'error')
+        return redirect(url_for('reports'))
+    
+    # Get all cylinders dispatched to this customer
+    all_cylinders = cylinder_model.get_all()
+    customer_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer_id]
+    
+    # Add rental days and sort by descending rental days
+    for cylinder in customer_cylinders:
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+    
+    # Sort by rental days descending (longest rentals first)
+    customer_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
     
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Write headers based on report type
-    writer.writerow([f'=== {report_type.upper()} REPORT FOR {month_name} ==='])
+    # Customer details header
+    customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+    writer.writerow([f'=== CUSTOMER REPORT: {customer_name} ==='])
     writer.writerow(['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
     writer.writerow([])
     
-    if report_type == 'complete':
-        # Complete report - all data
-        writer.writerow(['=== CUSTOMERS ==='])
-        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals'])
-        for customer in customers:
-            active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
-            writer.writerow([
-                customer.get('id', ''),
-                customer.get('customer_no', ''),
-                customer.get('customer_name', '') or customer.get('name', ''),
-                customer.get('customer_email', '') or customer.get('email', ''),
-                customer.get('customer_phone', '') or customer.get('phone', ''),
-                customer.get('customer_address', '') or customer.get('address', ''),
-                customer.get('customer_city', ''),
-                customer.get('customer_state', ''),
-                active_rentals
-            ])
+    # Customer information
+    writer.writerow(['=== CUSTOMER DETAILS ==='])
+    writer.writerow(['Customer No:', customer.get('customer_no', '')])
+    writer.writerow(['Name:', customer_name])
+    writer.writerow(['Phone:', customer.get('customer_phone') or customer.get('phone', '')])
+    writer.writerow(['Email:', customer.get('customer_email') or customer.get('email', '')])
+    writer.writerow(['Address:', customer.get('customer_address') or customer.get('address', '')])
+    writer.writerow(['City:', customer.get('customer_city', '')])
+    writer.writerow(['State:', customer.get('customer_state', '')])
+    writer.writerow(['Total Dispatched Cylinders:', len(customer_cylinders)])
+    writer.writerow([])
+    
+    # Dispatched cylinders sorted by rental days
+    writer.writerow(['=== DISPATCHED CYLINDERS (Sorted by Days Dispatched - Longest First) ==='])
+    writer.writerow(['Cylinder ID', 'Custom ID', 'Serial Number', 'Type', 'Size', 'Status', 
+                    'Date Dispatched', 'Days Dispatched', 'Location', 'Pressure'])
+    
+    for cylinder in customer_cylinders:
+        writer.writerow([
+            cylinder.get('id', ''),
+            cylinder.get('custom_id', ''),
+            cylinder.get('serial_number', ''),
+            cylinder.get('type', ''),
+            cylinder.get('size', ''),
+            cylinder.get('status', ''),
+            cylinder.get('date_borrowed', ''),
+            cylinder.get('rental_days', 0),
+            cylinder.get('location', ''),
+            cylinder.get('pressure', '')
+        ])
+    
+    # Summary statistics
+    writer.writerow([])
+    writer.writerow(['=== SUMMARY STATISTICS ==='])
+    if customer_cylinders:
+        total_days = sum(c.get('rental_days', 0) for c in customer_cylinders)
+        avg_days = total_days // len(customer_cylinders) if customer_cylinders else 0
+        longest_rental = max(c.get('rental_days', 0) for c in customer_cylinders)
+        long_term_count = len([c for c in customer_cylinders if c.get('rental_days', 0) > 90])
         
-        writer.writerow([])
-        writer.writerow(['=== CYLINDERS ==='])
-        writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Status', 'Customer', 'Rental Days'])
-        for cylinder in cylinders:
-            rental_days = cylinder_model.get_rental_days(cylinder)
-            writer.writerow([
-                cylinder.get('id', ''),
-                cylinder.get('serial_number', ''),
-                cylinder.get('custom_id', ''),
-                cylinder.get('type', ''),
-                cylinder.get('status', ''),
-                cylinder.get('customer_name', ''),
-                rental_days
-            ])
-    
-    elif report_type == 'rentals':
-        # Rental activities only
-        writer.writerow(['=== RENTAL ACTIVITIES ==='])
-        writer.writerow(['Cylinder ID', 'Serial Number', 'Type', 'Customer', 'Date Borrowed', 'Rental Days', 'Status'])
-        for cylinder in cylinders:
-            if cylinder.get('rented_to') or cylinder.get('date_borrowed'):
-                rental_days = cylinder_model.get_rental_days(cylinder)
-                writer.writerow([
-                    cylinder.get('id', ''),
-                    cylinder.get('serial_number', ''),
-                    cylinder.get('type', ''),
-                    cylinder.get('customer_name', ''),
-                    cylinder.get('date_borrowed', ''),
-                    rental_days,
-                    cylinder.get('status', '')
-                ])
-    
-    elif report_type == 'customers':
-        # Customer summary
-        writer.writerow(['=== CUSTOMER SUMMARY ==='])
-        writer.writerow(['ID', 'Customer No', 'Name', 'Email', 'Phone', 'Address', 'City', 'State', 'Active Rentals', 'Total Value'])
-        for customer in customers:
-            active_rentals = len([c for c in cylinders if c.get('rented_to') == customer.get('id')])
-            writer.writerow([
-                customer.get('id', ''),
-                customer.get('customer_no', ''),
-                customer.get('customer_name', '') or customer.get('name', ''),
-                customer.get('customer_email', '') or customer.get('email', ''),
-                customer.get('customer_phone', '') or customer.get('phone', ''),
-                customer.get('customer_address', '') or customer.get('address', ''),
-                customer.get('customer_city', ''),
-                customer.get('customer_state', ''),
-                active_rentals,
-                f'${active_rentals * 50}'  # Example pricing
-            ])
-    
-    elif report_type == 'cylinders':
-        # Cylinder inventory
-        writer.writerow(['=== CYLINDER INVENTORY ==='])
-        writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 'Pressure'])
-        for cylinder in cylinders:
-            writer.writerow([
-                cylinder.get('id', ''),
-                cylinder.get('serial_number', ''),
-                cylinder.get('custom_id', ''),
-                cylinder.get('type', ''),
-                cylinder.get('size', ''),
-                cylinder.get('status', ''),
-                cylinder.get('location', ''),
-                cylinder.get('pressure', '')
-            ])
+        writer.writerow(['Total Cylinders:', len(customer_cylinders)])
+        writer.writerow(['Average Days Dispatched:', avg_days])
+        writer.writerow(['Longest Dispatch (Days):', longest_rental])
+        writer.writerow(['Long-term Dispatches (90+ days):', long_term_count])
+    else:
+        writer.writerow(['No cylinders currently dispatched to this customer'])
     
     output.seek(0)
-    filename = f'{report_type}_report_{report_month}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    
+    safe_filename = customer_name.replace(' ', '_').replace('/', '_')
     return Response(
         output.getvalue(),
         mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename={filename}'}
+        headers={'Content-Disposition': f'attachment; filename=customer_report_{safe_filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
     )
 
 # PDF Export Routes

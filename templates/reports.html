@@ -19,37 +19,29 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-calendar-month me-2"></i>Monthly Reports
+                        <i class="bi bi-person-check me-2"></i>Customer Reports
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="mb-3">Generate detailed monthly reports with rental data, customer information, and cylinder usage.</p>
+                    <p class="mb-3">Generate detailed reports for individual customers with their dispatched cylinders sorted by rental days.</p>
                     
-                    <form method="POST" action="{{ url_for('export_monthly_report') }}" class="mb-3">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="report_month" class="form-label">Select Month</label>
-                                <select class="form-select" id="report_month" name="report_month" required>
-                                    <option value="">Choose a month...</option>
-                                    {% for month in available_months %}
-                                    <option value="{{ month.value }}">{{ month.label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="report_type" class="form-label">Report Type</label>
-                                <select class="form-select" id="report_type" name="report_type" required>
-                                    <option value="">Choose report type...</option>
-                                    <option value="complete">Complete Report (All Data)</option>
-                                    <option value="rentals">Rental Activities Only</option>
-                                    <option value="customers">Customer Summary</option>
-                                    <option value="cylinders">Cylinder Inventory</option>
-                                </select>
-                            </div>
+                    <form method="POST" action="{{ url_for('export_customer_report') }}" class="mb-3">
+                        <div class="mb-3">
+                            <label for="customer_id" class="form-label">Select Customer</label>
+                            <select class="form-select" id="customer_id" name="customer_id" required>
+                                <option value="">Choose a customer...</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}">
+                                    {{ customer.customer_name or customer.name or 'Unknown' }} 
+                                    ({{ customer.rental_count }} dispatches)
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Customers sorted by number of active dispatches</small>
                         </div>
                         <div class="mt-3">
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="bi bi-download me-2"></i>Download Monthly Report (CSV)
+                                <i class="bi bi-download me-2"></i>Download Customer Report (CSV)
                             </button>
                         </div>
                     </form>
