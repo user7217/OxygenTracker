@@ -316,7 +316,6 @@ class DataImporter:
                     # Only return date - cylinder was returned (assume it was rented before)
                     # First rent it to establish the relationship, then return it
                     # Use a default date if no dispatch date available
-                    from datetime import datetime
                     default_date = datetime.now().isoformat()
                     success_rent = self.cylinder_model.rent_cylinder_with_location(
                         cylinder['id'], 
@@ -350,7 +349,6 @@ class DataImporter:
                     else:
                         # Default to rental with customer location update
                         # Use a default date if no date specified
-                        from datetime import datetime
                         default_date = datetime.now().isoformat()
                         success = self.cylinder_model.rent_cylinder_with_location(
                             cylinder['id'], 
