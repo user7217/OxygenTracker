@@ -2161,13 +2161,11 @@ def reset_data_confirm():
         if backup_created:
             # Reset customer data
             customer_model = Customer()
-            customer_model.data = []
-            customer_model.save()
+            customer_model.db.save_data([])
             
             # Reset cylinder data
             cylinder_model = Cylinder()
-            cylinder_model.data = []
-            cylinder_model.save()
+            cylinder_model.db.save_data([])
             
             flash('All customer and cylinder data has been reset successfully. Backup created before reset.', 'success')
         else:
