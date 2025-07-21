@@ -105,13 +105,18 @@ class AccessConnector:
             return []
         
         try:
-            # Build query
-            query = f"SELECT * FROM [{table_name}]"
+            # Build query using Access syntax (TOP instead of LIMIT)
             if limit:
-                query += f" LIMIT {limit}"
+                query = f"SELECT TOP {limit} * FROM [{table_name}]"
+            else:
+                query = f"SELECT * FROM [{table_name}]"
             
-            # Use pandas for easier data handling
-            df = pd.read_sql(query, self.connection)
+            # Use pandas for easier data handling with proper connection
+            # Suppress pandas warning about non-SQLAlchemy connections
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="pandas only supports SQLAlchemy connectable")
+                df = pd.read_sql(query, self.connection)
             
             # Convert to list of dictionaries
             data = df.to_dict('records')
