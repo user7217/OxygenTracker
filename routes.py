@@ -2121,7 +2121,7 @@ def reset_data_page():
     # Only admins can reset data
     if not user or user.get('role') != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     # Get current data counts
     customer_model = Customer()
@@ -2147,7 +2147,7 @@ def reset_data_confirm():
     # Only admins can reset data
     if not user or user.get('role') != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     confirmation = request.form.get('confirmation')
     if confirmation != 'RESET ALL DATA':
@@ -2176,7 +2176,7 @@ def reset_data_confirm():
     except Exception as e:
         flash(f'Error during data reset: {str(e)}', 'error')
     
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('index'))
 
 @app.route('/admin/backup-data')
 @login_required
@@ -2188,7 +2188,7 @@ def manual_backup():
     # Only admins can create backups
     if not user or user.get('role') != 'admin':
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     try:
         backup_created = create_manual_backup('manual')
@@ -2199,7 +2199,7 @@ def manual_backup():
     except Exception as e:
         flash(f'Error creating backup: {str(e)}', 'error')
     
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('index'))
 
 def create_manual_backup(backup_type='manual'):
     """Create backup of all data files"""
