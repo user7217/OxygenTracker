@@ -1879,6 +1879,7 @@ def export_complete_data_csv():
 def export_customer_report():
     """Export individual customer report with dispatched cylinders sorted by rental days"""
     customer_id = request.form.get('customer_id')
+    export_format = request.form.get('export_format', 'csv')
     
     if not customer_id:
         flash('Please select a customer', 'error')
@@ -1904,11 +1905,23 @@ def export_customer_report():
     # Sort by rental days descending (longest rentals first)
     customer_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
     
+    customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+    safe_filename = customer_name.replace(' ', '_').replace('/', '_')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    if export_format == 'pdf':
+        return export_customer_pdf(customer, customer_cylinders, safe_filename, timestamp)
+    else:  # Default to CSV
+        return export_customer_csv(customer, customer_cylinders, safe_filename, timestamp)
+
+def export_customer_csv(customer, customer_cylinders, safe_filename, timestamp):
+    """Export customer report as CSV"""
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Customer details header
     customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+    
+    # Customer details header
     writer.writerow([f'=== CUSTOMER REPORT: {customer_name} ==='])
     writer.writerow(['Generated:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
     writer.writerow([])
@@ -1961,12 +1974,136 @@ def export_customer_report():
         writer.writerow(['No cylinders currently dispatched to this customer'])
     
     output.seek(0)
-    safe_filename = customer_name.replace(' ', '_').replace('/', '_')
     return Response(
         output.getvalue(),
         mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename=customer_report_{safe_filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+        headers={'Content-Disposition': f'attachment; filename=customer_report_{safe_filename}_{timestamp}.csv'}
     )
+
+
+
+def export_customer_pdf(customer, customer_cylinders, safe_filename, timestamp):
+    """Export customer report as PDF"""
+    try:
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        import io
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        
+        # Build story
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+        title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=18, spaceAfter=30)
+        story.append(Paragraph(f"Customer Report: {customer_name}", title_style))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Customer Details
+        story.append(Paragraph("Customer Details", styles['Heading2']))
+        customer_data = [
+            ['Customer No:', customer.get('customer_no', '')],
+            ['Name:', customer_name],
+            ['Phone:', customer.get('customer_phone') or customer.get('phone', '')],
+            ['Email:', customer.get('customer_email') or customer.get('email', '')],
+            ['Address:', customer.get('customer_address') or customer.get('address', '')],
+            ['City:', customer.get('customer_city', '')],
+            ['State:', customer.get('customer_state', '')],
+            ['Total Dispatched Cylinders:', str(len(customer_cylinders))]
+        ]
+        
+        customer_table = Table(customer_data, colWidths=[2*inch, 4*inch])
+        customer_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(customer_table)
+        story.append(Spacer(1, 20))
+        
+        # Dispatched Cylinders
+        if customer_cylinders:
+            story.append(Paragraph("Dispatched Cylinders (Sorted by Days Dispatched)", styles['Heading2']))
+            
+            cylinder_data = [['ID', 'Custom ID', 'Type', 'Size', 'Days Dispatched', 'Date Dispatched']]
+            for cylinder in customer_cylinders:
+                cylinder_data.append([
+                    str(cylinder.get('id', '')),
+                    str(cylinder.get('custom_id', '')),
+                    str(cylinder.get('type', '')),
+                    str(cylinder.get('size', '')),
+                    str(cylinder.get('rental_days', 0)),
+                    str(cylinder.get('date_borrowed', ''))
+                ])
+            
+            cylinder_table = Table(cylinder_data, colWidths=[0.8*inch, 1*inch, 1.2*inch, 1*inch, 1.2*inch, 1.3*inch])
+            cylinder_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(cylinder_table)
+            story.append(Spacer(1, 20))
+            
+            # Summary Statistics
+            story.append(Paragraph("Summary Statistics", styles['Heading2']))
+            total_days = sum(c.get('rental_days', 0) for c in customer_cylinders)
+            avg_days = total_days // len(customer_cylinders) if customer_cylinders else 0
+            longest_rental = max(c.get('rental_days', 0) for c in customer_cylinders)
+            long_term_count = len([c for c in customer_cylinders if c.get('rental_days', 0) > 90])
+            
+            summary_data = [
+                ['Total Cylinders:', str(len(customer_cylinders))],
+                ['Average Days Dispatched:', str(avg_days)],
+                ['Longest Dispatch (Days):', str(longest_rental)],
+                ['Long-term Dispatches (90+ days):', str(long_term_count)]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(summary_table)
+        else:
+            story.append(Paragraph("No cylinders currently dispatched to this customer", styles['Normal']))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename=customer_report_{safe_filename}_{timestamp}.pdf'}
+        )
+    
+    except ImportError:
+        flash('PDF generation not available. Please use CSV or JSON format.', 'error')
+        return redirect(url_for('reports'))
 
 # PDF Export Routes
 @app.route('/export/customers.pdf')
