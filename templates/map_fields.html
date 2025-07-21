@@ -52,9 +52,9 @@
                                 </label>
                                 <div class="form-text">
                                     {% if import_type == 'customer' %}
-                                    Skip customers with duplicate email addresses
+                                    Skip customers with duplicate customer numbers
                                     {% elif import_type == 'cylinder' %}
-                                    Skip cylinders with duplicate serial numbers
+                                    Skip cylinders with duplicate custom IDs
                                     {% else %}
                                     Skip duplicate transaction records
                                     {% endif %}
@@ -77,8 +77,7 @@
                         ] %}
                         {% elif import_type == 'cylinder' %}
                         {% set target_fields = [
-                            ('serial_number', 'Serial Number', true),
-                            ('custom_id', 'ID / Cylinder Number', false),
+                            ('custom_id', 'ID / Cylinder Number', true),
                             ('type', 'Type', true),
                             ('size', 'Size', true),
                             ('status', 'Status', false),

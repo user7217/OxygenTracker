@@ -139,10 +139,9 @@ class DataImporter:
         skipped_count = 0
         errors = []
         
-        existing_serials = []
-        if skip_duplicates:
-            existing_cylinders = self.cylinder_model.get_all()
-            existing_serials = [c.get('serial_number', '').lower() for c in existing_cylinders]
+        # Get existing cylinders once at the start for performance
+        existing_cylinders = self.cylinder_model.get_all() if skip_duplicates else []
+        existing_custom_ids = [c.get('custom_id', '').lower() for c in existing_cylinders if c.get('custom_id')]
         
         for row in data:
             try:
@@ -183,12 +182,13 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Check for duplicates based on custom_id instead of serial_number
-                existing_custom_ids = [cyl.get('custom_id', '').lower() for cyl in self.cylinder_model.get_all()]
-                
+                # Check for duplicates based on custom_id (performance optimized)
                 if skip_duplicates and cylinder_data['custom_id'].lower() in existing_custom_ids:
                     skipped_count += 1
                     continue
+                
+                # Add to existing custom_ids list to prevent duplicates within this import batch
+                existing_custom_ids.append(cylinder_data['custom_id'].lower())
                 
                 # Add cylinder
                 self.cylinder_model.add(cylinder_data)
@@ -315,10 +315,13 @@ class DataImporter:
                 elif return_date and not dispatch_date:
                     # Only return date - cylinder was returned (assume it was rented before)
                     # First rent it to establish the relationship, then return it
+                    # Use a default date if no dispatch date available
+                    from datetime import datetime
+                    default_date = datetime.now().isoformat()
                     success_rent = self.cylinder_model.rent_cylinder_with_location(
                         cylinder['id'], 
                         customer['id'], 
-                        None,  # No dispatch date available
+                        default_date,  # Use current date as fallback
                         customer
                     )
                     if success_rent:
@@ -346,10 +349,13 @@ class DataImporter:
                             errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
                         # Default to rental with customer location update
+                        # Use a default date if no date specified
+                        from datetime import datetime
+                        default_date = datetime.now().isoformat()
                         success = self.cylinder_model.rent_cylinder_with_location(
                             cylinder['id'], 
                             customer['id'],
-                            None,  # No date specified
+                            default_date,  # Use current date as fallback
                             customer  # Pass customer data for location
                         )
                         if success:
