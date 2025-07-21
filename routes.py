@@ -32,6 +32,11 @@ Version: 2.0
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, Response
 import csv
 import io
+import os
+import json
+import shutil
+import threading
+import time
 from datetime import datetime, timedelta
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
@@ -2102,8 +2107,224 @@ def export_customer_pdf(customer, customer_cylinders, safe_filename, timestamp):
         )
     
     except ImportError:
-        flash('PDF generation not available. Please use CSV or JSON format.', 'error')
+        flash('PDF generation not available. Please use CSV format.', 'error')
         return redirect(url_for('reports'))
+
+# Data Management Routes
+@app.route('/admin/reset-data')
+@login_required
+def reset_data_page():
+    """Show data reset confirmation page"""
+    user_manager = UserManager()
+    user = user_manager.get_user_by_id(session['user_id'])
+    
+    # Only admins can reset data
+    if not user or user.get('role') != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    # Get current data counts
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    customers = customer_model.get_all()
+    cylinders = cylinder_model.get_all()
+    
+    stats = {
+        'total_customers': len(customers),
+        'total_cylinders': len(cylinders),
+        'active_rentals': len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
+    }
+    
+    return render_template('admin/reset_data.html', stats=stats)
+
+@app.route('/admin/reset-data/confirm', methods=['POST'])
+@login_required
+def reset_data_confirm():
+    """Reset all customer and cylinder data with backup"""
+    user_manager = UserManager()
+    user = user_manager.get_user_by_id(session['user_id'])
+    
+    # Only admins can reset data
+    if not user or user.get('role') != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    confirmation = request.form.get('confirmation')
+    if confirmation != 'RESET ALL DATA':
+        flash('Confirmation text does not match. Data not reset.', 'error')
+        return redirect(url_for('reset_data_page'))
+    
+    try:
+        # Create backup before reset
+        backup_created = create_manual_backup('before_reset')
+        
+        if backup_created:
+            # Reset customer data
+            customer_model = Customer()
+            customer_model.data = []
+            customer_model.save()
+            
+            # Reset cylinder data
+            cylinder_model = Cylinder()
+            cylinder_model.data = []
+            cylinder_model.save()
+            
+            flash('All customer and cylinder data has been reset successfully. Backup created before reset.', 'success')
+        else:
+            flash('Failed to create backup. Data reset cancelled for safety.', 'error')
+            
+    except Exception as e:
+        flash(f'Error during data reset: {str(e)}', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/admin/backup-data')
+@login_required
+def manual_backup():
+    """Create manual backup of all data"""
+    user_manager = UserManager()
+    user = user_manager.get_user_by_id(session['user_id'])
+    
+    # Only admins can create backups
+    if not user or user.get('role') != 'admin':
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        backup_created = create_manual_backup('manual')
+        if backup_created:
+            flash('Manual backup created successfully.', 'success')
+        else:
+            flash('Failed to create backup.', 'error')
+    except Exception as e:
+        flash(f'Error creating backup: {str(e)}', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+def create_manual_backup(backup_type='manual'):
+    """Create backup of all data files"""
+    try:
+        # Create backups directory if it doesn't exist
+        backup_dir = 'backups'
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+        
+        # Create timestamped backup directory
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_subdir = os.path.join(backup_dir, f'{backup_type}_backup_{timestamp}')
+        os.makedirs(backup_subdir)
+        
+        # Backup data files
+        data_files = ['customers.json', 'cylinders.json', 'users.json']
+        for file in data_files:
+            src_path = os.path.join('data', file)
+            if os.path.exists(src_path):
+                dst_path = os.path.join(backup_subdir, file)
+                shutil.copy2(src_path, dst_path)
+        
+        # Create backup info file
+        info_file = os.path.join(backup_subdir, 'backup_info.json')
+        backup_info = {
+            'backup_type': backup_type,
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'files_backed_up': data_files,
+            'system': 'Varasai Oxygen'
+        }
+        with open(info_file, 'w') as f:
+            json.dump(backup_info, f, indent=2)
+        
+        return True
+    except Exception as e:
+        print(f"Backup creation failed: {str(e)}")
+        return False
+
+# Auto-backup system
+class AutoBackupManager:
+    """Manages automatic backup system"""
+    
+    def __init__(self):
+        self.backup_interval = 14 * 24 * 60 * 60  # 2 weeks in seconds
+        self.last_backup_file = 'data/last_backup.json'
+        self.running = False
+        self.thread = None
+    
+    def start_auto_backup(self):
+        """Start the automatic backup system"""
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self._backup_loop, daemon=True)
+            self.thread.start()
+    
+    def stop_auto_backup(self):
+        """Stop the automatic backup system"""
+        self.running = False
+    
+    def _backup_loop(self):
+        """Main backup loop running in background"""
+        while self.running:
+            try:
+                if self._should_create_backup():
+                    self._create_auto_backup()
+                # Check every hour
+                time.sleep(3600)
+            except Exception as e:
+                print(f"Auto-backup error: {str(e)}")
+                time.sleep(3600)  # Wait an hour before trying again
+    
+    def _should_create_backup(self):
+        """Check if backup should be created"""
+        try:
+            if not os.path.exists(self.last_backup_file):
+                return True
+            
+            with open(self.last_backup_file, 'r') as f:
+                last_backup_info = json.load(f)
+            
+            last_backup_time = datetime.strptime(
+                last_backup_info['last_backup'], 
+                '%Y-%m-%d %H:%M:%S'
+            )
+            
+            time_since_backup = datetime.now() - last_backup_time
+            return time_since_backup.total_seconds() >= self.backup_interval
+            
+        except Exception:
+            return True  # If can't read file, assume backup needed
+    
+    def _create_auto_backup(self):
+        """Create automatic backup"""
+        try:
+            backup_created = create_manual_backup('auto')
+            if backup_created:
+                # Update last backup time
+                backup_info = {
+                    'last_backup': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'backup_type': 'automatic',
+                    'next_backup': (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+                }
+                
+                # Ensure data directory exists
+                if not os.path.exists('data'):
+                    os.makedirs('data')
+                
+                with open(self.last_backup_file, 'w') as f:
+                    json.dump(backup_info, f, indent=2)
+                
+                print(f"Auto-backup created successfully at {datetime.now()}")
+        except Exception as e:
+            print(f"Auto-backup failed: {str(e)}")
+
+# Initialize auto-backup system
+auto_backup_manager = AutoBackupManager()
+
+# Start auto-backup when app starts (using app context)
+def initialize_auto_backup():
+    """Initialize automatic backup system"""
+    auto_backup_manager.start_auto_backup()
+
+# Initialize auto-backup at import time
+with app.app_context():
+    initialize_auto_backup()
 
 # PDF Export Routes
 @app.route('/export/customers.pdf')

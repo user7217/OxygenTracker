@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Reset Data - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Reset All Data
+                </h2>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+
+            <!-- Warning Alert -->
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Warning: Destructive Action
+                </h4>
+                <p>This action will permanently delete ALL customer and cylinder data from the system. This cannot be undone.</p>
+                <hr>
+                <p class="mb-0">A backup will be automatically created before the reset operation.</p>
+            </div>
+
+            <!-- Current Data Summary -->
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-info-circle me-2"></i>Current Data Summary
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="text-center p-3">
+                                        <h3 class="text-primary">{{ stats.total_customers }}</h3>
+                                        <p class="mb-0">Total Customers</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3">
+                                        <h3 class="text-info">{{ stats.total_cylinders }}</h3>
+                                        <p class="mb-0">Total Cylinders</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3">
+                                        <h3 class="text-warning">{{ stats.active_rentals }}</h3>
+                                        <p class="mb-0">Active Dispatches</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Confirmation Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-trash me-2"></i>Confirm Data Reset
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('reset_data_confirm') }}" onsubmit="return confirmReset()">
+                                <div class="mb-3">
+                                    <label for="confirmation" class="form-label">
+                                        <strong>Type "RESET ALL DATA" to confirm:</strong>
+                                    </label>
+                                    <input type="text" class="form-control" id="confirmation" name="confirmation" 
+                                           placeholder="Type exactly: RESET ALL DATA" required>
+                                    <small class="form-text text-muted">
+                                        This confirmation is case-sensitive and must match exactly.
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="understand" required>
+                                        <label class="form-check-label" for="understand">
+                                            I understand that this action will permanently delete all customer and cylinder data
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="backup_confirm" required>
+                                        <label class="form-check-label" for="backup_confirm">
+                                            I confirm that a backup will be created before the reset
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-danger btn-lg">
+                                        <i class="bi bi-trash me-2"></i>RESET ALL DATA
+                                    </button>
+                                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Options -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-shield-check me-2"></i>Backup Options
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Before proceeding with the reset, you can create a manual backup of your data:</p>
+                            <a href="{{ url_for('manual_backup') }}" class="btn btn-outline-primary w-100 mb-3">
+                                <i class="bi bi-download me-2"></i>Create Manual Backup
+                            </a>
+                            
+                            <hr>
+                            
+                            <h6>Automatic Backups</h6>
+                            <p class="small text-muted">
+                                The system automatically creates backups every 2 weeks. 
+                                These are stored in the 'backups' directory.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmReset() {
+    const confirmation = document.getElementById('confirmation').value;
+    if (confirmation !== 'RESET ALL DATA') {
+        alert('Please type exactly "RESET ALL DATA" to confirm.');
+        return false;
+    }
+    
+    return confirm('Are you absolutely sure you want to reset all data? This action cannot be undone!');
+}
+</script>
+{% endblock %}
