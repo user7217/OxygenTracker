@@ -90,11 +90,12 @@
                         <div class="col-md-6">
                             <h6 class="text-info">Cylinder Data:</h6>
                             <ul class="list-unstyled">
-                                <li><i class="bi bi-check text-success me-2"></i>Serial Number (required)</li>
+                                <li><i class="bi bi-check text-success me-2"></i>ID (required)</li>
                                 <li><i class="bi bi-check text-success me-2"></i>Type (required)</li>
                                 <li><i class="bi bi-check text-success me-2"></i>Size (required)</li>
-                                <li><i class="bi bi-check text-success me-2"></i>Status (required)</li>
-                                <li><i class="bi bi-check text-success me-2"></i>Location (required)</li>
+                                <li><i class="bi bi-circle text-muted me-2"></i>Serial Number (optional)</li>
+                                <li><i class="bi bi-circle text-muted me-2"></i>Status (defaults to "Available")</li>
+                                <li><i class="bi bi-circle text-muted me-2"></i>Location (defaults to "Warehouse")</li>
                                 <li><i class="bi bi-circle text-muted me-2"></i>Pressure (optional)</li>
                                 <li><i class="bi bi-circle text-muted me-2"></i>Inspection dates (optional)</li>
                                 <li><i class="bi bi-circle text-muted me-2"></i>Notes (optional)</li>
@@ -114,6 +115,8 @@
                         <li>Ensure your Access database is not password protected</li>
                         <li>Close the Access database before uploading</li>
                         <li>Use descriptive column names for better field mapping</li>
+                        <li>Cylinder ID field is required - use memorable IDs like "A1", "B2", "001"</li>
+                        <li>Serial numbers are optional for cylinders (many users don't track them)</li>
                         <li>Clean up data beforehand to avoid import errors</li>
                         <li>Backup your current data before importing</li>
                     </ul>

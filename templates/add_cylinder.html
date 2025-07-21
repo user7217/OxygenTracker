@@ -32,13 +32,13 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label for="custom_id" class="form-label">
-                                    ID
+                                    ID <span class="text-danger">*</span>
                                     <i class="bi bi-info-circle" data-bs-toggle="tooltip" 
                                        title="Set a memorable ID like 'A1', 'B2', '001' for easier bulk operations"></i>
                                 </label>
                                 <input type="text" class="form-control" id="custom_id" name="custom_id" 
-                                       placeholder="Cylinder ID" maxlength="20">
-                                <small class="form-text text-muted">Use for easier bulk rental/return operations</small>
+                                       placeholder="e.g., A1, B2, 001" maxlength="20" required>
+                                <small class="form-text text-muted">Required for bulk operations and easy identification</small>
                             </div>
                             <div class="col-md-6">
                                 <label for="type" class="form-label">Type <span class="text-danger">*</span></label>

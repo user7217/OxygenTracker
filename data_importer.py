@@ -48,10 +48,10 @@ class DataImporter:
                 'customer_cst': ['customer_cst', 'cst', 'cst_number', 'cst_no', 'central_tax']
             }
         elif target_type == 'cylinder':
-            # Cylinder field mappings
+            # Cylinder field mappings (custom_id is now REQUIRED, serial_number is optional)
             field_suggestions = {
-                'serial_number': ['serial_number', 'serial', 'cylinder_serial', 'number'],
-                'custom_id': ['custom_id', 'cylinder_number', 'cylinder_no', 'id', 'ref_number'],
+                'custom_id': ['id', 'custom_id', 'cylinder_number', 'cylinder_no', 'cylinder_id', 'ref_number'],
+                'serial_number': ['serial_number', 'serial', 'cylinder_serial', 'manufacturer_serial'],
                 'type': ['type', 'gas_type', 'cylinder_type', 'gas'],
                 'size': ['size', 'capacity', 'volume', 'cylinder_size'],
                 'status': ['status', 'state', 'condition', 'availability'],
@@ -174,8 +174,8 @@ class DataImporter:
                 if not cylinder_data.get('status'):
                     cylinder_data['status'] = 'Available'
                 
-                # Check required fields (location and status now have defaults)
-                required_fields = ['serial_number', 'type', 'size']
+                # Check required fields - custom_id is now REQUIRED, serial_number is optional
+                required_fields = ['custom_id', 'type', 'size']
                 missing_fields = [f for f in required_fields if not cylinder_data.get(f)]
                 
                 if missing_fields:
@@ -183,14 +183,15 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Check for duplicates
-                if skip_duplicates and cylinder_data['serial_number'].lower() in existing_serials:
+                # Check for duplicates based on custom_id instead of serial_number
+                existing_custom_ids = [cyl.get('custom_id', '').lower() for cyl in self.cylinder_model.get_all()]
+                
+                if skip_duplicates and cylinder_data['custom_id'].lower() in existing_custom_ids:
                     skipped_count += 1
                     continue
                 
                 # Add cylinder
                 self.cylinder_model.add(cylinder_data)
-                existing_serials.append(cylinder_data['serial_number'].lower())
                 imported_count += 1
                 
             except Exception as e:

@@ -868,33 +868,33 @@ def cylinder_details(cylinder_id):
 def add_cylinder():
     """Add new cylinder"""
     if request.method == 'POST':
-        # Validate required fields
-        required_fields = ['type', 'size', 'status', 'location']
+        # Validate required fields - custom_id is now REQUIRED
+        required_fields = ['custom_id', 'type', 'size', 'status', 'location']
         cylinder_data = {}
         
         for field in required_fields:
             value = request.form.get(field, '').strip()
             if not value:
-                flash(f'{field.replace("_", " ").title()} is required', 'error')
+                field_display = 'ID' if field == 'custom_id' else field.replace('_', ' ').title()
+                flash(f'{field_display} is required', 'error')
                 customers = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers)
+                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             cylinder_data[field] = value
         
-        # Add optional fields
-        cylinder_data['custom_id'] = request.form.get('custom_id', '').strip()
+        # Add optional fields - serial number is now optional
+        # (No need to set custom_id here since it's now in required_fields)
         cylinder_data['pressure'] = request.form.get('pressure', '').strip()
         cylinder_data['last_inspection'] = request.form.get('last_inspection', '').strip()
         cylinder_data['next_inspection'] = request.form.get('next_inspection', '').strip()
         cylinder_data['notes'] = request.form.get('notes', '').strip()
         
-        # Validate custom_id uniqueness if provided
-        if cylinder_data['custom_id']:
-            existing_cylinders = cylinder_model.get_all()
-            for existing in existing_cylinders:
-                if existing.get('custom_id') == cylinder_data['custom_id']:
-                    flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                    customers = customer_model.get_all()
-                    return render_template('add_cylinder.html', customers=customers)
+        # Validate custom_id uniqueness (now required)
+        existing_cylinders = cylinder_model.get_all()
+        for existing in existing_cylinders:
+            if existing.get('custom_id') == cylinder_data['custom_id']:
+                flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
+                customers = customer_model.get_all()
+                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
         
         # Handle customer assignment for rented cylinders
         rented_to = request.form.get('rented_to', '').strip()
