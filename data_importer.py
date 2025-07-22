@@ -249,8 +249,10 @@ class DataImporter:
                 print(f"  Imported: {imported_count}, Linked: {linked_count}, Skipped: {skipped_count}, Errors: {len(errors)}")
             
             # Skip if too many errors to prevent infinite loops and memory issues
-            if len(errors) > 1000:
-                print(f"Too many errors ({len(errors)}), stopping transaction import")
+            # Increased threshold for large datasets like 292k rows
+            if len(errors) > 5000 or skipped_count > total_rows * 0.5:
+                print(f"Too many errors ({len(errors)}) or skips ({skipped_count}), stopping transaction import")
+                print("This often happens when customer/cylinder IDs in transactions don't match imported data")
                 break
             try:
                 # Map fields from Access table
@@ -264,7 +266,9 @@ class DataImporter:
                 missing_fields = [f for f in required_fields if not transaction_data.get(f)]
                 
                 if missing_fields:
-                    errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing_fields)}")
+                    # Only log first few missing field errors to prevent spam
+                    if len(errors) < 100:
+                        errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing_fields)}")
                     skipped_count += 1
                     continue
                 
@@ -274,14 +278,18 @@ class DataImporter:
                 # Find customer by customer_no
                 customer = customer_lookup.get(customer_no)
                 if not customer:
-                    errors.append(f"Row {row_num}: Customer '{customer_no}' not found")
+                    # Only log first few customer not found errors to prevent spam
+                    if len(errors) < 500:
+                        errors.append(f"Row {row_num}: Customer '{customer_no}' not found")
                     skipped_count += 1
                     continue
                 
                 # Find cylinder by cylinder_no (could be serial_number or custom_id)
                 cylinder = cylinder_lookup.get(cylinder_no)
                 if not cylinder:
-                    errors.append(f"Row {row_num}: Cylinder '{cylinder_no}' not found")
+                    # Only log first few cylinder not found errors to prevent spam
+                    if len(errors) < 500:
+                        errors.append(f"Row {row_num}: Cylinder '{cylinder_no}' not found")
                     skipped_count += 1
                     continue
                 
@@ -387,11 +395,27 @@ class DataImporter:
                 
             except Exception as e:
                 # Limit errors stored to prevent memory issues with large datasets
-                if len(errors) < 1000:
+                if len(errors) < 5000:
                     errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
                 skipped_count += 1
         
-        print(f"Transaction import completed: {imported_count} processed, {linked_count} linked, {skipped_count} skipped")
+        # Final summary with detailed statistics
+        processed_rows = imported_count + skipped_count
+        print(f"\n=== Transaction Import Summary ===")
+        print(f"Total rows in table: {total_rows}")
+        print(f"Rows processed: {processed_rows} ({processed_rows/total_rows*100:.1f}%)")
+        print(f"Successfully imported: {imported_count}")
+        print(f"Successfully linked: {linked_count}")
+        print(f"Skipped: {skipped_count}")
+        print(f"Errors stored: {len(errors)}")
+        
+        if processed_rows < total_rows:
+            print(f"WARNING: Only processed {processed_rows} out of {total_rows} rows!")
+            print("This could be due to:")
+            print("- Too many customer/cylinder ID mismatches")
+            print("- Memory limitations with large dataset")
+            print("- Data quality issues in transaction table")
+        
         return imported_count, skipped_count, errors
     
     def suggest_transaction_field_mapping(self, table_name: str) -> Dict[str, str]:

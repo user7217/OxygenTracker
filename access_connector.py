@@ -1,27 +1,4 @@
-try:
-    import pyodbc
-    PYODBC_AVAILABLE = True
-except ImportError:
-    PYODBC_AVAILABLE = False
-
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-
-import os
-from typing import List, Dict, Optional
-import logging
-
-class AccessConnector:
-    """MS Access database connector for importing data"""
-    
-    def __init__(self):
-        self.connection = None
-        self.logger = logging.getLogger(__name__)
-    
-    def connect(self, access_file_path: str) -> bool:
+ str) -> bool:
         """Connect to MS Access database"""
         if not PYODBC_AVAILABLE:
             self.logger.error("pyodbc is not available")
