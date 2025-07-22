@@ -346,8 +346,8 @@ class DataImporter:
                                 self.cylinder_model.rent_cylinder_with_location(
                                     cylinder['id'], 
                                     customer['id'], 
-                                    dispatch_date,
-                                    customer
+                                    customer,
+                                    dispatch_date
                                 )
                                 self.cylinder_model.return_cylinder(cylinder['id'], return_date)
                                 linked_count += 1
@@ -360,8 +360,8 @@ class DataImporter:
                                 self.cylinder_model.rent_cylinder_with_location(
                                     cylinder['id'], 
                                     customer['id'], 
-                                    dispatch_date,
-                                    customer
+                                    customer,
+                                    dispatch_date
                                 )
                                 linked_count += 1
                             except Exception as e:
@@ -384,19 +384,71 @@ class DataImporter:
             print(f"Error during transaction import: {e}")
             if len(errors) < 5000:
                 errors.append(f"Database error: {str(e)}")
+                        cylinder['id'], 
+                        customer['id'], 
+                        default_date,  # Use current date as fallback
+                        customer
+                    )
+                    if success_rent:
+                        success_return = self.cylinder_model.return_cylinder(
+                            cylinder['id'], 
+                            return_date
+                        )
+                        if success_return:
+                            linked_count += 1
+                            # Reduced console output for performance
+                        else:
+                            errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                    else:
+                        errors.append(f"Row {row_num}: Failed to establish rental for cylinder {cylinder_no}")
+                        
+                else:
+                    # No specific dates - determine status based on transaction type or default behavior
+                    if transaction_type in ['return', 'returned', 'in', 'receive']:
+                        # Return operation
+                        success = self.cylinder_model.return_cylinder(cylinder['id'])
+                        if success:
+                            linked_count += 1
+                            # Reduced console output for performance
+                        else:
+                            errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
+                    else:
+                        # Default to rental with customer location update
+                        # Use a default date if no date specified
+                        from datetime import datetime
+                        default_date = datetime.now().isoformat()
+                        success = self.cylinder_model.rent_cylinder_with_location(
+                            cylinder['id'], 
+                            customer['id'],
+                            default_date,  # Use current date as fallback
+                            customer  # Pass customer data for location
+                        )
+                        if success:
+                            linked_count += 1
+                            # Reduced console output for performance
+                        else:
+                            errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
+                
+                imported_count += 1
+                
+            except Exception as e:
+                # Limit errors stored to prevent memory issues with large datasets
+                if len(errors) < 5000:
+                    errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
+                skipped_count += 1
         
         # Final summary with detailed statistics
         processed_rows = imported_count + skipped_count
         print(f"\n=== Transaction Import Summary ===")
-        print(f"Total rows in table: {total_rows:,}")
-        print(f"Rows processed: {processed_rows:,} ({processed_rows/total_rows*100:.1f}%)")
-        print(f"Successfully imported: {imported_count:,}")
-        print(f"Successfully linked: {linked_count:,}")
-        print(f"Skipped: {skipped_count:,}")
+        print(f"Total rows in table: {total_rows}")
+        print(f"Rows processed: {processed_rows} ({processed_rows/total_rows*100:.1f}%)")
+        print(f"Successfully imported: {imported_count}")
+        print(f"Successfully linked: {linked_count}")
+        print(f"Skipped: {skipped_count}")
         print(f"Errors stored: {len(errors)}")
         
         if processed_rows < total_rows:
-            print(f"WARNING: Only processed {processed_rows:,} out of {total_rows:,} rows!")
+            print(f"WARNING: Only processed {processed_rows} out of {total_rows} rows!")
             print("This could be due to:")
             print("- Too many customer/cylinder ID mismatches")
             print("- Memory limitations with large dataset")
@@ -406,40 +458,35 @@ class DataImporter:
     
     def suggest_transaction_field_mapping(self, table_name: str) -> Dict[str, str]:
         """Suggest field mapping for transaction table"""
-        # Get column information from Access table
         columns = self.access_connector.get_table_columns(table_name)
         column_names = [col['name'].lower() for col in columns]
         
         mapping = {}
         
-        # Customer number mapping
-        for col in ['customer_no', 'customerno', 'customer_number', 'cust_no', 'custno']:
-            if col in column_names:
-                mapping['customer_no'] = col
-                break
+        # Transaction field mappings for dispatch and return dates
+        field_suggestions = {
+            'customer_no': ['customer_no', 'customer_number', 'cust_no', 'customer_id', 'customer_code'],
+            'cylinder_no': ['cylinder_no', 'cylinder_number', 'cylinder_id', 'serial_number', 'cylinder_serial', 'custom_id'],
+            'dispatch_date': ['dispatch_date', 'date_out', 'issue_date', 'rental_date', 'date_dispatched', 'out_date'],
+            'return_date': ['return_date', 'date_in', 'received_date', 'date_returned', 'in_date'],
+            'transaction_type': ['transaction_type', 'type', 'trans_type', 'operation', 'action'],
+            'quantity': ['quantity', 'qty', 'amount', 'count'],
+            'notes': ['notes', 'comments', 'remarks', 'description', 'details']
+        }
         
-        # Cylinder number mapping
-        for col in ['cylinder_no', 'cylinderno', 'cylinder_number', 'cyl_no', 'cylno', 'serial', 'serial_no']:
-            if col in column_names:
-                mapping['cylinder_no'] = col
-                break
-                
-        # Dispatch date mapping
-        for col in ['dispatch_date', 'dispatchdate', 'out_date', 'outdate', 'rental_date', 'rentaldate']:
-            if col in column_names:
-                mapping['dispatch_date'] = col
-                break
-                
-        # Return date mapping
-        for col in ['return_date', 'returndate', 'in_date', 'indate', 'received_date', 'receiveddate']:
-            if col in column_names:
-                mapping['return_date'] = col
-                break
-                
-        # Transaction type mapping
-        for col in ['transaction_type', 'transactiontype', 'type', 'action', 'operation']:
-            if col in column_names:
-                mapping['transaction_type'] = col
-                break
+        # Find best matches
+        for target_field, suggestions in field_suggestions.items():
+            for suggestion in suggestions:
+                if suggestion in column_names:
+                    # Find the actual column name (with original case)
+                    for col in columns:
+                        if col['name'].lower() == suggestion:
+                            mapping[target_field] = col['name']
+                            break
+                    break
         
         return mapping
+    
+    def close_connection(self):
+        """Close Access database connection"""
+        self.access_connector.close()
