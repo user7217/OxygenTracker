@@ -212,11 +212,12 @@ class DataImporter:
         errors = []
         linked_count = 0
         
-        # Get existing customers and cylinders for validation
+        # Get existing customers and cylinders for validation (fetch once for performance)
+        print("Loading existing customers and cylinders for transaction import...")
         existing_customers = self.customer_model.get_all()
         existing_cylinders = self.cylinder_model.get_all()
         
-        # Create lookup dictionaries for faster searching
+        # Create optimized lookup dictionaries for faster searching
         customer_lookup = {c.get('customer_no', '').upper(): c for c in existing_customers}
         cylinder_lookup = {}
         
@@ -235,8 +236,22 @@ class DataImporter:
                 cylinder_lookup[cyl.get('id', '').upper()] = cyl
         
         print(f"Found {len(customer_lookup)} customers and {len(cylinder_lookup)} cylinders for linking")
+        print(f"Processing {len(data)} transaction rows...")
+        
+        # Process in batches for better performance and progress reporting
+        batch_size = 1000
+        total_rows = len(data)
         
         for row_num, row in enumerate(data, 1):
+            # Show progress every 1000 rows
+            if row_num % batch_size == 0:
+                print(f"Progress: {row_num}/{total_rows} rows processed ({row_num/total_rows*100:.1f}%)")
+                print(f"  Imported: {imported_count}, Linked: {linked_count}, Skipped: {skipped_count}, Errors: {len(errors)}")
+            
+            # Skip if too many errors to prevent infinite loops and memory issues
+            if len(errors) > 1000:
+                print(f"Too many errors ({len(errors)}), stopping transaction import")
+                break
             try:
                 # Map fields from Access table
                 transaction_data = {}
@@ -292,7 +307,9 @@ class DataImporter:
                         )
                         if success_return:
                             linked_count += 1
-                            print(f"Row {row_num}: Complete cycle - rented {cylinder_no} to {customer_no} on {dispatch_date}, returned on {return_date}")
+                            # Only print every 100 successful operations to reduce console spam
+                            if linked_count % 100 == 0:
+                                print(f"Row {row_num}: Complete cycle - rented {cylinder_no} to {customer_no} on {dispatch_date}, returned on {return_date}")
                         else:
                             errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
@@ -308,7 +325,9 @@ class DataImporter:
                     )
                     if success:
                         linked_count += 1
-                        print(f"Row {row_num}: Currently rented - {cylinder_no} to {customer_no} since {dispatch_date} (no return date - still with customer)")
+                        # Only print every 100 successful operations to reduce console spam
+                        if linked_count % 100 == 0:
+                            print(f"Row {row_num}: Currently rented - {cylinder_no} to {customer_no} since {dispatch_date}")
                     else:
                         errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                         
@@ -331,7 +350,7 @@ class DataImporter:
                         )
                         if success_return:
                             linked_count += 1
-                            print(f"Row {row_num}: Returned cylinder {cylinder_no} on {return_date}")
+                            # Reduced console output for performance
                         else:
                             errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
@@ -344,7 +363,7 @@ class DataImporter:
                         success = self.cylinder_model.return_cylinder(cylinder['id'])
                         if success:
                             linked_count += 1
-                            print(f"Row {row_num}: Returned cylinder {cylinder_no}")
+                            # Reduced console output for performance
                         else:
                             errors.append(f"Row {row_num}: Failed to return cylinder {cylinder_no}")
                     else:
@@ -360,14 +379,16 @@ class DataImporter:
                         )
                         if success:
                             linked_count += 1
-                            print(f"Row {row_num}: Rented cylinder {cylinder_no} to customer {customer_no} (location updated to customer address)")
+                            # Reduced console output for performance
                         else:
                             errors.append(f"Row {row_num}: Failed to rent cylinder {cylinder_no}")
                 
                 imported_count += 1
                 
             except Exception as e:
-                errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
+                # Limit errors stored to prevent memory issues with large datasets
+                if len(errors) < 1000:
+                    errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
                 skipped_count += 1
         
         print(f"Transaction import completed: {imported_count} processed, {linked_count} linked, {skipped_count} skipped")
