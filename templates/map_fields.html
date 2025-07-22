@@ -78,8 +78,8 @@
                         {% elif import_type == 'cylinder' %}
                         {% set target_fields = [
                             ('custom_id', 'ID / Cylinder Number', true),
-                            ('type', 'Type', true),
-                            ('size', 'Size', true),
+                            ('type', 'Type (optional - defaults to Medical Oxygen)', false),
+                            ('size', 'Size (optional - defaults to 40L)', false),
                             ('status', 'Status', false),
                             ('location', 'Location', false),
                             ('pressure', 'Pressure', false),

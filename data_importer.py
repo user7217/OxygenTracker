@@ -173,8 +173,16 @@ class DataImporter:
                 if not cylinder_data.get('status'):
                     cylinder_data['status'] = 'Available'
                 
-                # Check required fields - custom_id is now REQUIRED, serial_number is optional
-                required_fields = ['custom_id', 'type', 'size']
+                # Set default type if not provided
+                if not cylinder_data.get('type'):
+                    cylinder_data['type'] = 'Medical Oxygen'
+                
+                # Set default size if not provided
+                if not cylinder_data.get('size'):
+                    cylinder_data['size'] = '40L'
+                
+                # Check required fields - only custom_id is REQUIRED, type, size, serial_number are optional
+                required_fields = ['custom_id']
                 missing_fields = [f for f in required_fields if not cylinder_data.get(f)]
                 
                 if missing_fields:
