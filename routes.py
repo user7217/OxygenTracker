@@ -1114,33 +1114,36 @@ def upload_access_file():
         return redirect(url_for('import_data'))
     
     try:
-        # Save uploaded file temporarily
+        # Save uploaded file temporarily with unique name to avoid conflicts
+        import time
+        timestamp = str(int(time.time()))
         temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, f"temp_access_{file.filename}")
+        temp_path = os.path.join(temp_dir, f"temp_access_db{timestamp}.mdb")
         file.save(temp_path)
         
         # Try to connect
         importer = DataImporter()
-        if importer.connect_to_access(temp_path):
-            # Store file path in session
-            session['access_file_path'] = temp_path
-            session['access_file_name'] = file.filename
-            
-            # Get available tables
-            tables = importer.get_available_tables()
-            importer.close_connection()
-            
-            if tables:
-                flash(f'Successfully connected to {file.filename}. Found {len(tables)} tables.', 'success')
-                return render_template('select_tables.html', tables=tables, filename=file.filename)
+        try:
+            if importer.connect_to_access(temp_path):
+                # Store file path in session
+                session['access_file_path'] = temp_path
+                session['access_file_name'] = file.filename
+                
+                # Get available tables
+                tables = importer.get_available_tables()
+                
+                if tables:
+                    flash(f'Successfully connected to {file.filename}. Found {len(tables)} tables.', 'success')
+                    return render_template('select_tables.html', tables=tables, filename=file.filename)
+                else:
+                    flash('No tables found in the database', 'error')
+                    return redirect(url_for('import_data'))
             else:
-                flash('No tables found in the database', 'error')
-                os.remove(temp_path)
+                flash('Failed to connect to Access database. Please check the file format and try again.', 'error')
                 return redirect(url_for('import_data'))
-        else:
-            flash('Failed to connect to Access database. Please check the file format and try again.', 'error')
-            os.remove(temp_path)
-            return redirect(url_for('import_data'))
+        finally:
+            # Always close connection to release file locks
+            importer.close_connection()
             
     except Exception as e:
         flash(f'Error processing file: {str(e)}', 'error')
@@ -1210,26 +1213,51 @@ def execute_import():
             flash('Please map at least one field', 'error')
             return redirect(url_for('preview_table', table_name=table_name, type=import_type))
         
-        # Execute import
+        # Execute import with proper cleanup
         importer = DataImporter()
-        if not importer.connect_to_access(session['access_file_path']):
-            flash('Failed to reconnect to Access database', 'error')
-            return redirect(url_for('import_data'))
-        
-        if import_type == 'customer':
-            imported, skipped, errors = importer.import_customers(table_name, field_mapping, skip_duplicates)
-            item_type = 'customers'
-        elif import_type == 'cylinder':
-            imported, skipped, errors = importer.import_cylinders(table_name, field_mapping, skip_duplicates)
-            item_type = 'cylinders'
-        elif import_type == 'transaction':
-            imported, skipped, errors = importer.import_transactions(table_name, field_mapping, skip_duplicates)
-            item_type = 'transactions'
-        else:
-            flash('Invalid import type', 'error')
-            return redirect(url_for('import_data'))
-        
-        importer.close_connection()
+        try:
+            if not importer.connect_to_access(session['access_file_path']):
+                flash('Failed to reconnect to Access database', 'error')
+                return redirect(url_for('import_data'))
+            
+            if import_type == 'customer':
+                imported, skipped, errors = importer.import_customers(table_name, field_mapping, skip_duplicates)
+                item_type = 'customers'
+            elif import_type == 'cylinder':
+                imported, skipped, errors = importer.import_cylinders(table_name, field_mapping, skip_duplicates)
+                item_type = 'cylinders'
+            elif import_type == 'transaction':
+                imported, skipped, errors = importer.import_transactions(table_name, field_mapping, skip_duplicates)
+                item_type = 'transactions'
+            else:
+                flash('Invalid import type', 'error')
+                return redirect(url_for('import_data'))
+        finally:
+            # Always close connection and clean up temp file
+            importer.close_connection()
+            
+            # Clean up temp file with retry logic for Windows
+            temp_file_path = session.get('access_file_path')
+            if temp_file_path and os.path.exists(temp_file_path):
+                max_retries = 5
+                for attempt in range(max_retries):
+                    try:
+                        import time
+                        time.sleep(0.2)  # Small delay to let file handles close
+                        os.remove(temp_file_path)
+                        print(f"Successfully removed temporary file: {temp_file_path}")
+                        break
+                    except PermissionError as pe:
+                        if attempt == max_retries - 1:
+                            print(f"Warning: Could not remove temp file after {max_retries} attempts: {pe}")
+                        else:
+                            time.sleep(1)  # Wait longer between retries
+                    except Exception as e:
+                        print(f"Warning: Error removing temp file: {e}")
+                        break
+            
+            session.pop('access_file_path', None)
+            session.pop('access_file_name', None)
         
         # Show results
         if imported > 0:
@@ -1242,12 +1270,6 @@ def execute_import():
             if len(errors) > 5:
                 flash(f'... and {len(errors) - 5} more errors', 'error')
         
-        # Clean up
-        if os.path.exists(session['access_file_path']):
-            os.remove(session['access_file_path'])
-        session.pop('access_file_path', None)
-        session.pop('access_file_name', None)
-        
         # Redirect to appropriate page
         if import_type == 'customer':
             return redirect(url_for('customers'))
@@ -1256,6 +1278,17 @@ def execute_import():
         
     except Exception as e:
         flash(f'Error during import: {str(e)}', 'error')
+        # Clean up on error
+        if 'importer' in locals():
+            importer.close_connection()
+        temp_file_path = session.get('access_file_path')
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+            except:
+                pass
+        session.pop('access_file_path', None)
+        session.pop('access_file_name', None)
         return redirect(url_for('import_data'))
 
 @app.route('/import/cancel')

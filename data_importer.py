@@ -384,6 +384,14 @@ class DataImporter:
             print(f"Error during transaction import: {e}")
             if len(errors) < 5000:
                 errors.append(f"Database error: {str(e)}")
+        finally:
+            # Always close the connection to release file locks
+            if hasattr(self, 'access_connector') and self.access_connector:
+                try:
+                    self.access_connector.close()
+                    print("Database connection closed and file locks released")
+                except Exception as e:
+                    print(f"Warning: Could not properly close database connection: {e}")
         
         # Final summary with detailed statistics
         processed_rows = imported_count + skipped_count
@@ -443,3 +451,14 @@ class DataImporter:
                 break
         
         return mapping
+    
+    def close_connection(self):
+        """Close Access database connection and release file locks"""
+        if hasattr(self, 'access_connector') and self.access_connector:
+            try:
+                self.access_connector.close()
+                print("Access database connection closed")
+            except Exception as e:
+                print(f"Warning: Error closing database connection: {e}")
+            finally:
+                self.access_connector = None

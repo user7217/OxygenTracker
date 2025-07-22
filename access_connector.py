@@ -143,11 +143,22 @@ class AccessConnector:
         return self.import_table_data(table_name, limit=rows)
     
     def close(self):
-        """Close database connection"""
+        """Close database connection and release file locks"""
         if self.connection:
             try:
+                # Close any active cursors first
+                try:
+                    self.connection.commit()  # Commit any pending transactions
+                except:
+                    pass
+                
                 self.connection.close()
                 self.logger.info("Access database connection closed")
+                
+                # Give Windows time to release the file lock
+                import time
+                time.sleep(0.5)
+                
             except Exception as e:
                 self.logger.error(f"Error closing connection: {str(e)}")
             finally:
