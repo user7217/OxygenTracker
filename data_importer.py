@@ -215,13 +215,20 @@ class DataImporter:
         Expected fields: customer_no, cylinder_no, transaction_date, transaction_type, etc.
         Optimized for large datasets (292k+ rows) with memory-efficient processing
         """
+        from datetime import datetime, timedelta
+        
         print(f"Starting optimized transaction import from table: {table_name}")
         print("Processing large dataset with memory optimization...")
+        print("Only importing transactions from the past year")
         
         imported_count = 0
         skipped_count = 0
         errors = []
         linked_count = 0
+        
+        # Calculate date threshold for past year
+        one_year_ago = datetime.now() - timedelta(days=365)
+        print(f"Date filter: Only importing transactions from {one_year_ago.strftime('%Y-%m-%d')} onwards")
         
         # Get row count first for progress tracking
         try:
@@ -335,9 +342,42 @@ class DataImporter:
                             skipped_count += 1
                             continue
                         
-                        # Process the transaction (same logic as before but inline for performance)
-                        dispatch_date = transaction_data.get('dispatch_date', '')
-                        return_date = transaction_data.get('return_date', '')
+                        # Parse dates and filter for past year only
+                        dispatch_date_raw = transaction_data.get('dispatch_date', '')
+                        return_date_raw = transaction_data.get('return_date', '')
+                        
+                        dispatch_date = None
+                        return_date = None
+                        
+                        # Check and parse dispatch date
+                        if dispatch_date_raw:
+                            try:
+                                if isinstance(dispatch_date_raw, str):
+                                    dispatch_dt = datetime.strptime(dispatch_date_raw, '%Y-%m-%d %H:%M:%S')
+                                else:
+                                    dispatch_dt = dispatch_date_raw
+                                
+                                # Skip if dispatch date is older than 1 year
+                                if dispatch_dt < one_year_ago:
+                                    skipped_count += 1
+                                    continue
+                                    
+                                dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
+                            except:
+                                # Skip if date parsing fails
+                                skipped_count += 1
+                                continue
+                        
+                        # Parse return date (optional)
+                        if return_date_raw:
+                            try:
+                                if isinstance(return_date_raw, str):
+                                    return_dt = datetime.strptime(return_date_raw, '%Y-%m-%d %H:%M:%S')
+                                else:
+                                    return_dt = return_date_raw
+                                return_date = return_dt.strftime('%Y-%m-%d')
+                            except:
+                                pass  # Return date is optional, ignore parsing errors
                         
                         # Process transaction based on data
                         if dispatch_date and return_date:
