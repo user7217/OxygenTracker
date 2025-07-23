@@ -89,9 +89,11 @@
                                 <label for="rental_duration" class="form-label fs-5">Rental Duration</label>
                                 <select class="form-select form-select-lg" id="rental_duration" name="rental_duration" style="font-size: 1.1rem;">
                                     <option value="">Any Duration</option>
-                                    <option value="1" {% if rental_duration_filter == '1' %}selected{% endif %}>1+ Month (30+ days)</option>
-                                    <option value="6" {% if rental_duration_filter == '6' %}selected{% endif %}>6+ Months (180+ days)</option>
-                                    <option value="12" {% if rental_duration_filter == '12' %}selected{% endif %}>12+ Months (365+ days)</option>
+                                    <option value="under_1" {% if rental_duration_filter == 'under_1' %}selected{% endif %}>Under 1 Month</option>
+                                    <option value="1_to_3" {% if rental_duration_filter == '1_to_3' %}selected{% endif %}>1-3 Months</option>
+                                    <option value="3_to_6" {% if rental_duration_filter == '3_to_6' %}selected{% endif %}>3-6 Months</option>
+                                    <option value="6_to_12" {% if rental_duration_filter == '6_to_12' %}selected{% endif %}>6-12 Months</option>
+                                    <option value="over_12" {% if rental_duration_filter == 'over_12' %}selected{% endif %}>Over 12 Months</option>
                                 </select>
                             </div>
                         </div>

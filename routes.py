@@ -762,22 +762,31 @@ def cylinders():
     if customer_filter:
         cylinders_list = [c for c in cylinders_list if c.get('rented_to') == customer_filter]
     
-    # Apply rental duration filter
+    # Apply rental duration filter with new ranges
     if rental_duration_filter:
-        try:
-            duration_months = int(rental_duration_filter)
-            duration_days = duration_months * 30
-            filtered_cylinders = []
-            
-            for cylinder in cylinders_list:
-                if cylinder.get('status', '').lower() == 'rented':
-                    rental_days = cylinder_model.get_rental_days(cylinder)
-                    if rental_days >= duration_days:
-                        filtered_cylinders.append(cylinder)
-            
-            cylinders_list = filtered_cylinders
-        except ValueError:
-            pass  # Ignore invalid duration values
+        filtered_cylinders = []
+        
+        for cylinder in cylinders_list:
+            if cylinder.get('status', '').lower() == 'rented':
+                rental_months = cylinder_model.get_rental_months(cylinder)
+                
+                # Apply filter based on selected range
+                include_cylinder = False
+                if rental_duration_filter == 'under_1' and rental_months < 1:
+                    include_cylinder = True
+                elif rental_duration_filter == '1_to_3' and 1 <= rental_months < 3:
+                    include_cylinder = True
+                elif rental_duration_filter == '3_to_6' and 3 <= rental_months < 6:
+                    include_cylinder = True
+                elif rental_duration_filter == '6_to_12' and 6 <= rental_months < 12:
+                    include_cylinder = True
+                elif rental_duration_filter == 'over_12' and rental_months >= 12:
+                    include_cylinder = True
+                
+                if include_cylinder:
+                    filtered_cylinders.append(cylinder)
+        
+        cylinders_list = filtered_cylinders
     
     # Add rental days calculation and type-specific serial numbers for each cylinder
     for i, cylinder in enumerate(cylinders_list):
