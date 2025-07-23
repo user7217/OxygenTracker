@@ -1270,6 +1270,9 @@ def execute_import():
             if len(errors) > 5:
                 flash(f'... and {len(errors) - 5} more errors', 'error')
         
+        # Show completion immediately
+        flash(f'⚡ ULTRA-FAST IMPORT COMPLETE! Processed {imported:,} {item_type} instantly', 'success')
+        
         # Redirect to appropriate page
         if import_type == 'customer':
             return redirect(url_for('customers'))

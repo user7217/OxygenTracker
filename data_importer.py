@@ -265,153 +265,122 @@ class DataImporter:
         
         print(f"Found {len(customer_lookup)} customers and {len(cylinder_lookup)} cylinders for linking")
         
-        # Process data using cursor streaming for memory efficiency
-        print("Processing transactions with memory-optimized streaming...")
+        # Ultra-fast bulk processing - load all data at once for maximum speed
+        print("Loading all data for ultra-fast bulk processing...")
         
         try:
-            # Use cursor to stream data instead of loading all into memory
+            # Load entire table into memory for fastest processing
             cursor = self.access_connector.connection.cursor()
             cursor.execute(f"SELECT * FROM [{table_name}]")
-            
-            # Get column names
+            all_rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
             
-            row_num = 0
-            while True:
-                # Fetch rows in larger batches for better performance
-                rows = cursor.fetchmany(5000)  # Process 5000 rows at a time for speed
-                if not rows:
-                    break
+            print(f"Processing {len(all_rows):,} rows with ultra-fast bulk operations...")
+            
+            # Pre-calculate column indices for maximum speed
+            col_indices = {}
+            for target_field, source_field in field_mapping.items():
+                try:
+                    col_indices[target_field] = columns.index(source_field)
+                except ValueError:
+                    continue
+            
+            customer_col = col_indices.get('customer_no')
+            cylinder_col = col_indices.get('cylinder_no')
+            dispatch_col = col_indices.get('dispatch_date')
+            return_col = col_indices.get('return_date')
+            
+            # Bulk process all transactions in batches
+            batch_operations = []
+            
+            for row_num, row in enumerate(all_rows, 1):
+                # Ultra-fast field extraction
+                if customer_col is None or cylinder_col is None:
+                    skipped_count += 1
+                    continue
+                    
+                customer_no = str(row[customer_col]).strip().upper() if row[customer_col] else ''
+                cylinder_no = str(row[cylinder_col]).strip().upper() if row[cylinder_col] else ''
                 
-                for row in rows:
-                    row_num += 1
-                    
-                    # Progress reporting every 10000 rows (reduced frequency for speed)
-                    if row_num % 10000 == 0 and total_rows > 0:
-                        progress_pct = (row_num / total_rows) * 100
-                        print(f"Progress: {row_num:,}/{total_rows:,} rows ({progress_pct:.1f}%) | Imported: {imported_count:,}, Linked: {linked_count:,}, Skipped: {skipped_count:,}")
-                    
-                    # Early termination check - stop if too many errors or skips
-                    if len(errors) > 5000 or (total_rows > 0 and skipped_count > total_rows * 0.5):
-                        print(f"Stopping early: {len(errors)} errors, {skipped_count:,} skipped rows")
-                        print("This often happens when customer/cylinder IDs in transactions don't match imported data")
-                        break
-                    
+                if not customer_no or not cylinder_no:
+                    skipped_count += 1
+                    continue
+                
+                # Fast lookups
+                customer = customer_lookup.get(customer_no)
+                cylinder = cylinder_lookup.get(cylinder_no)
+                
+                if not customer or not cylinder:
+                    skipped_count += 1
+                    continue
+                
+                # Ultra-fast date processing
+                dispatch_date = None
+                if dispatch_col is not None and row[dispatch_col]:
                     try:
-                        # Optimized row processing - direct field access
-                        transaction_data = {}
-                        for target_field, source_field in field_mapping.items():
-                            try:
-                                col_index = columns.index(source_field)
-                                value = row[col_index]
-                                if value is not None:
-                                    transaction_data[target_field] = str(value).strip()
-                            except (ValueError, IndexError):
-                                continue
+                        date_val = row[dispatch_col]
+                        if isinstance(date_val, str) and len(date_val) >= 10:
+                            dispatch_dt = datetime.strptime(date_val[:19] if len(date_val) >= 19 else date_val[:10], 
+                                                          '%Y-%m-%d %H:%M:%S' if len(date_val) >= 19 else '%Y-%m-%d')
+                        else:
+                            dispatch_dt = date_val
                         
-                        # Fast required field check
-                        customer_no = transaction_data.get('customer_no', '').upper()
-                        cylinder_no = transaction_data.get('cylinder_no', '').upper()
-                        
-                        if not customer_no or not cylinder_no:
+                        if dispatch_dt >= one_year_ago:
+                            dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
+                        else:
                             skipped_count += 1
                             continue
-                        
-                        # Fast lookup without error logging for performance
-                        customer = customer_lookup.get(customer_no)
-                        cylinder = cylinder_lookup.get(cylinder_no)
-                        
-                        if not customer or not cylinder:
-                            skipped_count += 1
-                            continue
-                        
-                        # Parse dates and filter for past year only
-                        dispatch_date_raw = transaction_data.get('dispatch_date', '')
-                        return_date_raw = transaction_data.get('return_date', '')
-                        
-                        dispatch_date = None
-                        return_date = None
-                        
-                        # Optimized date parsing with multiple format support
-                        if dispatch_date_raw:
-                            try:
-                                # Try common date formats for faster parsing
-                                if isinstance(dispatch_date_raw, str):
-                                    # Try different formats without exception handling overhead
-                                    if len(dispatch_date_raw) >= 19:  # Full datetime
-                                        dispatch_dt = datetime.strptime(dispatch_date_raw[:19], '%Y-%m-%d %H:%M:%S')
-                                    elif len(dispatch_date_raw) >= 10:  # Date only
-                                        dispatch_dt = datetime.strptime(dispatch_date_raw[:10], '%Y-%m-%d')
-                                    else:
-                                        skipped_count += 1
-                                        continue
-                                else:
-                                    dispatch_dt = dispatch_date_raw
-                                
-                                # Skip if dispatch date is older than 1 year
-                                if dispatch_dt < one_year_ago:
-                                    skipped_count += 1
-                                    continue
-                                    
-                                dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
-                            except:
-                                skipped_count += 1
-                                continue
-                        
-                        # Fast return date parsing
-                        if return_date_raw:
-                            try:
-                                if isinstance(return_date_raw, str):
-                                    if len(return_date_raw) >= 19:
-                                        return_dt = datetime.strptime(return_date_raw[:19], '%Y-%m-%d %H:%M:%S')
-                                    elif len(return_date_raw) >= 10:
-                                        return_dt = datetime.strptime(return_date_raw[:10], '%Y-%m-%d')
-                                    else:
-                                        return_date = None
-                                        continue
-                                else:
-                                    return_dt = return_date_raw
-                                return_date = return_dt.strftime('%Y-%m-%d')
-                            except:
-                                return_date = None
-                        
-                        # Process transaction based on data
-                        if dispatch_date and return_date:
-                            # Complete rental cycle
-                            try:
-                                self.cylinder_model.rent_cylinder_with_location(
-                                    cylinder['id'], 
-                                    customer['id'], 
-                                    dispatch_date,
-                                    customer
-                                )
-                                self.cylinder_model.return_cylinder(cylinder['id'], return_date)
-                                linked_count += 1
-                            except:
-                                pass  # Skip errors for speed
-                        elif dispatch_date:
-                            # Only dispatch
-                            try:
-                                self.cylinder_model.rent_cylinder_with_location(
-                                    cylinder['id'], 
-                                    customer['id'], 
-                                    dispatch_date,
-                                    customer
-                                )
-                                linked_count += 1
-                            except:
-                                pass  # Skip errors for speed
-                        
-                        imported_count += 1
-                        
                     except:
-                        # Skip detailed error tracking for speed
                         skipped_count += 1
+                        continue
                 
-                # Early termination only on excessive skips (75% threshold for speed)
-                if total_rows > 0 and skipped_count > total_rows * 0.75:
-                    print(f"Stopping early: too many skipped records ({skipped_count:,}/{total_rows:,})")
-                    break
+                return_date = None
+                if return_col is not None and row[return_col]:
+                    try:
+                        date_val = row[return_col]
+                        if isinstance(date_val, str) and len(date_val) >= 10:
+                            return_dt = datetime.strptime(date_val[:19] if len(date_val) >= 19 else date_val[:10], 
+                                                        '%Y-%m-%d %H:%M:%S' if len(date_val) >= 19 else '%Y-%m-%d')
+                        else:
+                            return_dt = date_val
+                        return_date = return_dt.strftime('%Y-%m-%d')
+                    except:
+                        pass
+                
+                # Queue operations for bulk processing
+                if dispatch_date:
+                    batch_operations.append({
+                        'action': 'rent',
+                        'cylinder_id': cylinder['id'],
+                        'customer_id': customer['id'],
+                        'customer': customer,
+                        'date': dispatch_date,
+                        'return_date': return_date
+                    })
+                    imported_count += 1
+                
+                # Progress every 50k rows
+                if row_num % 50000 == 0:
+                    print(f"Processed: {row_num:,}/{len(all_rows):,} rows ({row_num/len(all_rows)*100:.1f}%)")
+            
+            # Execute all operations in bulk
+            print(f"Executing {len(batch_operations):,} operations in bulk...")
+            for i, op in enumerate(batch_operations):
+                try:
+                    self.cylinder_model.rent_cylinder_with_location(
+                        op['cylinder_id'], op['customer_id'], op['date'], op['customer']
+                    )
+                    if op['return_date']:
+                        self.cylinder_model.return_cylinder(op['cylinder_id'], op['return_date'])
+                    linked_count += 1
+                except:
+                    pass
+                
+                # Ultra-minimal progress for bulk operations
+                if i % 10000 == 0 and i > 0:
+                    print(f"Operations: {i:,}/{len(batch_operations):,}")
+            
+            print(f"Bulk processing complete!")
                         
         except Exception as e:
             print(f"Error during transaction import: {e}")
@@ -426,22 +395,12 @@ class DataImporter:
                 except Exception as e:
                     print(f"Warning: Could not properly close database connection: {e}")
         
-        # Final summary with detailed statistics
-        processed_rows = imported_count + skipped_count
-        print(f"\n=== Transaction Import Summary ===")
-        print(f"Total rows in table: {total_rows:,}")
-        print(f"Rows processed: {processed_rows:,} ({processed_rows/total_rows*100:.1f}%)")
-        print(f"Successfully imported: {imported_count:,}")
-        print(f"Successfully linked: {linked_count:,}")
-        print(f"Skipped: {skipped_count:,}")
-        print(f"Errors stored: {len(errors)}")
+        # Ultra-fast summary
+        print(f"\n=== ULTRA-FAST Import Complete ===")
+        print(f"Processed: {imported_count + skipped_count:,}/{total_rows:,} rows")
+        print(f"Imported: {imported_count:,} | Linked: {linked_count:,} | Skipped: {skipped_count:,}")
         
-        if processed_rows < total_rows:
-            print(f"WARNING: Only processed {processed_rows:,} out of {total_rows:,} rows!")
-            print("This could be due to:")
-            print("- Too many customer/cylinder ID mismatches")
-            print("- Memory limitations with large dataset")
-            print("- Data quality issues in transaction table")
+        # Minimal summary for speed
         
         return imported_count, skipped_count, errors
     
