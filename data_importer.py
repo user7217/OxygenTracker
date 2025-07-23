@@ -265,122 +265,128 @@ class DataImporter:
         
         print(f"Found {len(customer_lookup)} customers and {len(cylinder_lookup)} cylinders for linking")
         
-        # Ultra-fast bulk processing - load all data at once for maximum speed
-        print("Loading all data for ultra-fast bulk processing...")
+        # INSTANT processing - zero overhead approach
+        print("🚀 INSTANT MODE: Zero overhead processing")
         
         try:
-            # Load entire table into memory for fastest processing
-            cursor = self.access_connector.connection.cursor()
+            # Direct database access without wrapper overhead
+            import pyodbc
+            conn = pyodbc.connect(f'DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={self.access_connector.file_path};')
+            cursor = conn.cursor()
+            
+            # Single query to get ALL data
             cursor.execute(f"SELECT * FROM [{table_name}]")
-            all_rows = cursor.fetchall()
+            all_data = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
+            conn.close()
             
-            print(f"Processing {len(all_rows):,} rows with ultra-fast bulk operations...")
+            print(f"Loaded {len(all_data):,} rows - processing instantly...")
             
-            # Pre-calculate column indices for maximum speed
-            col_indices = {}
-            for target_field, source_field in field_mapping.items():
-                try:
-                    col_indices[target_field] = columns.index(source_field)
-                except ValueError:
-                    continue
+            # Pre-calculate indices once
+            try:
+                cust_idx = columns.index(field_mapping['customer_no'])
+                cyl_idx = columns.index(field_mapping['cylinder_no'])
+                dispatch_idx = columns.index(field_mapping['dispatch_date']) if 'dispatch_date' in field_mapping else None
+                return_idx = columns.index(field_mapping['return_date']) if 'return_date' in field_mapping else None
+            except (ValueError, KeyError):
+                errors.append("Required field mapping not found")
+                return imported_count, skipped_count, errors
             
-            customer_col = col_indices.get('customer_no')
-            cylinder_col = col_indices.get('cylinder_no')
-            dispatch_col = col_indices.get('dispatch_date')
-            return_col = col_indices.get('return_date')
+            # Process all rows with minimal operations
+            operations = []
             
-            # Bulk process all transactions in batches
-            batch_operations = []
-            
-            for row_num, row in enumerate(all_rows, 1):
-                # Ultra-fast field extraction
-                if customer_col is None or cylinder_col is None:
-                    skipped_count += 1
-                    continue
-                    
-                customer_no = str(row[customer_col]).strip().upper() if row[customer_col] else ''
-                cylinder_no = str(row[cylinder_col]).strip().upper() if row[cylinder_col] else ''
+            for row in all_data:
+                # Direct array access
+                cust_no = str(row[cust_idx] or '').strip().upper()
+                cyl_no = str(row[cyl_idx] or '').strip().upper()
                 
-                if not customer_no or not cylinder_no:
+                if not cust_no or not cyl_no:
                     skipped_count += 1
                     continue
                 
-                # Fast lookups
-                customer = customer_lookup.get(customer_no)
-                cylinder = cylinder_lookup.get(cylinder_no)
+                customer = customer_lookup.get(cust_no)
+                cylinder = cylinder_lookup.get(cyl_no)
                 
                 if not customer or not cylinder:
                     skipped_count += 1
                     continue
                 
-                # Ultra-fast date processing
-                dispatch_date = None
-                if dispatch_col is not None and row[dispatch_col]:
+                # Fast date processing
+                if dispatch_idx is not None and row[dispatch_idx]:
                     try:
-                        date_val = row[dispatch_col]
-                        if isinstance(date_val, str) and len(date_val) >= 10:
-                            dispatch_dt = datetime.strptime(date_val[:19] if len(date_val) >= 19 else date_val[:10], 
-                                                          '%Y-%m-%d %H:%M:%S' if len(date_val) >= 19 else '%Y-%m-%d')
+                        dispatch_raw = row[dispatch_idx]
+                        if isinstance(dispatch_raw, str) and len(dispatch_raw) >= 10:
+                            dispatch_dt = datetime.strptime(dispatch_raw[:10], '%Y-%m-%d')
                         else:
-                            dispatch_dt = date_val
+                            dispatch_dt = dispatch_raw
                         
                         if dispatch_dt >= one_year_ago:
                             dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
+                            
+                            # Return date
+                            return_date = None
+                            if return_idx is not None and row[return_idx]:
+                                try:
+                                    return_raw = row[return_idx]
+                                    if isinstance(return_raw, str) and len(return_raw) >= 10:
+                                        return_dt = datetime.strptime(return_raw[:10], '%Y-%m-%d')
+                                        return_date = return_dt.strftime('%Y-%m-%d')
+                                    else:
+                                        return_date = return_raw.strftime('%Y-%m-%d')
+                                except:
+                                    pass
+                            
+                            operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
+                            imported_count += 1
                         else:
                             skipped_count += 1
-                            continue
                     except:
                         skipped_count += 1
-                        continue
-                
-                return_date = None
-                if return_col is not None and row[return_col]:
-                    try:
-                        date_val = row[return_col]
-                        if isinstance(date_val, str) and len(date_val) >= 10:
-                            return_dt = datetime.strptime(date_val[:19] if len(date_val) >= 19 else date_val[:10], 
-                                                        '%Y-%m-%d %H:%M:%S' if len(date_val) >= 19 else '%Y-%m-%d')
-                        else:
-                            return_dt = date_val
-                        return_date = return_dt.strftime('%Y-%m-%d')
-                    except:
-                        pass
-                
-                # Queue operations for bulk processing
-                if dispatch_date:
-                    batch_operations.append({
-                        'action': 'rent',
-                        'cylinder_id': cylinder['id'],
-                        'customer_id': customer['id'],
-                        'customer': customer,
-                        'date': dispatch_date,
-                        'return_date': return_date
-                    })
-                    imported_count += 1
-                
-                # Progress every 50k rows
-                if row_num % 50000 == 0:
-                    print(f"Processed: {row_num:,}/{len(all_rows):,} rows ({row_num/len(all_rows)*100:.1f}%)")
+                else:
+                    skipped_count += 1
             
-            # Execute all operations in bulk
-            print(f"Executing {len(batch_operations):,} operations in bulk...")
-            for i, op in enumerate(batch_operations):
-                try:
-                    self.cylinder_model.rent_cylinder_with_location(
-                        op['cylinder_id'], op['customer_id'], op['date'], op['customer']
-                    )
-                    if op['return_date']:
-                        self.cylinder_model.return_cylinder(op['cylinder_id'], op['return_date'])
-                    linked_count += 1
-                except:
-                    pass
-                
-                # Ultra-minimal progress for bulk operations
-                if i % 10000 == 0 and i > 0:
-                    print(f"Operations: {i:,}/{len(batch_operations):,}")
+            # Direct JSON file updates for maximum speed
+            print(f"Direct file updates for {len(operations):,} operations...")
             
-            print(f"Bulk processing complete!")
+            # Load cylinder data once
+            cylinders_data = self.cylinder_model.get_all()
+            cylinder_updates = {}
+            
+            # Prepare all updates in memory
+            for cyl_id, cust_id, customer, dispatch, return_dt in operations:
+                if return_dt:
+                    # Complete cycle - return to warehouse
+                    cylinder_updates[cyl_id] = {
+                        'status': 'Available',
+                        'location': 'Warehouse',
+                        'rented_to': None,
+                        'rental_date': None,
+                        'customer_name': None,
+                        'customer_phone': None,
+                        'customer_address': None,
+                        'customer_city': None,
+                        'customer_state': None
+                    }
+                else:
+                    # Dispatch only
+                    cylinder_updates[cyl_id] = {
+                        'status': 'Rented',
+                        'location': customer.get('customer_address', 'Customer Location'),
+                        'rented_to': cust_id,
+                        'rental_date': dispatch,
+                        'customer_name': customer.get('customer_name', ''),
+                        'customer_phone': customer.get('customer_phone', ''),
+                        'customer_address': customer.get('customer_address', ''),
+                        'customer_city': customer.get('customer_city', ''),
+                        'customer_state': customer.get('customer_state', '')
+                    }
+                linked_count += 1
+            
+            # Execute bulk update
+            updated_count = self.cylinder_model.bulk_update(cylinder_updates)
+            print(f"Updated {updated_count:,} cylinder records")
+            
+            print("INSTANT processing complete!")
                         
         except Exception as e:
             print(f"Error during transaction import: {e}")

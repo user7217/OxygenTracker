@@ -324,6 +324,19 @@ class Cylinder:
         
         return None
     
+    def bulk_update(self, updates_dict: Dict[str, Dict]) -> int:
+        """Bulk update multiple cylinders for performance"""
+        cylinders = self.db.load_data()
+        updated_count = 0
+        
+        for cylinder in cylinders:
+            if cylinder['id'] in updates_dict:
+                cylinder.update(updates_dict[cylinder['id']])
+                updated_count += 1
+        
+        self.db.save_data(cylinders)
+        return updated_count
+    
     def delete(self, cylinder_id: str) -> bool:
         """Delete cylinder"""
         cylinders = self.db.load_data()
