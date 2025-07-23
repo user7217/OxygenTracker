@@ -232,9 +232,10 @@ class DataImporter:
         
         # Get row count first for progress tracking
         try:
-            cursor = self.access_connector.connection.cursor()
-            cursor.execute(f"SELECT COUNT(*) FROM [{table_name}]")
-            total_rows = cursor.fetchone()[0]
+            count_cursor = self.access_connector.connection.cursor()
+            count_cursor.execute(f"SELECT COUNT(*) FROM [{table_name}]")
+            total_rows = count_cursor.fetchone()[0]
+            count_cursor.close()
             print(f"Total rows to process: {total_rows:,}")
         except Exception as e:
             print(f"Could not get row count: {e}")
@@ -269,8 +270,8 @@ class DataImporter:
         print("🚀 INSTANT MODE: Zero overhead processing")
         
         try:
-            # Use the existing connection instead of creating a new one
-            cursor = self.access_connector.connection
+            # Use the existing connection and create a cursor
+            cursor = self.access_connector.connection.cursor()
             # Single query to get ALL data
             cursor.execute(f"SELECT * FROM [{table_name}]")
             all_data = cursor.fetchall()
@@ -383,6 +384,9 @@ class DataImporter:
             print(f"Updated {updated_count:,} cylinder records")
             
             print("INSTANT processing complete!")
+            
+            # Close cursor
+            cursor.close()
                         
         except Exception as e:
             print(f"Error during transaction import: {e}")
