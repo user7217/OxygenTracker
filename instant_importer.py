@@ -61,8 +61,7 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # Date filter
-        one_year_ago = datetime.now() - timedelta(days=365)
+        # Import all data without date restrictions
         
         # Process ALL rows with minimal overhead
         operations = []
@@ -101,11 +100,6 @@ class InstantImporter:
                         else:
                             dispatch_dt = dispatch_raw
                         
-                        # Year filter
-                        if dispatch_dt < one_year_ago:
-                            skipped += 1
-                            continue
-                            
                         dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
                         
                         # Return date (optional)

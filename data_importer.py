@@ -219,16 +219,12 @@ class DataImporter:
         
         print(f"🚀 INSTANT transaction import from table: {table_name}")
         print("Zero overhead processing for maximum speed")
-        print("Only importing transactions from the past year")
+        print("Importing ALL transactions - no date filtering")
         
         imported_count = 0
         skipped_count = 0
         errors = []
         linked_count = 0
-        
-        # Calculate date threshold for past year
-        one_year_ago = datetime.now() - timedelta(days=365)
-        print(f"Date filter: Only importing transactions from {one_year_ago.strftime('%Y-%m-%d')} onwards")
         
         # Get row count first for progress tracking
         try:
@@ -308,35 +304,31 @@ class DataImporter:
                     skipped_count += 1
                     continue
                 
-                # Fast date processing
+                # Fast date processing - NO DATE FILTERING
                 if dispatch_idx is not None and row[dispatch_idx]:
                     try:
                         dispatch_raw = row[dispatch_idx]
                         if isinstance(dispatch_raw, str) and len(dispatch_raw) >= 10:
                             dispatch_dt = datetime.strptime(dispatch_raw[:10], '%Y-%m-%d')
-                        else:
-                            dispatch_dt = dispatch_raw
-                        
-                        if dispatch_dt >= one_year_ago:
                             dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
-                            
-                            # Return date
-                            return_date = None
-                            if return_idx is not None and row[return_idx]:
-                                try:
-                                    return_raw = row[return_idx]
-                                    if isinstance(return_raw, str) and len(return_raw) >= 10:
-                                        return_dt = datetime.strptime(return_raw[:10], '%Y-%m-%d')
-                                        return_date = return_dt.strftime('%Y-%m-%d')
-                                    else:
-                                        return_date = return_raw.strftime('%Y-%m-%d')
-                                except:
-                                    pass
-                            
-                            operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
-                            imported_count += 1
                         else:
-                            skipped_count += 1
+                            dispatch_date = dispatch_raw.strftime('%Y-%m-%d')
+                        
+                        # Return date (optional)
+                        return_date = None
+                        if return_idx is not None and row[return_idx]:
+                            try:
+                                return_raw = row[return_idx]
+                                if isinstance(return_raw, str) and len(return_raw) >= 10:
+                                    return_dt = datetime.strptime(return_raw[:10], '%Y-%m-%d')
+                                    return_date = return_dt.strftime('%Y-%m-%d')
+                                else:
+                                    return_date = return_raw.strftime('%Y-%m-%d')
+                            except:
+                                pass
+                        
+                        operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
+                        imported_count += 1
                     except:
                         skipped_count += 1
                 else:

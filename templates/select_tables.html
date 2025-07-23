@@ -37,7 +37,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-4">
-                        Select a table and choose what type of data to import. Transaction imports will only include data from the past year.
+                        Select a table and choose what type of data to import. Transaction imports will include all historical data.
                     </p>
                     
                     <div class="row g-3">
@@ -62,7 +62,7 @@
                                         </a>
                                         <a href="{{ url_for('preview_table', table_name=table, type='transaction') }}" 
                                            class="btn btn-outline-success">
-                                            <i class="bi bi-arrow-left-right me-1"></i>Transactions (Past Year Only)
+                                            <i class="bi bi-arrow-left-right me-1"></i>Transactions (All Data)
                                         </a>
                                     </div>
                                 </div>
