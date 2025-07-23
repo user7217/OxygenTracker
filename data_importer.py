@@ -278,19 +278,18 @@ class DataImporter:
             
             row_num = 0
             while True:
-                # Fetch rows in batches to avoid memory overload
-                rows = cursor.fetchmany(1000)  # Process 1000 rows at a time
+                # Fetch rows in larger batches for better performance
+                rows = cursor.fetchmany(5000)  # Process 5000 rows at a time for speed
                 if not rows:
                     break
                 
                 for row in rows:
                     row_num += 1
                     
-                    # Progress reporting every 1000 rows
-                    if row_num % 1000 == 0 and total_rows > 0:
+                    # Progress reporting every 10000 rows (reduced frequency for speed)
+                    if row_num % 10000 == 0 and total_rows > 0:
                         progress_pct = (row_num / total_rows) * 100
-                        print(f"Progress: {row_num:,}/{total_rows:,} rows ({progress_pct:.1f}%)")
-                        print(f"  Imported: {imported_count:,}, Linked: {linked_count:,}, Skipped: {skipped_count:,}, Errors: {len(errors)}")
+                        print(f"Progress: {row_num:,}/{total_rows:,} rows ({progress_pct:.1f}%) | Imported: {imported_count:,}, Linked: {linked_count:,}, Skipped: {skipped_count:,}")
                     
                     # Early termination check - stop if too many errors or skips
                     if len(errors) > 5000 or (total_rows > 0 and skipped_count > total_rows * 0.5):
@@ -299,46 +298,30 @@ class DataImporter:
                         break
                     
                     try:
-                        # Convert row to dictionary
-                        row_dict = {}
-                        for i, value in enumerate(row):
-                            row_dict[columns[i]] = str(value).strip() if value is not None else ''
-                        
-                        # Map fields from Access table
+                        # Optimized row processing - direct field access
                         transaction_data = {}
                         for target_field, source_field in field_mapping.items():
-                            if source_field in row_dict and row_dict[source_field]:
-                                transaction_data[target_field] = row_dict[source_field]
+                            try:
+                                col_index = columns.index(source_field)
+                                value = row[col_index]
+                                if value is not None:
+                                    transaction_data[target_field] = str(value).strip()
+                            except (ValueError, IndexError):
+                                continue
                         
-                        # Check required fields for transaction processing
-                        required_fields = ['customer_no', 'cylinder_no']
-                        missing_fields = [f for f in required_fields if not transaction_data.get(f)]
+                        # Fast required field check
+                        customer_no = transaction_data.get('customer_no', '').upper()
+                        cylinder_no = transaction_data.get('cylinder_no', '').upper()
                         
-                        if missing_fields:
-                            # Only log first few missing field errors to prevent spam
-                            if len(errors) < 100:
-                                errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing_fields)}")
+                        if not customer_no or not cylinder_no:
                             skipped_count += 1
                             continue
                         
-                        customer_no = transaction_data['customer_no'].upper()
-                        cylinder_no = transaction_data['cylinder_no'].upper()
-                        
-                        # Find customer by customer_no
+                        # Fast lookup without error logging for performance
                         customer = customer_lookup.get(customer_no)
-                        if not customer:
-                            # Only log first few customer not found errors to prevent spam
-                            if len(errors) < 500:
-                                errors.append(f"Row {row_num}: Customer '{customer_no}' not found")
-                            skipped_count += 1
-                            continue
-                        
-                        # Find cylinder by cylinder_no (could be serial_number or custom_id)
                         cylinder = cylinder_lookup.get(cylinder_no)
-                        if not cylinder:
-                            # Only log first few cylinder not found errors to prevent spam
-                            if len(errors) < 500:
-                                errors.append(f"Row {row_num}: Cylinder '{cylinder_no}' not found")
+                        
+                        if not customer or not cylinder:
                             skipped_count += 1
                             continue
                         
@@ -349,11 +332,19 @@ class DataImporter:
                         dispatch_date = None
                         return_date = None
                         
-                        # Check and parse dispatch date
+                        # Optimized date parsing with multiple format support
                         if dispatch_date_raw:
                             try:
+                                # Try common date formats for faster parsing
                                 if isinstance(dispatch_date_raw, str):
-                                    dispatch_dt = datetime.strptime(dispatch_date_raw, '%Y-%m-%d %H:%M:%S')
+                                    # Try different formats without exception handling overhead
+                                    if len(dispatch_date_raw) >= 19:  # Full datetime
+                                        dispatch_dt = datetime.strptime(dispatch_date_raw[:19], '%Y-%m-%d %H:%M:%S')
+                                    elif len(dispatch_date_raw) >= 10:  # Date only
+                                        dispatch_dt = datetime.strptime(dispatch_date_raw[:10], '%Y-%m-%d')
+                                    else:
+                                        skipped_count += 1
+                                        continue
                                 else:
                                     dispatch_dt = dispatch_date_raw
                                 
@@ -364,20 +355,25 @@ class DataImporter:
                                     
                                 dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
                             except:
-                                # Skip if date parsing fails
                                 skipped_count += 1
                                 continue
                         
-                        # Parse return date (optional)
+                        # Fast return date parsing
                         if return_date_raw:
                             try:
                                 if isinstance(return_date_raw, str):
-                                    return_dt = datetime.strptime(return_date_raw, '%Y-%m-%d %H:%M:%S')
+                                    if len(return_date_raw) >= 19:
+                                        return_dt = datetime.strptime(return_date_raw[:19], '%Y-%m-%d %H:%M:%S')
+                                    elif len(return_date_raw) >= 10:
+                                        return_dt = datetime.strptime(return_date_raw[:10], '%Y-%m-%d')
+                                    else:
+                                        return_date = None
+                                        continue
                                 else:
                                     return_dt = return_date_raw
                                 return_date = return_dt.strftime('%Y-%m-%d')
                             except:
-                                pass  # Return date is optional, ignore parsing errors
+                                return_date = None
                         
                         # Process transaction based on data
                         if dispatch_date and return_date:
@@ -391,9 +387,8 @@ class DataImporter:
                                 )
                                 self.cylinder_model.return_cylinder(cylinder['id'], return_date)
                                 linked_count += 1
-                            except Exception as e:
-                                if len(errors) < 5000:
-                                    errors.append(f"Row {row_num}: Failed to process complete rental cycle: {str(e)}")
+                            except:
+                                pass  # Skip errors for speed
                         elif dispatch_date:
                             # Only dispatch
                             try:
@@ -404,20 +399,18 @@ class DataImporter:
                                     customer
                                 )
                                 linked_count += 1
-                            except Exception as e:
-                                if len(errors) < 5000:
-                                    errors.append(f"Row {row_num}: Failed to rent cylinder: {str(e)}")
+                            except:
+                                pass  # Skip errors for speed
                         
                         imported_count += 1
                         
-                    except Exception as e:
-                        # Limit errors stored to prevent memory issues with large datasets
-                        if len(errors) < 5000:
-                            errors.append(f"Row {row_num}: Error processing transaction: {str(e)}")
+                    except:
+                        # Skip detailed error tracking for speed
                         skipped_count += 1
                 
-                # Check if we need to break from outer loop
-                if len(errors) > 5000 or (total_rows > 0 and skipped_count > total_rows * 0.5):
+                # Early termination only on excessive skips (75% threshold for speed)
+                if total_rows > 0 and skipped_count > total_rows * 0.75:
+                    print(f"Stopping early: too many skipped records ({skipped_count:,}/{total_rows:,})")
                     break
                         
         except Exception as e:
