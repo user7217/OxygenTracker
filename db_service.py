@@ -327,11 +327,12 @@ class CylinderService(DatabaseService):
 class RentalHistoryService(DatabaseService):
     """Rental history database operations"""
     
-    def get_all(self, page: int = 1, per_page: int = 25) -> Tuple[List[RentalHistory], int]:
+    def get_all(self, page: int = 1, per_page: int = 1000) -> Tuple[List[RentalHistory], int]:
         """Get all rental history with pagination"""
         query = self.db.query(RentalHistory)
         total_count = query.count()
         
+        # For web interface, get larger chunks but still paginate for performance
         offset = (page - 1) * per_page
         history = query.order_by(desc(RentalHistory.return_date)).offset(offset).limit(per_page).all()
         

@@ -816,14 +816,18 @@ def delete_customer(customer_id):
 @app.route('/rental_history')
 @login_required
 def rental_history():
-    """Display rental history with automatic cleanup of old records"""
-    # Auto-cleanup records older than 6 months
-    from db_service import RentalHistoryService
-    with RentalHistoryService() as service:
-        removed_count = service.cleanup_old_records()
+    """Display rental history"""
+    # Only cleanup if explicitly requested
+    cleanup_requested = request.args.get('cleanup', False)
+    removed_count = 0
     
-    if removed_count > 0:
-        flash(f'Automatically removed {removed_count} records older than 6 months', 'info')
+    if cleanup_requested and session.get('role') == 'admin':
+        from db_service import RentalHistoryService
+        with RentalHistoryService() as service:
+            removed_count = service.cleanup_old_records()
+        
+        if removed_count > 0:
+            flash(f'Removed {removed_count} records older than 6 months', 'info')
     
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
@@ -835,9 +839,10 @@ def rental_history():
     search_query = request.args.get('search', '')
     customer_filter = request.args.get('customer', '')
     
-    # Use RentalHistory service to get return records
+    # Use RentalHistory service to get return records  
     with RentalHistoryService() as service:
-        all_transactions, _ = service.get_all()  # Get all rental history records
+        all_transactions, total_count = service.get_all(page=1, per_page=5000)  # Get larger batch
+        print(f"Debug: Retrieved {len(all_transactions)} transactions out of {total_count} total")
     
     # Convert SQLAlchemy objects to dicts for filtering
     transaction_dicts = []
