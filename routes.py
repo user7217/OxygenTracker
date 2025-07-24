@@ -1703,6 +1703,36 @@ def process_bulk_rental():
     
     return redirect(url_for('bulk_rental_management'))
 
+@app.route('/customers/<customer_id>/active_dispatches')
+@login_required
+def customer_active_dispatches(customer_id):
+    """View active dispatches for a specific customer"""
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    
+    # Get customer details
+    customer = customer_model.get_by_id(customer_id)
+    if not customer:
+        flash('Customer not found', 'error')
+        return redirect(url_for('customers'))
+    
+    # Get all cylinders rented to this customer
+    cylinders = cylinder_model.get_all()
+    customer_cylinders = [c for c in cylinders if c.get('rented_to') == customer_id]
+    
+    # Add rental days and display IDs for each cylinder
+    for cylinder in customer_cylinders:
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        cylinder['display_id'] = cylinder_model.get_display_id(cylinder)
+        cylinder['rental_months'] = cylinder['rental_days'] // 30
+    
+    # Sort by rental days (longest first)
+    customer_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
+    
+    return render_template('customer_active_dispatches.html', 
+                          customer=customer, 
+                          customer_cylinders=customer_cylinders)
+
 # Reports routes
 @app.route('/reports')
 @login_required

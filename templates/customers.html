@@ -87,12 +87,11 @@
                                         <div class="d-flex flex-column">
                                             <div class="d-flex align-items-center mb-1">
                                                 <span class="badge bg-warning text-dark me-2">{{ customer.rented_cylinders|length }}</span>
-                                                <button type="button" class="btn btn-outline-dark btn-sm" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#rentalsModal{{ loop.index }}" 
-                                                        title="View Details">
+                                                <a href="{{ url_for('customer_active_dispatches', customer_id=customer.id) }}" 
+                                                   class="btn btn-outline-dark btn-sm" 
+                                                   title="View Details">
                                                     <i class="bi bi-eye"></i>
-                                                </button>
+                                                </a>
                                             </div>
                                             <small class="text-muted" style="font-size: 0.75rem;">
                                                 {{ customer.rented_cylinders[:2]|map(attribute='serial_number')|join(', ') }}
@@ -137,92 +136,7 @@
                                     
 
 
-                                    <!-- Rented Cylinders Details Modal -->
-                                    {% if customer.rented_cylinders %}
-                                    <div class="modal fade" id="rentalsModal{{ loop.index }}" tabindex="-1">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">
-                                                        <i class="bi bi-cylinder me-2"></i>Cylinders Dispatched to {{ customer.customer_name or customer.name }}
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-hover">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Serial Number</th>
-                                                                    <th>Type</th>
-                                                                    <th>Size</th>
-                                                                    <th>Location</th>
-                                                                    <th>Dispatch Date</th>
-                                                                    <th>Days Dispatched</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {% for cylinder in customer.rented_cylinders %}
-                                                                <tr>
-                                                                    <td>
-                                                                        <code class="text-warning">{{ cylinder.serial_number }}</code>
-                                                                    </td>
-                                                                    <td>{{ cylinder.type }}</td>
-                                                                    <td>{{ cylinder.size }}</td>
-                                                                    <td>{{ cylinder.location }}</td>
-                                                                    <td>
-                                                                        {% if cylinder.date_borrowed %}
-                                                                            {{ cylinder.date_borrowed[:10] }}
-                                                                        {% else %}
-                                                                            <span class="text-muted">-</span>
-                                                                        {% endif %}
-                                                                    </td>
-                                                                    <td>
-                                                                        {% set rental_days = cylinder.rental_days or 0 %}
-                                                                        <span class="badge {% if rental_days > 30 %}bg-danger{% elif rental_days > 14 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                                                            {{ rental_days }} days
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                                {% endfor %}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                    
-                                                    {% if customer.rented_cylinders|length > 0 %}
-                                                    <div class="mt-3 p-3 bg-light rounded">
-                                                        <h6 class="mb-2">
-                                                            <i class="bi bi-graph-up me-2"></i>Summary
-                                                        </h6>
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <strong>Total Cylinders:</strong> {{ customer.rented_cylinders|length }}
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <strong>Average Dispatch:</strong> 
-                                                                {% set total_days = customer.rented_cylinders|sum(attribute='rental_days') or 0 %}
-                                                                {% set avg_days = (total_days / customer.rented_cylinders|length)|round|int if customer.rented_cylinders|length > 0 else 0 %}
-                                                                {{ avg_days }} days
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <strong>Long-term Dispatches:</strong> 
-                                                                {% set long_term = customer.rented_cylinders|selectattr('rental_days', 'gt', 90)|list|length %}
-                                                                {{ long_term }} cylinders
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {% endif %}
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    <a href="{{ url_for('cylinders', customer=customer.id) }}" class="btn btn-primary">
-                                                        <i class="bi bi-cylinder me-2"></i>View in Cylinders Page
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
+
 
 
                                 </td>
