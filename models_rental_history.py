@@ -122,7 +122,19 @@ class RentalHistory:
         
         # Get past rentals from history
         history_records = self._load_data()
-        past_rentals = [r for r in history_records if r.get('customer_id') == customer_id]
+        
+        # First try to get the customer by ID to get their customer number
+        from models import Customer
+        customer_model = Customer()
+        customer = customer_model.get_by_id(customer_id)
+        customer_no = customer.get('customer_no', '') if customer else ''
+        
+        # Look for past rentals by both customer_id and customer_no
+        past_rentals = []
+        for record in history_records:
+            if (record.get('customer_id') == customer_id or 
+                (customer_no and record.get('customer_no') == customer_no)):
+                past_rentals.append(record)
         
         # Sort both lists by date
         active_cylinders.sort(key=lambda x: x.get('date_borrowed', ''), reverse=True)
