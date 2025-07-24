@@ -641,10 +641,20 @@ def customer_details(customer_id):
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
-    # Get rental history (active and past)
-    from models_rental_history import RentalHistory
-    rental_history = RentalHistory()
-    history_data = rental_history.get_customer_history(customer_id)
+    # Get rental history from customer record and current active cylinders
+    
+    # Get active cylinders (currently rented to this customer)
+    cylinder_model = Cylinder()
+    active_cylinders = cylinder_model.get_by_customer(customer_id)
+    
+    # Add display information to active cylinders
+    for cylinder in active_cylinders:
+        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
+        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
+        cylinder['display_id'] = cylinder_model.get_display_id(cylinder)
+    
+    # Get imported rental history from customer record (past rentals)
+    past_rentals = customer.get('rental_history', [])
     
     # Get tab parameter
     tab = request.args.get('tab', 'active')
@@ -655,9 +665,9 @@ def customer_details(customer_id):
     
     # Select data based on tab
     if tab == 'past':
-        cylinders_data = history_data['past']
+        cylinders_data = past_rentals
     else:
-        cylinders_data = history_data['active']
+        cylinders_data = active_cylinders
     
     # Pagination
     total_cylinders = len(cylinders_data)
@@ -684,15 +694,15 @@ def customer_details(customer_id):
     }
     
     # Calculate summary statistics
-    active_count = len(history_data['active'])
-    past_count = len(history_data['past'])
+    active_count = len(active_cylinders)
+    past_count = len(past_rentals)
     
-    if tab == 'active' and history_data['active']:
-        avg_rental_days = sum(c.get('rental_days', 0) for c in history_data['active']) // active_count
-        long_term_count = len([c for c in history_data['active'] if c.get('rental_days', 0) > 90])
-    elif tab == 'past' and history_data['past']:
-        avg_rental_days = sum(c.get('rental_days', 0) for c in history_data['past']) // past_count
-        long_term_count = len([c for c in history_data['past'] if c.get('rental_days', 0) > 90])
+    if tab == 'active' and active_cylinders:
+        avg_rental_days = sum(c.get('rental_days', 0) for c in active_cylinders) // active_count
+        long_term_count = len([c for c in active_cylinders if c.get('rental_days', 0) > 90])
+    elif tab == 'past' and past_rentals:
+        avg_rental_days = sum(c.get('rental_days', 0) for c in past_rentals) // past_count
+        long_term_count = len([c for c in past_rentals if c.get('rental_days', 0) > 90])
     else:
         avg_rental_days = 0
         long_term_count = 0
@@ -1262,6 +1272,9 @@ def preview_table(table_name):
         # Get suggested field mapping based on import type
         if import_type == 'transaction':
             suggested_mapping = importer.suggest_transaction_field_mapping(table_name)
+        elif import_type == 'rental_history':
+            # Same mapping as transactions for rental history
+            suggested_mapping = importer.suggest_transaction_field_mapping(table_name)
         else:
             suggested_mapping = importer.suggest_field_mapping(table_name, import_type)
         
@@ -1302,27 +1315,41 @@ def execute_import():
             flash('Please map at least one field', 'error')
             return redirect(url_for('preview_table', table_name=table_name, type=import_type))
         
-        # Execute instant import - no DataImporter needed
-        from instant_importer import InstantImporter
-        instant_importer = InstantImporter()
-        
-        print(f"🚀 Starting INSTANT {import_type.upper()} import...")
-        imported, skipped, errors = instant_importer.instant_import(
-            session['access_file_path'], 
-            table_name, 
-            field_mapping,
-            import_type
-        )
-        
-        if import_type == 'customer':
-            item_type = 'customers'
-        elif import_type == 'cylinder':
-            item_type = 'cylinders'
-        elif import_type == 'transaction':
-            item_type = 'transactions'
+        # Execute import based on type
+        if import_type == 'rental_history':
+            # Use rental history importer for customer history
+            from rental_history_importer import RentalHistoryImporter
+            history_importer = RentalHistoryImporter()
+            
+            print(f"🚀 Starting RENTAL HISTORY import...")
+            imported, skipped, errors = history_importer.import_rental_history(
+                session['access_file_path'], 
+                table_name, 
+                field_mapping
+            )
+            item_type = 'rental history records'
         else:
-            flash('Invalid import type', 'error')
-            return redirect(url_for('import_data'))
+            # Use instant importer for other types
+            from instant_importer import InstantImporter
+            instant_importer = InstantImporter()
+            
+            print(f"🚀 Starting INSTANT {import_type.upper()} import...")
+            imported, skipped, errors = instant_importer.instant_import(
+                session['access_file_path'], 
+                table_name, 
+                field_mapping,
+                import_type
+            )
+            
+            if import_type == 'customer':
+                item_type = 'customers'
+            elif import_type == 'cylinder':
+                item_type = 'cylinders'
+            elif import_type == 'transaction':
+                item_type = 'transactions'
+            else:
+                flash('Invalid import type', 'error')
+                return redirect(url_for('import_data'))
         
         # Clean up temp file with retry logic for Windows
         temp_file_path = session.get('access_file_path')
@@ -1363,6 +1390,8 @@ def execute_import():
         
         # Redirect to appropriate page
         if import_type == 'customer':
+            return redirect(url_for('customers'))
+        elif import_type == 'rental_history':
             return redirect(url_for('customers'))
         else:
             return redirect(url_for('cylinders'))

@@ -61,8 +61,12 @@
                                             <i class="bi bi-cylinder me-1"></i>Cylinders
                                         </a>
                                         <a href="{{ url_for('preview_table', table_name=table, type='transaction') }}" 
-                                           class="btn btn-outline-success">
+                                           class="btn btn-outline-success mb-1">
                                             <i class="bi bi-arrow-left-right me-1"></i>Transactions (All Data)
+                                        </a>
+                                        <a href="{{ url_for('preview_table', table_name=table, type='rental_history') }}" 
+                                           class="btn btn-outline-warning">
+                                            <i class="bi bi-clock-history me-1"></i>Rental History (6 months)
                                         </a>
                                     </div>
                                 </div>
