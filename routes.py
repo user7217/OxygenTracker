@@ -45,7 +45,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from app import app
-from models import Customer, Cylinder
+from models_postgres import Customer, Cylinder
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -642,9 +642,9 @@ def customer_details(customer_id):
         return redirect(url_for('customers'))
     
     # Get rental history (active and past)
-    from models_rental_history import RentalHistory
-    rental_history = RentalHistory()
-    history_data = rental_history.get_customer_history(customer_id)
+    from db_service import RentalHistoryService
+    with RentalHistoryService() as service:
+        history_data = service.get_customer_history(customer_id)
     
     # Get tab parameter
     tab = request.args.get('tab', 'active')
@@ -801,9 +801,9 @@ def delete_customer(customer_id):
 def rental_history():
     """Display rental history with automatic cleanup of old records"""
     # Auto-cleanup records older than 6 months
-    from models_rental_history import RentalHistory
-    history_model = RentalHistory()
-    removed_count = history_model.cleanup_old_records()
+    from db_service import RentalHistoryService
+    with RentalHistoryService() as service:
+        removed_count = service.cleanup_old_records()
     
     if removed_count > 0:
         flash(f'Automatically removed {removed_count} records older than 6 months', 'info')
@@ -818,8 +818,31 @@ def rental_history():
     search_query = request.args.get('search', '')
     customer_filter = request.args.get('customer', '')
     
-    # Use RentalHistory model to get return records
-    all_transactions = history_model.get_all_history()  # Get all rental history records
+    # Use RentalHistory service to get return records
+    with RentalHistoryService() as service:
+        all_transactions, _ = service.get_all()  # Get all rental history records
+    
+    # Convert SQLAlchemy objects to dicts for filtering
+    transaction_dicts = []
+    for t in all_transactions:
+        if hasattr(t, 'customer_name'):  # SQLAlchemy object
+            transaction_dicts.append({
+                'customer_name': t.customer_name or '',
+                'cylinder_custom_id': t.cylinder_custom_id or '',
+                'customer_no': t.customer_no or '',
+                'return_date': t.return_date.isoformat() if t.return_date else '',
+                'dispatch_date': t.dispatch_date.isoformat() if t.dispatch_date else '',
+                'rental_days': t.rental_days or 0,
+                'cylinder_type': t.cylinder_type or '',
+                'cylinder_size': t.cylinder_size or '',
+                'customer_phone': t.customer_phone or '',
+                'customer_address': t.customer_address or '',
+                'location': t.location or ''
+            })
+        else:  # Already a dict
+            transaction_dicts.append(t)
+    
+    all_transactions = transaction_dicts
     
     # Apply search filter
     if search_query:
@@ -2874,13 +2897,13 @@ def export_rental_activities_pdf():
 @login_required
 def export_rental_history():
     """Export complete rental history to Excel"""
-    from models_rental_history import RentalHistory
     import io
     from openpyxl import Workbook
+    from db_service import RentalHistoryService
     
     try:
-        rental_history = RentalHistory()
-        all_history = rental_history.get_all_history()
+        with RentalHistoryService() as service:
+            all_history, _ = service.get_all()  # Get all history
         
         workbook = Workbook()
         
