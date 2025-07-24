@@ -633,33 +633,68 @@ def customers():
 @app.route('/customer/<customer_id>/details')
 @login_required
 def customer_details(customer_id):
-    """Display detailed information for a specific customer"""
+    """Display detailed information for a specific customer with pagination"""
+    customer_model = Customer()
+    cylinder_model = Cylinder()
+    
     customer = customer_model.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
+    # Get pagination parameters
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 25))
+    
     # Get all cylinders rented to this customer
     all_cylinders = cylinder_model.get_all()
     rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer_id]
     
-    # Add rental days and display serial for each cylinder
+    # Add rental days and display data for each cylinder
     for i, cylinder in enumerate(rented_cylinders):
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
         cylinder['rental_months'] = cylinder['rental_days'] // 30
+        cylinder['display_id'] = cylinder_model.get_display_id(cylinder)
         cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
     
-    # Calculate summary statistics
+    # Sort by rental days (longest first)
+    rented_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
+    
+    # Pagination
     total_cylinders = len(rented_cylinders)
+    start = (page - 1) * per_page
+    end = start + per_page
+    cylinders_paginated = rented_cylinders[start:end]
+    
+    # Calculate pagination info
+    total_pages = (total_cylinders + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_cylinders,
+        'total_pages': total_pages,
+        'has_prev': has_prev,
+        'has_next': has_next,
+        'prev_num': page - 1 if has_prev else None,
+        'next_num': page + 1 if has_next else None,
+        'start_index': start + 1 if cylinders_paginated else 0,
+        'end_index': min(end, total_cylinders)
+    }
+    
+    # Calculate summary statistics (from all data, not just current page)
     avg_rental_days = sum(c.get('rental_days', 0) for c in rented_cylinders) // total_cylinders if total_cylinders > 0 else 0
     long_term_count = len([c for c in rented_cylinders if c.get('rental_days', 0) > 90])  # 3+ months
     
     return render_template('customer_details.html', 
                          customer=customer, 
-                         rented_cylinders=rented_cylinders,
+                         rented_cylinders=cylinders_paginated,
                          total_cylinders=total_cylinders,
                          avg_rental_days=avg_rental_days,
-                         long_term_count=long_term_count)
+                         long_term_count=long_term_count,
+                         pagination=pagination_info)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
