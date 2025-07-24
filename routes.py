@@ -1783,16 +1783,16 @@ def export_cylinders_csv():
     writer = csv.writer(output)
     
     # Write headers
-    writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 
-                    'Pressure', 'Last Inspection', 'Next Inspection', 'Rented To', 'Customer Name',
-                    'Date Borrowed', 'Date Returned', 'Created At', 'Updated At', 'Notes'])
+    writer.writerow(['ID', 'Serial Number', 'Type', 'Size', 'Status', 'Location', 
+                    'Pressure', 'Last Inspection', 'Next Inspection', 'Customer Name',
+                    'Date Borrowed', 'Date Returned', 'Notes'])
     
     # Write cylinder data
     for cylinder in cylinders:
+        display_id = cylinder_model.get_display_id(cylinder)
         writer.writerow([
-            cylinder.get('id', ''),
+            display_id,
             cylinder.get('serial_number', ''),
-            cylinder.get('custom_id', ''),
             cylinder.get('type', ''),
             cylinder.get('size', ''),
             cylinder.get('status', ''),
@@ -1800,12 +1800,9 @@ def export_cylinders_csv():
             cylinder.get('pressure', ''),
             cylinder.get('last_inspection', ''),
             cylinder.get('next_inspection', ''),
-            cylinder.get('rented_to', ''),
             cylinder.get('customer_name', ''),
             cylinder.get('date_borrowed', ''),
             cylinder.get('date_returned', ''),
-            cylinder.get('created_at', ''),
-            cylinder.get('updated_at', ''),
             cylinder.get('notes', '')
         ])
     
@@ -1832,7 +1829,7 @@ def export_rental_activities_csv():
     writer = csv.writer(output)
     
     # Write headers
-    writer.writerow(['Cylinder ID', 'Serial Number', 'Custom ID', 'Type', 'Customer ID', 
+    writer.writerow(['Cylinder ID', 'Serial Number', 'Type', 
                     'Customer Name', 'Customer Email', 'Date Borrowed', 'Date Returned', 
                     'Status', 'Rental Days'])
     
@@ -1841,13 +1838,12 @@ def export_rental_activities_csv():
         if cylinder.get('rented_to') or cylinder.get('date_borrowed'):
             customer = customer_lookup.get(cylinder.get('rented_to', ''), {})
             rental_days = cylinder_model.get_rental_days(cylinder)
+            display_id = cylinder_model.get_display_id(cylinder)
             
             writer.writerow([
-                cylinder.get('id', ''),
+                display_id,
                 cylinder.get('serial_number', ''),
-                cylinder.get('custom_id', ''),
                 cylinder.get('type', ''),
-                cylinder.get('rented_to', ''),
                 customer.get('customer_name', '') or customer.get('name', ''),
                 customer.get('customer_email', '') or customer.get('email', ''),
                 cylinder.get('date_borrowed', ''),
@@ -1905,20 +1901,19 @@ def export_complete_data_csv():
     
     # Cylinders section
     writer.writerow(['=== CYLINDERS ==='])
-    writer.writerow(['ID', 'Serial Number', 'Custom ID', 'Type', 'Size', 'Status', 'Location', 
-                    'Pressure', 'Rented To', 'Customer Name', 'Date Borrowed', 'Rental Days'])
+    writer.writerow(['ID', 'Serial Number', 'Type', 'Size', 'Status', 'Location', 
+                    'Pressure', 'Customer Name', 'Date Borrowed', 'Rental Days'])
     for cylinder in cylinders:
         rental_days = cylinder_model.get_rental_days(cylinder)
+        display_id = cylinder_model.get_display_id(cylinder)
         writer.writerow([
-            cylinder.get('id', ''),
+            display_id,
             cylinder.get('serial_number', ''),
-            cylinder.get('custom_id', ''),
             cylinder.get('type', ''),
             cylinder.get('size', ''),
             cylinder.get('status', ''),
             cylinder.get('location', ''),
             cylinder.get('pressure', ''),
-            cylinder.get('rented_to', ''),
             cylinder.get('customer_name', ''),
             cylinder.get('date_borrowed', ''),
             rental_days
@@ -1997,13 +1992,14 @@ def export_customer_csv(customer, customer_cylinders, safe_filename, timestamp):
     
     # Dispatched cylinders sorted by rental days
     writer.writerow(['=== DISPATCHED CYLINDERS (Sorted by Days Dispatched - Longest First) ==='])
-    writer.writerow(['Cylinder ID', 'Custom ID', 'Serial Number', 'Type', 'Size', 'Status', 
+    writer.writerow(['ID', 'Serial Number', 'Type', 'Size', 'Status', 
                     'Date Dispatched', 'Days Dispatched', 'Location', 'Pressure'])
     
+    cylinder_model = Cylinder()
     for cylinder in customer_cylinders:
+        display_id = cylinder_model.get_display_id(cylinder)
         writer.writerow([
-            cylinder.get('id', ''),
-            cylinder.get('custom_id', ''),
+            display_id,
             cylinder.get('serial_number', ''),
             cylinder.get('type', ''),
             cylinder.get('size', ''),
@@ -2094,18 +2090,19 @@ def export_customer_pdf(customer, customer_cylinders, safe_filename, timestamp):
         if customer_cylinders:
             story.append(Paragraph("Dispatched Cylinders (Sorted by Days Dispatched)", styles['Heading2']))
             
-            cylinder_data = [['ID', 'Custom ID', 'Type', 'Size', 'Days Dispatched', 'Date Dispatched']]
+            cylinder_data = [['ID', 'Type', 'Size', 'Days Dispatched', 'Date Dispatched']]
+            cylinder_model = Cylinder()
             for cylinder in customer_cylinders:
+                display_id = cylinder_model.get_display_id(cylinder)
                 cylinder_data.append([
-                    str(cylinder.get('id', '')),
-                    str(cylinder.get('custom_id', '')),
+                    str(display_id),
                     str(cylinder.get('type', '')),
                     str(cylinder.get('size', '')),
                     str(cylinder.get('rental_days', 0)),
                     str(cylinder.get('date_borrowed', ''))
                 ])
             
-            cylinder_table = Table(cylinder_data, colWidths=[0.8*inch, 1*inch, 1.2*inch, 1*inch, 1.2*inch, 1.3*inch])
+            cylinder_table = Table(cylinder_data, colWidths=[1*inch, 1.5*inch, 1.2*inch, 1.5*inch, 1.8*inch])
             cylinder_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -2487,14 +2484,13 @@ def export_cylinders_pdf():
     
     # Cylinder table
     if cylinders:
-        data = [['Serial#', 'Type', 'Size', 'Status', 'Location', 'Customer']]
-        for i, cylinder in enumerate(cylinders):
-            # Generate display serial number
-            cylinder_type = cylinder.get('type', 'Other')
-            display_serial = cylinder_model.get_serial_number(cylinder_type, i + 1)
+        data = [['ID', 'Type', 'Size', 'Status', 'Location', 'Customer']]
+        for cylinder in cylinders:
+            # Use custom ID if available, otherwise fallback to generated serial
+            display_id = cylinder_model.get_display_id(cylinder)
             
             data.append([
-                display_serial,
+                display_id[:15],
                 cylinder.get('type', '')[:15],
                 cylinder.get('size', '')[:12],
                 cylinder.get('status', '')[:10],
