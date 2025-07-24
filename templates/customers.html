@@ -120,7 +120,7 @@
                                                 </a>
                                             </div>
                                             <small class="text-muted" style="font-size: 0.75rem;">
-                                                {{ customer.rented_cylinders[:2]|map(attribute='serial_number')|join(', ') }}
+                                                {{ customer.rented_cylinders[:2]|map(attribute='custom_id')|join(', ') }}
                                                 {% if customer.rented_cylinders|length > 2 %}...{% endif %}
                                             </small>
                                         </div>

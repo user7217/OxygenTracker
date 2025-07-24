@@ -168,9 +168,9 @@ class CylinderService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply pagination
+        # Apply sorting - sort by rental days descending for better visibility (issue #5)
         offset = (page - 1) * per_page
-        cylinders = query.order_by(Cylinder.custom_id, Cylinder.serial_number).offset(offset).limit(per_page).all()
+        cylinders = query.order_by(Cylinder.date_borrowed.desc().nulls_last()).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
     
@@ -207,13 +207,25 @@ class CylinderService(DatabaseService):
         if not cylinder:
             return False
         
+        # Handle rented_to field - ensure it's None for empty values to avoid FK constraint violations
+        if 'rented_to' in cylinder_data:
+            rented_to = cylinder_data['rented_to']
+            if rented_to == '' or rented_to is None or str(rented_to).strip() == '':
+                cylinder_data['rented_to'] = None
+        
         for key, value in cylinder_data.items():
             if hasattr(cylinder, key):
                 setattr(cylinder, key, value)
         
         cylinder.updated_at = datetime.utcnow()
-        self.db.commit()
-        return True
+        
+        try:
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error updating cylinder: {e}")
+            return False
     
     def rent_cylinder(self, cylinder_id: str, customer_id: str, rental_date: str = None) -> bool:
         """Rent cylinder to customer"""

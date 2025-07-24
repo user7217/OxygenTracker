@@ -582,8 +582,8 @@ def customers():
     else:
         customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
-    # Get all cylinders to calculate active dispatches for each customer
-    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=10000)  # Get all cylinders
+    # Get only rented cylinders for performance optimization (issue #7)
+    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=5000, filter_status='rented')
     for customer in customers_list:
         # Count cylinders currently rented to this customer (active dispatches)
         rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
@@ -599,8 +599,8 @@ def customers():
         customer['rental_count'] = len(rented_cylinders)
         customer['active_dispatches'] = len(rented_cylinders)  # Clear field name for active dispatches
     
-    # Sort customers by rental count in descending order
-    customers_list.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
+    # Sort customers by active dispatches in descending order (issue #1)
+    customers_list.sort(key=lambda x: x.get('active_dispatches', 0), reverse=True)
     
     # Pagination (already handled by PostgreSQL)
     customers_paginated = customers_list
