@@ -255,18 +255,89 @@ class InstantImporter:
         
         conn.close()
         
-        # Execute ALL operations without any overhead
-        print(f"Executing {len(operations):,} operations...")
+        # Execute ALL operations with BULK updates - true instant mode
+        print(f"Executing {len(operations):,} operations with BULK processing...")
+        
+        # Load all cylinders into memory for bulk update
+        all_cylinders = self.cylinder_model.get_all()
+        cylinders_by_id = {c['id']: c for c in all_cylinders}
+        
+        # Bulk update cylinders in memory
         linked = 0
+        cylinders_updated = []
         
         for cyl_id, cust_id, customer, dispatch, return_dt in operations:
-            try:
-                self.cylinder_model.rent_cylinder_with_location(cyl_id, cust_id, dispatch, customer)
+            if cyl_id in cylinders_by_id:
+                cylinder = cylinders_by_id[cyl_id]
+                
+                # Update cylinder data in memory
+                cylinder['rented_to'] = cust_id
+                cylinder['date_borrowed'] = dispatch
+                cylinder['rental_date'] = dispatch
+                cylinder['status'] = 'rented'
+                
+                # Add customer info to cylinder
+                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
+                cylinder['customer_address'] = customer.get('customer_address') or customer.get('address', '')
+                cylinder['customer_city'] = customer.get('customer_city', '')
+                cylinder['customer_state'] = customer.get('customer_state', '')
+                cylinder['location'] = customer.get('customer_address') or customer.get('address', 'Customer Location')
+                
+                # Handle returns
                 if return_dt:
-                    self.cylinder_model.return_cylinder(cyl_id, return_dt)
+                    cylinder['date_returned'] = return_dt
+                    cylinder['status'] = 'available'
+                    cylinder['location'] = 'Warehouse'
+                    cylinder['rented_to'] = None
+                    # Clear customer info on return
+                    cylinder['customer_name'] = ''
+                    cylinder['customer_phone'] = ''
+                    cylinder['customer_address'] = ''
+                    cylinder['customer_city'] = ''
+                    cylinder['customer_state'] = ''
+                else:
+                    # Active rental - clear return date
+                    cylinder['date_returned'] = ''
+                
+                cylinder['updated_at'] = datetime.now().isoformat()
+                cylinders_updated.append(cylinder)
                 linked += 1
-            except:
-                pass
+        
+        # Single bulk write to file
+        if cylinders_updated:
+            print(f"Writing {len(cylinders_updated):,} cylinder updates to database...")
+            # Update the model's data with modified cylinders
+            updated_ids = {c['id'] for c in cylinders_updated}
+            self.cylinder_model.data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
+            self.cylinder_model.save_data()
+            
+            # Bulk add rental history entries for tracking
+            rental_entries = []
+            for cyl_id, cust_id, customer, dispatch, return_dt in operations:
+                if cyl_id in cylinders_by_id:
+                    cylinder = cylinders_by_id[cyl_id]
+                    
+                    # Create rental history entry
+                    rental_entry = {
+                        'id': f"RENT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{cyl_id[-6:]}",
+                        'customer_id': cust_id,
+                        'cylinder_id': cyl_id,
+                        'customer_name': customer.get('customer_name') or customer.get('name', ''),
+                        'cylinder_custom_id': cylinder.get('custom_id', ''),
+                        'dispatch_date': dispatch,
+                        'return_date': return_dt or '',
+                        'status': 'returned' if return_dt else 'active',
+                        'created_at': datetime.now().isoformat()
+                    }
+                    rental_entries.append(rental_entry)
+            
+            # Bulk add rental history
+            if rental_entries:
+                existing_history = self.rental_history.get_all()
+                self.rental_history.data = existing_history + rental_entries
+                self.rental_history.save_data()
+                print(f"Added {len(rental_entries):,} rental history entries")
         
         print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
         return imported, skipped, []
