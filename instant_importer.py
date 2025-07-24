@@ -233,37 +233,38 @@ class InstantImporter:
                     except:
                         pass
                 
-                # Apply 6-month filter - only import if return date is within 6 months OR no return date
+                # Queue cylinder update operation - ALL data for active dispatches/available cylinders
+                operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
+                
+                # Create rental history entry - apply 6-month filter ONLY for rental history
+                include_in_history = True
                 if return_date:
                     try:
                         return_dt = datetime.strptime(return_date, '%Y-%m-%d')
                         if return_dt < six_months_ago:
-                            skipped += 1
-                            continue
+                            include_in_history = False
                     except:
                         pass
                 
-                # Queue cylinder update operation
-                operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
-                
-                # Create rental history entry
-                rental_entry = {
-                    'id': f"TXN-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
-                    'customer_no': cust_no,
-                    'cylinder_no': cyl_no,
-                    'customer_name': customer.get('customer_name') or customer.get('name', ''),
-                    'cylinder_custom_id': cylinder.get('custom_id', ''),
-                    'dispatch_date': dispatch_date,
-                    'return_date': return_date,
-                    'status': 'returned' if return_date else 'active',
-                    'created_at': datetime.now().isoformat()
-                }
-                rental_entries.append(rental_entry)
-                
-                # Group by customer for embedding in customer records
-                if customer['id'] not in customer_rentals:
-                    customer_rentals[customer['id']] = []
-                customer_rentals[customer['id']].append(rental_entry)
+                # Only add to rental history if within 6-month filter
+                if include_in_history:
+                    rental_entry = {
+                        'id': f"TXN-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
+                        'customer_no': cust_no,
+                        'cylinder_no': cyl_no,
+                        'customer_name': customer.get('customer_name') or customer.get('name', ''),
+                        'cylinder_custom_id': cylinder.get('custom_id', ''),
+                        'dispatch_date': dispatch_date,
+                        'return_date': return_date,
+                        'status': 'returned' if return_date else 'active',
+                        'created_at': datetime.now().isoformat()
+                    }
+                    rental_entries.append(rental_entry)
+                    
+                    # Group by customer for embedding in customer records
+                    if customer['id'] not in customer_rentals:
+                        customer_rentals[customer['id']] = []
+                    customer_rentals[customer['id']].append(rental_entry)
                 
                 imported += 1
                 
@@ -272,9 +273,79 @@ class InstantImporter:
         
         conn.close()
         
-        # DON'T update cylinders - just track the rental history
-        print(f"📊 Processing {len(operations):,} transactions for rental history only...")
-        linked = len(operations)
+        # Update cylinders with ALL transaction data for active dispatches/available status
+        if operations:
+            print(f"📊 Updating {len(operations):,} cylinders with active dispatches...")
+            all_cylinders = self.cylinder_model.get_all()
+            cylinders_by_id = {c['id']: c for c in all_cylinders}
+            
+            cylinders_updated = []
+            linked = 0
+            
+            for cyl_id, cust_id, customer, dispatch, return_dt in operations:
+                if cyl_id in cylinders_by_id:
+                    cylinder = cylinders_by_id[cyl_id]
+                    
+                    # Update cylinder with customer info
+                    cylinder['rented_to'] = cust_id
+                    cylinder['rental_date'] = dispatch
+                    cylinder['date_borrowed'] = dispatch
+                    cylinder['status'] = 'rented'
+                    
+                    # Add customer details
+                    cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                    cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
+                    cylinder['customer_address'] = customer.get('customer_address') or customer.get('address', '')
+                    cylinder['customer_city'] = customer.get('customer_city', '')
+                    cylinder['customer_state'] = customer.get('customer_state', '')
+                    cylinder['location'] = customer.get('customer_address') or customer.get('address', 'Customer Location')
+                    
+                    # Handle returns
+                    if return_dt:
+                        cylinder['date_returned'] = return_dt
+                        cylinder['status'] = 'available'
+                        cylinder['location'] = 'Warehouse'
+                        cylinder['rented_to'] = None
+                        # Clear customer info on return
+                        cylinder['customer_name'] = ''
+                        cylinder['customer_phone'] = ''
+                        cylinder['customer_address'] = ''
+                        cylinder['customer_city'] = ''
+                        cylinder['customer_state'] = ''
+                    else:
+                        cylinder['date_returned'] = ''
+                    
+                    cylinder['updated_at'] = datetime.now().isoformat()
+                    cylinders_updated.append(cylinder)
+                    linked += 1
+            
+            # Single bulk write to cylinders.json
+            if cylinders_updated:
+                updated_ids = {c['id'] for c in cylinders_updated}
+                final_data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
+                self.cylinder_model.db.save_data(final_data)
+                print(f"✅ Updated {len(cylinders_updated):,} cylinders")
+        
+        # Update customers with embedded rental history (6-month filter applied)
+        if customer_rentals:
+            print(f"📝 Updating {len(customer_rentals):,} customers with rental history...")
+            all_customers = self.customer_model.get_all()
+            customers_by_id = {c['id']: c for c in all_customers}
+            
+            customers_updated = []
+            for cust_id, rentals in customer_rentals.items():
+                if cust_id in customers_by_id:
+                    customer = customers_by_id[cust_id]
+                    customer['rental_history'] = rentals
+                    customer['updated_at'] = datetime.now().isoformat()
+                    customers_updated.append(customer)
+            
+            # Bulk write customers with rental history
+            if customers_updated:
+                updated_ids = {c['id'] for c in customers_updated}
+                final_customers = [c for c in all_customers if c['id'] not in updated_ids] + customers_updated
+                self.customer_model.db.save_data(final_customers)
+                print(f"✅ Updated {len(customers_updated):,} customers with rental history")
         
         # Save rental history
         if rental_entries:
