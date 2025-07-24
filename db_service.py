@@ -1,7 +1,7 @@
 # db_service.py - Database service layer for PostgreSQL operations
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
-from sqlalchemy import func, and_, or_, desc, asc
+from sqlalchemy import func, and_, or_, desc, asc, case
 from sqlalchemy.orm import Session
 from db_models import get_db_session, Customer, Cylinder, RentalHistory
 import uuid
@@ -184,10 +184,18 @@ class CylinderService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply sorting - sort by rental days descending (longest rentals first)
+        # Apply sorting - rented cylinders first (by rental duration), then available cylinders
         offset = (page - 1) * per_page
         cylinders = query.order_by(
-            Cylinder.date_borrowed.asc().nulls_last()  # Oldest rental dates first = longest rentals
+            case(
+                (Cylinder.status == 'rented', 0),  # Rented cylinders first
+                (Cylinder.status == 'available', 1),  # Available cylinders second
+                else_=2  # Others last (maintenance, etc.)
+            ),
+            case(
+                (Cylinder.status == 'rented', Cylinder.date_borrowed.asc().nulls_last()),  # Rented: oldest first
+                else_=Cylinder.updated_at.desc().nulls_last()  # Others: newest first
+            )
         ).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
@@ -317,6 +325,10 @@ class CylinderService(DatabaseService):
         cylinder.customer_no = ''
         cylinder.customer_city = ''
         cylinder.customer_state = ''
+        
+        # Clear rental dates to prevent sorting issues
+        cylinder.date_borrowed = None
+        cylinder.rental_date = None
         
         cylinder.updated_at = datetime.utcnow()
         self.db.commit()
