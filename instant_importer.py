@@ -309,8 +309,8 @@ class InstantImporter:
             print(f"Writing {len(cylinders_updated):,} cylinder updates to database...")
             # Update the model's data with modified cylinders
             updated_ids = {c['id'] for c in cylinders_updated}
-            self.cylinder_model.data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
-            self.cylinder_model.save_data()
+            final_data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
+            self.cylinder_model.db.save_data(final_data)
             
             # Bulk add rental history entries for tracking
             rental_entries = []
@@ -335,8 +335,8 @@ class InstantImporter:
             # Bulk add rental history
             if rental_entries:
                 existing_history = self.rental_history.get_all()
-                self.rental_history.data = existing_history + rental_entries
-                self.rental_history.save_data()
+                final_history = existing_history + rental_entries
+                self.rental_history.db.save_data(final_history)
                 print(f"Added {len(rental_entries):,} rental history entries")
         
         print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
