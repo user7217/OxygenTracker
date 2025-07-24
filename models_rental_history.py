@@ -123,22 +123,41 @@ class RentalHistory:
         # Get past rentals from history
         history_records = self._load_data()
         
-        # First try to get the customer by ID to get their customer number
+        # Get the customer by ID to get their customer number
         from models import Customer
         customer_model = Customer()
         customer = customer_model.get_by_id(customer_id)
-        customer_no = customer.get('customer_no', '') if customer else ''
         
-        # Look for past rentals by both customer_id and customer_no
+        if not customer:
+            return {'active': active_cylinders, 'past': []}
+            
+        customer_no = customer.get('customer_no', '')
+        customer_name = customer.get('customer_name', '') or customer.get('name', '')
+        
+        # Look for past rentals by customer_no (for imported data) and customer_id (for manual data)
         past_rentals = []
         for record in history_records:
-            if (record.get('customer_id') == customer_id or 
-                (customer_no and record.get('customer_no') == customer_no)):
+            # Check if this record belongs to the customer
+            record_customer_id = record.get('customer_id', '')
+            record_customer_no = record.get('customer_no', '')
+            record_customer_name = record.get('customer_name', '')
+            
+            # Match by customer_id, customer_no, or customer_name
+            if (record_customer_id == customer_id or 
+                (customer_no and record_customer_no == customer_no) or
+                (customer_name and record_customer_name == customer_name)):
+                
+                # Ensure we have proper date fields for template compatibility
+                if not record.get('date_borrowed') and record.get('dispatch_date'):
+                    record['date_borrowed'] = record['dispatch_date']
+                if not record.get('date_returned') and record.get('return_date'):
+                    record['date_returned'] = record['return_date']
+                    
                 past_rentals.append(record)
         
-        # Sort both lists by date
+        # Sort both lists by date (most recent first)
         active_cylinders.sort(key=lambda x: x.get('date_borrowed', ''), reverse=True)
-        past_rentals.sort(key=lambda x: x.get('date_returned', ''), reverse=True)
+        past_rentals.sort(key=lambda x: x.get('date_returned', '') or x.get('return_date', ''), reverse=True)
         
         return {
             'active': active_cylinders,
