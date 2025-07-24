@@ -618,8 +618,8 @@ def customers():
         'has_next': has_next,
         'prev_num': page - 1 if has_prev else None,
         'next_num': page + 1 if has_next else None,
-        'start_index': start + 1 if customers_paginated else 0,
-        'end_index': min(end, total_customers)
+        'start_index': ((page - 1) * per_page) + 1 if customers_paginated else 0,
+        'end_index': min(page * per_page, total_customers)
     }
     
     return render_template('customers.html', 
@@ -912,85 +912,21 @@ def cylinders():
     type_filter = request.args.get('type_filter', '')
     rental_duration_filter = request.args.get('rental_duration', '')
     
-    cylinders_list = cylinder_model.get_all()
+    # Get all cylinders with search and pagination using PostgreSQL
+    cylinders_list, total_cylinders = cylinder_model.get_all(
+        search_query=search_query,
+        page=page,
+        per_page=per_page,
+        filter_type=type_filter,
+        filter_status=status_filter,
+        rental_duration_filter=rental_duration_filter
+    )
     
-    # Apply search filter
-    if search_query:
-        cylinders_list = cylinder_model.search(search_query)
-    
-    # Apply status filter
-    if status_filter:
-        cylinders_list = [c for c in cylinders_list if c.get('status', '').lower() == status_filter.lower()]
-    
-    # Apply type filter (handle both CO2 and Carbon Dioxide)
-    if type_filter:
-        if type_filter == 'Carbon Dioxide':
-            # Match both "Carbon Dioxide" and "CO2" for backward compatibility
-            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
-        elif type_filter == 'CO2':
-            # Match both "CO2" and "Carbon Dioxide" for backward compatibility
-            cylinders_list = [c for c in cylinders_list if c.get('type', '') in ['Carbon Dioxide', 'CO2']]
-        else:
-            cylinders_list = [c for c in cylinders_list if c.get('type', '') == type_filter]
-    
-    # Apply customer filter
-    if customer_filter:
-        cylinders_list = [c for c in cylinders_list if c.get('rented_to') == customer_filter]
-    
-    # Apply rental duration filter with new ranges
-    if rental_duration_filter:
-        filtered_cylinders = []
-        
-        for cylinder in cylinders_list:
-            if cylinder.get('status', '').lower() == 'rented':
-                rental_months = cylinder_model.get_rental_months(cylinder)
-                
-                # Apply filter based on selected range
-                include_cylinder = False
-                if rental_duration_filter == 'under_1' and rental_months < 1:
-                    include_cylinder = True
-                elif rental_duration_filter == '1_to_3' and 1 <= rental_months < 3:
-                    include_cylinder = True
-                elif rental_duration_filter == '3_to_6' and 3 <= rental_months < 6:
-                    include_cylinder = True
-                elif rental_duration_filter == '6_to_12' and 6 <= rental_months < 12:
-                    include_cylinder = True
-                elif rental_duration_filter == 'over_12' and rental_months >= 12:
-                    include_cylinder = True
-                
-                if include_cylinder:
-                    filtered_cylinders.append(cylinder)
-        
-        cylinders_list = filtered_cylinders
-    
-    # Add rental days calculation and display ID for each cylinder
-    for i, cylinder in enumerate(cylinders_list):
-        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
-        # Get display ID (custom_id or generated serial)
-        cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
-        # Customer name should already be stored in the cylinder data
-        if not cylinder.get('customer_name') and cylinder.get('rented_to'):
-            # Fallback: get customer name if not stored
-            customer = customer_model.get_by_id(cylinder['rented_to'])
-            cylinder['customer_name'] = customer.get('name', 'Unknown Customer') if customer else 'Unknown Customer'
-    
-    # Sort cylinders by rental days in descending order (longest rentals first)
-    # Available cylinders (0 rental days) will appear last
-    cylinders_list.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
-    
-    # Calculate pagination
-    total_cylinders = len(cylinders_list)
-    total_pages = (total_cylinders + per_page - 1) // per_page  # Ceiling division
-    
-    # Calculate start and end indices for current page
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    
-    # Get cylinders for current page
-    paginated_cylinders = cylinders_list[start_index:end_index]
+    # PostgreSQL model already returns dictionaries with calculated fields
+    paginated_cylinders = cylinders_list
     
     # Calculate pagination info
+    total_pages = (total_cylinders + per_page - 1) // per_page
     has_prev = page > 1
     has_next = page < total_pages
     prev_page = page - 1 if has_prev else None

@@ -120,18 +120,23 @@ class Cylinder:
         with CylinderService() as service:
             return service.delete(cylinder_id)
     
-    def get_display_id(self, cylinder: Dict) -> str:
+    def get_display_id(self, cylinder) -> str:
         """Get display ID for cylinder (custom_id or serial_number)"""
         if isinstance(cylinder, dict):
             return cylinder.get('custom_id') or cylinder.get('serial_number') or 'Unknown'
-        return cylinder.custom_id or cylinder.serial_number or 'Unknown'
+        elif hasattr(cylinder, 'custom_id'):
+            return cylinder.custom_id or cylinder.serial_number or 'Unknown'
+        else:
+            return 'Unknown'
     
-    def get_rental_days(self, cylinder: Dict) -> int:
+    def get_rental_days(self, cylinder) -> int:
         """Calculate rental days for a cylinder"""
         if isinstance(cylinder, dict):
             date_borrowed = cylinder.get('date_borrowed')
-        else:
+        elif hasattr(cylinder, 'date_borrowed'):
             date_borrowed = cylinder.date_borrowed
+        else:
+            return 0
             
         if not date_borrowed:
             return 0
@@ -145,7 +150,7 @@ class Cylinder:
         
         return (datetime.utcnow() - date_borrowed).days
     
-    def get_rental_months(self, cylinder: Dict) -> int:
+    def get_rental_months(self, cylinder) -> int:
         """Calculate rental months for a cylinder"""
         days = self.get_rental_days(cylinder)
         return max(0, days // 30)

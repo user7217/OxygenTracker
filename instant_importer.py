@@ -7,7 +7,7 @@ Zero overhead, direct memory operations
 import json
 import pyodbc
 from datetime import datetime, timedelta
-from models import Customer, Cylinder
+from models_postgres import Customer, Cylinder
 from models_rental_history import RentalHistory
 from models_rental_transactions import RentalTransactions
 
@@ -51,7 +51,7 @@ class InstantImporter:
                 field_indices[target_field] = columns.index(source_field)
         
         # Get existing customers for duplicate checking
-        existing_customers = self.customer_model.get_all()
+        existing_customers, _ = self.customer_model.get_all(page=1, per_page=10000)
         existing_customer_nos = {c.get('customer_no', '').upper() for c in existing_customers}
         
         imported = 0
@@ -82,8 +82,8 @@ class InstantImporter:
                     skipped += 1
                     continue
                 
-                # Add customer
-                self.customer_model.add(customer_data)
+                # Add customer using PostgreSQL model
+                customer_id = self.customer_model.add_customer(customer_data)
                 existing_customer_nos.add(customer_data['customer_no'].upper())
                 imported += 1
                 
@@ -103,7 +103,7 @@ class InstantImporter:
                 field_indices[target_field] = columns.index(source_field)
         
         # Get existing cylinders for duplicate checking
-        existing_cylinders = self.cylinder_model.get_all()
+        existing_cylinders, _ = self.cylinder_model.get_all(page=1, per_page=10000)
         existing_custom_ids = {c.get('custom_id', '').upper() for c in existing_cylinders if c.get('custom_id')}
         
         imported = 0
@@ -138,8 +138,8 @@ class InstantImporter:
                     skipped += 1
                     continue
                 
-                # Add cylinder
-                self.cylinder_model.add(cylinder_data)
+                # Add cylinder using PostgreSQL model
+                cylinder_id = self.cylinder_model.add_cylinder(cylinder_data)
                 existing_custom_ids.add(cylinder_data['custom_id'].upper())
                 imported += 1
                 
@@ -155,8 +155,8 @@ class InstantImporter:
         print("🚀 INSTANT TRANSACTION LINKING: Connect customers with cylinders")
         
         # Pre-load data for lookups
-        customers_raw = self.customer_model.get_all()
-        cylinders_raw = self.cylinder_model.get_all()
+        customers_raw, _ = self.customer_model.get_all(page=1, per_page=10000)
+        cylinders_raw, _ = self.cylinder_model.get_all(page=1, per_page=10000)
         
         # Build lookup tables
         customers = {}
