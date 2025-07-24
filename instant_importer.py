@@ -147,30 +147,10 @@ class InstantImporter:
         return imported, skipped, []
     
     def _instant_import_transactions(self, rows, columns, field_mapping, conn):
-        """Instant transaction import"""
-        # Pre-load ALL data structures
-        customers_raw = self.customer_model.get_all()
-        cylinders_raw = self.cylinder_model.get_all()
+        """Import rental transactions ONLY - no cylinder creation, just rental history"""
+        print("🚀 TRANSACTION MODE: Importing rental records only (6-month cutoff)")
         
-        # Build ultra-fast lookup tables
-        customers = {}
-        for c in customers_raw:
-            key = str(c.get('customer_no', '')).upper()
-            if key:
-                customers[key] = c
-        
-        cylinders = {}
-        for cyl in cylinders_raw:
-            # Multiple lookup keys for cylinders
-            sn = str(cyl.get('serial_number', '')).upper()
-            cid = str(cyl.get('custom_id', '')).upper()
-            sid = str(cyl.get('id', '')).upper()
-            
-            if sn: cylinders[sn] = cyl
-            if cid: cylinders[cid] = cyl  
-            if sid: cylinders[sid] = cyl
-        
-        # Pre-calculate ALL column indices
+        # Pre-calculate column indices
         try:
             cust_idx = columns.index(field_mapping['customer_no'])
             cyl_idx = columns.index(field_mapping['cylinder_no'])
@@ -180,142 +160,89 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # Import with 6-month cutoff for completed rentals
+        # 6-month cutoff for old rentals
         six_months_ago = datetime.now() - timedelta(days=180)
         
-        # Process ALL rows with minimal overhead
-        operations = []
+        # Process rows and create rental history entries
+        rental_entries = []
         imported = 0
         skipped = 0
         
         for row in rows:
-            # Direct array access - no dictionaries
-            cust_no = str(row[cust_idx] or '').strip().upper()
-            cyl_no = str(row[cyl_idx] or '').strip().upper()
-            
-            if not cust_no or not cyl_no:
-                skipped += 1
-                continue
+            try:
+                # Extract basic data
+                cust_no = str(row[cust_idx] or '').strip()
+                cyl_no = str(row[cyl_idx] or '').strip()
                 
-            customer = customers.get(cust_no)
-            cylinder = cylinders.get(cyl_no)
-            
-            if not customer or not cylinder:
-                skipped += 1
-                continue
-            
-            # Fast date processing
-            if dispatch_idx is not None:
-                dispatch_raw = row[dispatch_idx]
-                if dispatch_raw:
+                if not cust_no or not cyl_no:
+                    skipped += 1
+                    continue
+                
+                # Process dispatch date
+                dispatch_date = None
+                if dispatch_idx is not None and row[dispatch_idx]:
                     try:
-                        if isinstance(dispatch_raw, str):
-                            # Parse only what we need
-                            if len(dispatch_raw) >= 10:
-                                date_part = dispatch_raw[:10]
-                                dispatch_dt = datetime.strptime(date_part, '%Y-%m-%d')
-                            else:
+                        dispatch_raw = row[dispatch_idx]
+                        if isinstance(dispatch_raw, str) and len(dispatch_raw) >= 10:
+                            dispatch_date = dispatch_raw[:10]  # YYYY-MM-DD
+                        elif hasattr(dispatch_raw, 'strftime'):
+                            dispatch_date = dispatch_raw.strftime('%Y-%m-%d')
+                    except:
+                        pass
+                
+                # Process return date (optional)
+                return_date = None
+                if return_idx is not None and row[return_idx]:
+                    try:
+                        return_raw = row[return_idx]
+                        if isinstance(return_raw, str) and len(return_raw) >= 10:
+                            return_date = return_raw[:10]  # YYYY-MM-DD
+                        elif hasattr(return_raw, 'strftime'):
+                            return_date = return_raw.strftime('%Y-%m-%d')
+                        
+                        # Skip if return date is older than 6 months
+                        if return_date:
+                            return_dt = datetime.strptime(return_date, '%Y-%m-%d')
+                            if return_dt < six_months_ago:
                                 skipped += 1
                                 continue
-                        else:
-                            dispatch_dt = dispatch_raw
-                        
-                        dispatch_date = dispatch_dt.strftime('%Y-%m-%d')
-                        
-                        # Return date (optional)
-                        return_date = None
-                        if return_idx is not None and row[return_idx]:
-                            try:
-                                return_raw = row[return_idx]
-                                if isinstance(return_raw, str) and len(return_raw) >= 10:
-                                    return_dt = datetime.strptime(return_raw[:10], '%Y-%m-%d')
-                                    return_date = return_dt.strftime('%Y-%m-%d')
-                                elif not isinstance(return_raw, str):
-                                    return_date = return_raw.strftime('%Y-%m-%d')
-                                
-                                # Skip if return date is older than 6 months
-                                if return_date:
-                                    return_dt_check = datetime.strptime(return_date, '%Y-%m-%d')
-                                    if return_dt_check < six_months_ago:
-                                        skipped += 1
-                                        continue
-                            except:
-                                pass
-                        
-                        # Queue operation
-                        operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
-                        imported += 1
-                        
                     except:
-                        skipped += 1
-                else:
+                        pass
+                
+                if not dispatch_date:
                     skipped += 1
-            else:
+                    continue
+                
+                # Create rental history entry
+                rental_entry = {
+                    'id': f"RENT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
+                    'customer_no': cust_no,
+                    'cylinder_no': cyl_no,
+                    'dispatch_date': dispatch_date,
+                    'return_date': return_date or '',
+                    'status': 'returned' if return_date else 'active',
+                    'created_at': datetime.now().isoformat()
+                }
+                
+                rental_entries.append(rental_entry)
+                imported += 1
+                
+            except Exception:
                 skipped += 1
         
         conn.close()
         
-        # Execute ALL operations with BULK updates - true instant mode
-        print(f"Executing {len(operations):,} operations with BULK processing...")
+        # Save rental history in bulk
+        if rental_entries:
+            print(f"Saving {len(rental_entries):,} rental history records...")
+            try:
+                existing_history = self.rental_history._load_data()
+                final_history = existing_history + rental_entries
+                self.rental_history._save_data(final_history)
+            except Exception as e:
+                print(f"Rental history save failed: {e}")
         
-        # Load all cylinders into memory for bulk update
-        all_cylinders = self.cylinder_model.get_all()
-        cylinders_by_id = {c['id']: c for c in all_cylinders}
-        
-        # Bulk update cylinders in memory
-        linked = 0
-        cylinders_updated = []
-        
-        for cyl_id, cust_id, customer, dispatch, return_dt in operations:
-            if cyl_id in cylinders_by_id:
-                cylinder = cylinders_by_id[cyl_id]
-                
-                # Update cylinder data in memory
-                cylinder['rented_to'] = cust_id
-                cylinder['date_borrowed'] = dispatch
-                cylinder['rental_date'] = dispatch
-                cylinder['status'] = 'rented'
-                
-                # Add customer info to cylinder
-                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
-                cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
-                cylinder['customer_address'] = customer.get('customer_address') or customer.get('address', '')
-                cylinder['customer_city'] = customer.get('customer_city', '')
-                cylinder['customer_state'] = customer.get('customer_state', '')
-                cylinder['location'] = customer.get('customer_address') or customer.get('address', 'Customer Location')
-                
-                # Handle returns
-                if return_dt:
-                    cylinder['date_returned'] = return_dt
-                    cylinder['status'] = 'available'
-                    cylinder['location'] = 'Warehouse'
-                    cylinder['rented_to'] = None
-                    # Clear customer info on return
-                    cylinder['customer_name'] = ''
-                    cylinder['customer_phone'] = ''
-                    cylinder['customer_address'] = ''
-                    cylinder['customer_city'] = ''
-                    cylinder['customer_state'] = ''
-                else:
-                    # Active rental - clear return date
-                    cylinder['date_returned'] = ''
-                
-                cylinder['updated_at'] = datetime.now().isoformat()
-                cylinders_updated.append(cylinder)
-                linked += 1
-        
-        # Single bulk write to file
-        if cylinders_updated:
-            print(f"Writing {len(cylinders_updated):,} cylinder updates to database...")
-            # Update the model's data with modified cylinders
-            updated_ids = {c['id'] for c in cylinders_updated}
-            final_data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
-            self.cylinder_model.db.save_data(final_data)
-            
-            # Skip rental history for now to avoid method errors - focus on instant performance
-            print(f"Rental history tracking skipped for instant performance")
-        
-        print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
+        print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} rental records imported | {skipped:,} skipped")
         return imported, skipped, []
 
 if __name__ == "__main__":
