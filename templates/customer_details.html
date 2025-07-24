@@ -159,6 +159,9 @@
                                 <th>Dispatch Date</th>
                                 <th>Days Dispatched</th>
                                 <th>Status</th>
+                                {% if session.role in ['admin', 'user'] %}
+                                <th>Actions</th>
+                                {% endif %}
                                 {% else %}
                                 <th>Dispatch Date</th>
                                 <th>Return Date</th>
@@ -196,6 +199,13 @@
                                 <td>
                                     <span class="badge bg-warning text-dark">Dispatched</span>
                                 </td>
+                                {% if session.role in ['admin', 'user'] %}
+                                <td>
+                                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#returnModal{{ item.id }}">
+                                        <i class="bi bi-arrow-return-left me-1"></i>Return
+                                    </button>
+                                </td>
+                                {% endif %}
                                 {% else %}
                                 <td>
                                     {% if item.get('date_borrowed') %}
@@ -309,4 +319,63 @@
     </div>
     
 </div>
+
+<!-- Return Cylinder Modals -->
+{% if current_tab == 'active' and cylinders_data %}
+{% for item in cylinders_data %}
+<div class="modal fade" id="returnModal{{ item.id }}" tabindex="-1" aria-labelledby="returnModalLabel{{ item.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnModalLabel{{ item.id }}">
+                    <i class="bi bi-arrow-return-left me-2"></i>Return Cylinder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('return_cylinder_custom', cylinder_id=item.id, customer_id=customer.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cylinder:</label>
+                        <div class="p-3 bg-light rounded">
+                            <strong>{{ item.display_id }}</strong> - {{ item.get('type', 'N/A') }} {{ item.get('size', 'N/A') }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Customer:</label>
+                        <div class="p-3 bg-light rounded">
+                            {{ customer.customer_name or customer.name }} ({{ customer.customer_no or customer.id }})
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="return_date{{ item.id }}" class="form-label fw-bold">Return Date:</label>
+                        <input type="date" class="form-control" id="return_date{{ item.id }}" name="return_date" 
+                               value="{{ moment().format('YYYY-MM-DD') }}" required>
+                        <div class="form-text">Select the date when the cylinder was returned</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-arrow-return-left me-2"></i>Return Cylinder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<script>
+// Set today's date as default for return date inputs
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"][name="return_date"]').forEach(input => {
+        if (!input.value) {
+            input.value = today;
+        }
+    });
+});
+</script>
+
 {% endblock %}

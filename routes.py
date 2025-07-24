@@ -1570,6 +1570,19 @@ def return_cylinder(cylinder_id):
     
     return redirect(url_for('cylinders'))
 
+@app.route('/cylinder/<cylinder_id>/return/customer/<customer_id>', methods=['POST'])
+@user_or_admin_required
+def return_cylinder_custom(cylinder_id, customer_id):
+    """Return cylinder with custom date from customer details page"""
+    return_date = request.form.get('return_date', datetime.now().strftime('%Y-%m-%d'))
+    
+    if cylinder_model.return_cylinder(cylinder_id, return_date):
+        flash(f'Cylinder returned successfully on {return_date}', 'success')
+    else:
+        flash('Failed to return cylinder', 'error')
+    
+    return redirect(url_for('customer_details', customer_id=customer_id, tab='active'))
+
 @app.route('/customers/<customer_id>/bulk_cylinders', methods=['GET', 'POST'])
 @user_or_admin_required
 def bulk_cylinder_management(customer_id):
