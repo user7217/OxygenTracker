@@ -47,9 +47,17 @@ class CustomerService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply pagination
+        # Apply pagination with sorting by active rentals count (descending)
         offset = (page - 1) * per_page
-        customers = query.order_by(Customer.customer_name).offset(offset).limit(per_page).all()
+        
+        # Join with cylinders to get rental count, order by active rentals descending
+        customers = query.outerjoin(Cylinder, and_(
+            Customer.id == Cylinder.rented_to,
+            Cylinder.status == 'rented'
+        )).group_by(Customer.id).order_by(
+            desc(func.count(Cylinder.id)),  # Most active rentals first
+            Customer.customer_name  # Then by name for ties
+        ).offset(offset).limit(per_page).all()
         
         return customers, total_count
     
