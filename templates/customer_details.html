@@ -184,7 +184,7 @@
                                 {% if current_tab == 'active' %}
                                 <td>{{ item.get('location', 'N/A') }}</td>
                                 <td>
-                                    {% set dispatch_date = item.get('date_borrowed', '') or item.get('rental_date', '') %}
+                                    {% set dispatch_date = item.get('date_borrowed', '') or item.get('rental_date', '') or item.get('dispatch_date', '') %}
                                     {% if dispatch_date %}
                                     <small class="text-muted">{{ dispatch_date[:10] }}</small>
                                     {% else %}
@@ -208,15 +208,17 @@
                                 {% endif %}
                                 {% else %}
                                 <td>
-                                    {% if item.get('date_borrowed') %}
-                                    <small class="text-muted">{{ item.date_borrowed[:10] }}</small>
+                                    {% set dispatch_date = item.get('date_borrowed', '') or item.get('dispatch_date', '') %}
+                                    {% if dispatch_date %}
+                                    <small class="text-muted">{{ dispatch_date[:10] }}</small>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if item.get('date_returned') %}
-                                    <small class="text-muted">{{ item.date_returned[:10] }}</small>
+                                    {% set return_date = item.get('date_returned', '') or item.get('return_date', '') %}
+                                    {% if return_date %}
+                                    <small class="text-muted">{{ return_date[:10] }}</small>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
