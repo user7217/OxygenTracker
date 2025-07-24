@@ -571,9 +571,13 @@ def test_email():
 @app.route('/customers')
 @login_required
 def customers():
-    """List all customers with search functionality"""
+    """Display all customers with search functionality and pagination"""
+    customer_model = Customer()
+    cylinder_model = Cylinder()
 
     search_query = request.args.get('search', '')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 25))
     
     if search_query:
         customers_list = customer_model.search(search_query)
@@ -597,7 +601,34 @@ def customers():
     # Sort customers by rental count in descending order
     customers_list.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
     
-    return render_template('customers.html', customers=customers_list, search_query=search_query)
+    # Pagination
+    total_customers = len(customers_list)
+    start = (page - 1) * per_page
+    end = start + per_page
+    customers_paginated = customers_list[start:end]
+    
+    # Calculate pagination info
+    total_pages = (total_customers + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_customers,
+        'total_pages': total_pages,
+        'has_prev': has_prev,
+        'has_next': has_next,
+        'prev_num': page - 1 if has_prev else None,
+        'next_num': page + 1 if has_next else None,
+        'start_index': start + 1 if customers_paginated else 0,
+        'end_index': min(end, total_customers)
+    }
+    
+    return render_template('customers.html', 
+                          customers=customers_paginated, 
+                          search_query=search_query,
+                          pagination=pagination_info)
 
 @app.route('/customer/<customer_id>/details')
 @login_required
@@ -1706,7 +1737,7 @@ def process_bulk_rental():
 @app.route('/customers/<customer_id>/active_dispatches')
 @login_required
 def customer_active_dispatches(customer_id):
-    """View active dispatches for a specific customer"""
+    """View active dispatches for a specific customer with pagination"""
     customer_model = Customer()
     cylinder_model = Cylinder()
     
@@ -1715,6 +1746,10 @@ def customer_active_dispatches(customer_id):
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
+    
+    # Get pagination parameters
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 25))
     
     # Get all cylinders rented to this customer
     cylinders = cylinder_model.get_all()
@@ -1729,9 +1764,34 @@ def customer_active_dispatches(customer_id):
     # Sort by rental days (longest first)
     customer_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
     
+    # Pagination
+    total_cylinders = len(customer_cylinders)
+    start = (page - 1) * per_page
+    end = start + per_page
+    cylinders_paginated = customer_cylinders[start:end]
+    
+    # Calculate pagination info
+    total_pages = (total_cylinders + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_cylinders,
+        'total_pages': total_pages,
+        'has_prev': has_prev,
+        'has_next': has_next,
+        'prev_num': page - 1 if has_prev else None,
+        'next_num': page + 1 if has_next else None,
+        'start_index': start + 1 if cylinders_paginated else 0,
+        'end_index': min(end, total_cylinders)
+    }
+    
     return render_template('customer_active_dispatches.html', 
                           customer=customer, 
-                          customer_cylinders=customer_cylinders)
+                          customer_cylinders=cylinders_paginated,
+                          pagination=pagination_info)
 
 # Reports routes
 @app.route('/reports')

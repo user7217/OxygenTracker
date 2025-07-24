@@ -61,6 +61,29 @@
         </div>
     </div>
 
+    <!-- Pagination Controls and Items Per Page -->
+    {% if pagination.total > 0 %}
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="GET" class="d-flex align-items-center gap-2">
+                <label for="per_page" class="form-label mb-0">Items per page:</label>
+                <select name="per_page" id="per_page" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                    <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
+                    <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200</option>
+                </select>
+                <input type="hidden" name="page" value="1">
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="text-muted">
+                Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }} cylinders
+            </span>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Active Dispatches -->
     {% if customer_cylinders %}
     <div class="row">
@@ -69,7 +92,7 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="bi bi-list-ul me-2"></i>Dispatched Cylinders
-                        <span class="badge bg-secondary ms-2">{{ customer_cylinders|length }} cylinder(s)</span>
+                        <span class="badge bg-secondary ms-2">{{ pagination.total }} cylinder(s)</span>
                     </h5>
                 </div>
                 <div class="table-responsive">
@@ -143,6 +166,63 @@
         </div>
     </div>
 
+    <!-- Pagination Navigation -->
+    {% if pagination.total_pages > 1 %}
+    <div class="row mt-4">
+        <div class="col">
+            <nav aria-label="Cylinder pagination">
+                <ul class="pagination justify-content-center">
+                    <!-- Previous button -->
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{% if pagination.has_prev %}{{ url_for('customer_active_dispatches', customer_id=customer.id, page=pagination.prev_num, per_page=pagination.per_page) }}{% else %}#{% endif %}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    
+                    <!-- Page numbers -->
+                    {% set start_page = [1, pagination.page - 2]|max %}
+                    {% set end_page = [pagination.total_pages, pagination.page + 2]|min %}
+                    
+                    {% if start_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('customer_active_dispatches', customer_id=customer.id, page=1, per_page=pagination.per_page) }}">1</a>
+                    </li>
+                    {% if start_page > 2 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% for page_num in range(start_page, end_page + 1) %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('customer_active_dispatches', customer_id=customer.id, page=page_num, per_page=pagination.per_page) }}">{{ page_num }}</a>
+                    </li>
+                    {% endfor %}
+                    
+                    {% if end_page < pagination.total_pages %}
+                    {% if end_page < pagination.total_pages - 1 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('customer_active_dispatches', customer_id=customer.id, page=pagination.total_pages, per_page=pagination.per_page) }}">{{ pagination.total_pages }}</a>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Next button -->
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{% if pagination.has_next %}{{ url_for('customer_active_dispatches', customer_id=customer.id, page=pagination.next_num, per_page=pagination.per_page) }}{% else %}#{% endif %}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Summary Statistics -->
     <div class="row mt-4">
         <div class="col">
@@ -156,7 +236,7 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="text-center">
-                                <h4 class="text-primary">{{ customer_cylinders|length }}</h4>
+                                <h4 class="text-primary">{{ pagination.total if pagination else customer_cylinders|length }}</h4>
                                 <small class="text-muted">Total Cylinders</small>
                             </div>
                         </div>
@@ -165,21 +245,21 @@
                                 {% set total_days = customer_cylinders|sum(attribute='rental_days') or 0 %}
                                 {% set avg_days = (total_days / customer_cylinders|length)|round|int if customer_cylinders|length > 0 else 0 %}
                                 <h4 class="text-info">{{ avg_days }}</h4>
-                                <small class="text-muted">Average Days</small>
+                                <small class="text-muted">Average Days (page)</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 {% set longest_rental = customer_cylinders|map(attribute='rental_days')|max if customer_cylinders else 0 %}
                                 <h4 class="text-warning">{{ longest_rental }}</h4>
-                                <small class="text-muted">Longest Dispatch</small>
+                                <small class="text-muted">Longest (page)</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 {% set long_term = customer_cylinders|selectattr('rental_days', 'gt', 90)|list|length %}
                                 <h4 class="text-danger">{{ long_term }}</h4>
-                                <small class="text-muted">Long-term (90+ days)</small>
+                                <small class="text-muted">Long-term (page)</small>
                             </div>
                         </div>
                     </div>
