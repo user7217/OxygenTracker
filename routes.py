@@ -591,7 +591,9 @@ def customers():
         # Add rental days calculation for each cylinder
         for cylinder in rented_cylinders:
             cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-            cylinder['serial_number'] = cylinder.get('serial_number') or cylinder_model.get_serial_number(cylinder.get('type', 'Other'), 1)
+            # Use existing serial number or show custom_id as fallback
+            if not cylinder.get('serial_number'):
+                cylinder['serial_number'] = cylinder.get('custom_id', 'Unknown')
         
         customer['rented_cylinders'] = rented_cylinders
         customer['rental_count'] = len(rented_cylinders)
