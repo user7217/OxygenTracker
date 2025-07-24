@@ -225,8 +225,13 @@
                                     </span>
                                 </td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.get('date_borrowed') %}
-                                    <small class="text-muted">{{ cylinder.date_borrowed[:10] }}</small>
+                                    {% if cylinder.get('status', '').lower() == 'rented' %}
+                                        {% set dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '') %}
+                                        {% if dispatch_date %}
+                                        <small class="text-muted">{{ dispatch_date[:10] }}</small>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}

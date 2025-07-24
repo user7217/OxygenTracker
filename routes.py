@@ -1915,6 +1915,16 @@ def export_cylinders_csv():
     # Write cylinder data
     for cylinder in cylinders:
         display_id = cylinder_model.get_display_id(cylinder)
+        
+        # Format dispatch and return dates properly
+        dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '')
+        if dispatch_date and len(dispatch_date) >= 10:
+            dispatch_date = dispatch_date[:10]  # Extract YYYY-MM-DD part
+        
+        return_date = cylinder.get('date_returned', '')
+        if return_date and len(return_date) >= 10:
+            return_date = return_date[:10]  # Extract YYYY-MM-DD part
+        
         writer.writerow([
             display_id,
             cylinder.get('serial_number', ''),
@@ -1926,8 +1936,8 @@ def export_cylinders_csv():
             cylinder.get('last_inspection', ''),
             cylinder.get('next_inspection', ''),
             cylinder.get('customer_name', ''),
-            cylinder.get('date_borrowed', ''),
-            cylinder.get('date_returned', ''),
+            dispatch_date,
+            return_date,
             cylinder.get('notes', '')
         ])
     
@@ -1965,14 +1975,23 @@ def export_rental_activities_csv():
             rental_days = cylinder_model.get_rental_days(cylinder)
             display_id = cylinder_model.get_display_id(cylinder)
             
+            # Format dispatch and return dates properly
+            dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '')
+            if dispatch_date and len(dispatch_date) >= 10:
+                dispatch_date = dispatch_date[:10]  # Extract YYYY-MM-DD part
+            
+            return_date = cylinder.get('date_returned', '')
+            if return_date and len(return_date) >= 10:
+                return_date = return_date[:10]  # Extract YYYY-MM-DD part
+            
             writer.writerow([
                 display_id,
                 cylinder.get('serial_number', ''),
                 cylinder.get('type', ''),
                 customer.get('customer_name', '') or customer.get('name', ''),
                 customer.get('customer_email', '') or customer.get('email', ''),
-                cylinder.get('date_borrowed', ''),
-                cylinder.get('date_returned', ''),
+                dispatch_date,
+                return_date,
                 cylinder.get('status', ''),
                 rental_days
             ])
@@ -2031,6 +2050,11 @@ def export_complete_data_csv():
     for cylinder in cylinders:
         rental_days = cylinder_model.get_rental_days(cylinder)
         display_id = cylinder_model.get_display_id(cylinder)
+        # Format dispatch date properly
+        dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '')
+        if dispatch_date and len(dispatch_date) >= 10:
+            dispatch_date = dispatch_date[:10]  # Extract YYYY-MM-DD part
+        
         writer.writerow([
             display_id,
             cylinder.get('serial_number', ''),
@@ -2040,7 +2064,7 @@ def export_complete_data_csv():
             cylinder.get('location', ''),
             cylinder.get('pressure', ''),
             cylinder.get('customer_name', ''),
-            cylinder.get('date_borrowed', ''),
+            dispatch_date,
             rental_days
         ])
     
@@ -2123,13 +2147,18 @@ def export_customer_csv(customer, customer_cylinders, safe_filename, timestamp):
     cylinder_model = Cylinder()
     for cylinder in customer_cylinders:
         display_id = cylinder_model.get_display_id(cylinder)
+        # Format dispatch date properly
+        dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '')
+        if dispatch_date and len(dispatch_date) >= 10:
+            dispatch_date = dispatch_date[:10]  # Extract YYYY-MM-DD part
+        
         writer.writerow([
             display_id,
             cylinder.get('serial_number', ''),
             cylinder.get('type', ''),
             cylinder.get('size', ''),
             cylinder.get('status', ''),
-            cylinder.get('date_borrowed', ''),
+            dispatch_date,
             cylinder.get('rental_days', 0),
             cylinder.get('location', ''),
             cylinder.get('pressure', '')
