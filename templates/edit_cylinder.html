@@ -25,7 +25,7 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="bi bi-cylinder me-2"></i>Cylinder Information
-                        <span class="badge bg-info ms-2">{{ cylinder.id }}</span>
+                        <span class="badge bg-info ms-2">{{ cylinder.display_serial or cylinder.id }}</span>
                     </h5>
                 </div>
                 <div class="card-body">
@@ -113,7 +113,7 @@
                                 <select class="form-select" id="rented_to" name="rented_to">
                                     <option value="">Select customer...</option>
                                     {% for customer in customers %}
-                                    <option value="{{ customer.id }}" {% if cylinder.rented_to == customer.id %}selected{% endif %}>{{ customer.name }} - {{ customer.email }}</option>
+                                    <option value="{{ customer.id }}" {% if cylinder.rented_to == customer.id %}selected{% endif %}>{{ customer.customer_name or customer.name or 'Unknown Customer' }} - {{ customer.customer_email or customer.email or 'No Email' }}</option>
                                     {% endfor %}
                                 </select>
                                 <small class="form-text text-muted">Required when status is 'Rented'</small>

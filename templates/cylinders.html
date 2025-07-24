@@ -268,38 +268,19 @@
                                             <i class="bi bi-info-circle"></i>
                                         </a>
                                         {% if session.role == 'admin' %}
-                                        <button type="button" class="btn btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#deleteModal{{ loop.index }}" title="Delete">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline" 
+                                              onsubmit="return confirm('Are you sure you want to delete cylinder {{ cylinder.display_serial }}? This action cannot be undone.')">
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                         {% endif %}
                                     </div>
                                 {% endif %}
                                     
 
 
-                                    <!-- Delete Confirmation Modal -->
-                                    <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Confirm Delete</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    Are you sure you want to delete cylinder <strong>{{ cylinder.display_serial }}</strong>?
-                                                    This action cannot be undone.
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
-                                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+
                                 </td>
                             </tr>
                             {% endfor %}
@@ -579,13 +560,13 @@ document.addEventListener('DOMContentLoaded', function() {
     rentModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
         const cylinderId = button.getAttribute('data-cylinder-id');
-        const cylinderSerial = button.getAttribute('data-cylinder-serial');
+        const cylinderDisplay = button.getAttribute('data-cylinder-display');
         
         // Update form action with proper URL
         rentForm.action = '/cylinders/rent/' + cylinderId;
         
         // Update cylinder info
-        cylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
+        cylinderInfo.value = 'ID: ' + cylinderDisplay;
         
         // Set default rental date to current time
         const rentalDate = document.getElementById('rental_date');
@@ -609,13 +590,13 @@ document.addEventListener('DOMContentLoaded', function() {
     returnModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
         const cylinderId = button.getAttribute('data-cylinder-id');
-        const cylinderSerial = button.getAttribute('data-cylinder-serial');
+        const cylinderDisplay = button.getAttribute('data-cylinder-display');
         
         // Update form action with proper URL
         returnForm.action = '/cylinders/return/' + cylinderId;
         
         // Update cylinder info
-        returnCylinderInfo.value = 'Serial: ' + cylinderSerial + ' (ID: ' + cylinderId + ')';
+        returnCylinderInfo.value = 'ID: ' + cylinderDisplay;
         
         // Set default return date to current time
         const now = new Date();

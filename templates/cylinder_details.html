@@ -45,13 +45,13 @@
                                 <i class="bi bi-gear me-2"></i>Basic Information
                             </h6>
                             <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">Serial Number:</label>
+                                <label class="form-label fs-5 fw-bold">ID:</label>
                                 <input type="text" class="form-control form-control-lg" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
                             </div>
-                            {% if cylinder.get('custom_id') %}
+                            {% if cylinder.get('serial_number') and cylinder.get('serial_number') != cylinder.display_serial %}
                             <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">ID:</label>
-                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.custom_id }}" readonly style="font-size: 1.1rem;">
+                                <label class="form-label fs-5 fw-bold">Manufacturer Serial:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.serial_number }}" readonly style="font-size: 1.1rem;">
                             </div>
                             {% endif %}
                             <div class="mb-3">

@@ -857,8 +857,8 @@ def cylinder_details(cylinder_id):
         flash('Cylinder not found', 'error')
         return redirect(url_for('cylinders'))
     
-    # Add display serial number
-    cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), 1)
+    # Add display ID (custom_id if available, otherwise generated serial)
+    cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
     
     # Add rental days calculation
     cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
@@ -1076,8 +1076,9 @@ def edit_cylinder(cylinder_id):
         except Exception as e:
             flash(f'Error updating cylinder: {str(e)}', 'error')
     
-    # Get all customers for the dropdown
+    # Get all customers for the dropdown and add display ID
     customers = customer_model.get_all()
+    cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 
 @app.route('/cylinders/delete/<cylinder_id>', methods=['POST'])
