@@ -517,11 +517,16 @@ class Cylinder:
                     customer_model = Customer()
                     customer_data = customer_model.get_by_id(customer_id)
                     
-                    # Save return record to history
+                    # Save return record to history BEFORE clearing cylinder data
                     if customer_data:
                         history = RentalHistory()
-                        history.add_return_record(cylinder, customer_data, return_date)
+                        try:
+                            history.add_return_record(cylinder, customer_data, return_date)
+                            print(f"DEBUG: Successfully added return record for cylinder {cylinder_id}")
+                        except Exception as e:
+                            print(f"DEBUG: Error adding return record: {e}")
                 
+                # Update cylinder status and return date
                 cylinder['status'] = 'available'
                 cylinder['date_returned'] = return_date or datetime.now().isoformat()
                 cylinder['updated_at'] = datetime.now().isoformat()
@@ -537,7 +542,8 @@ class Cylinder:
                 cylinder['customer_no'] = ''
                 cylinder['customer_city'] = ''
                 cylinder['customer_state'] = ''
-                cylinder['rental_date'] = ''
+                # Don't clear rental_date immediately - keep it for reference
+                # cylinder['rental_date'] = ''
                 self.db.save_data(cylinders)
                 return True
         return False
