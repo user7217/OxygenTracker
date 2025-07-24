@@ -1,20 +1,23 @@
+# app.py - Flask application setup
 import os
 import logging
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging for development debugging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Create the app
+# Create Flask application
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure for PythonAnywhere deployment
-app.config['SERVER_NAME'] = None  # Let Flask auto-detect
-app.config['APPLICATION_ROOT'] = '/'
-app.config['PREFERRED_URL_SCHEME'] = 'https'
+# Set secret key for sessions
+app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
+
+# Configure ProxyFix for deployment environments
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Import routes after app creation to avoid circular imports
 from routes import *
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
