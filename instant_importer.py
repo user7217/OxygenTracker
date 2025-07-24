@@ -168,14 +168,22 @@ class InstantImporter:
         imported = 0
         skipped = 0
         
+        # Debug: Print first few rows to see the data format
+        debug_count = 0
+        
         for row in rows:
             try:
-                # Extract data - simple and direct
+                # Extract data - accept any non-empty values
                 cust_no = str(row[cust_idx] or '').strip()
                 cyl_no = str(row[cyl_idx] or '').strip()
                 
-                # Skip only if completely empty
-                if not cust_no or not cyl_no:
+                # Debug first 5 rows
+                if debug_count < 5:
+                    print(f"DEBUG Row {debug_count}: cust_no='{cust_no}', cyl_no='{cyl_no}'")
+                    debug_count += 1
+                
+                # Accept ANY data - don't skip anything unless completely null
+                if not cust_no and not cyl_no:
                     skipped += 1
                     continue
                 
@@ -201,15 +209,15 @@ class InstantImporter:
                         elif hasattr(return_raw, 'strftime'):
                             return_date = return_raw.strftime('%Y-%m-%d')
                         
-                        # Apply 6-month filter ONLY if return date exists
-                        if return_date and len(return_date) >= 10:
-                            try:
-                                return_dt = datetime.strptime(return_date[:10], '%Y-%m-%d')
-                                if return_dt < six_months_ago:
-                                    skipped += 1
-                                    continue
-                            except:
-                                pass
+                        # Temporarily disable 6-month filter to test import
+                        # if return_date and len(return_date) >= 10:
+                        #     try:
+                        #         return_dt = datetime.strptime(return_date[:10], '%Y-%m-%d')
+                        #         if return_dt < six_months_ago:
+                        #             skipped += 1
+                        #             continue
+                        #     except:
+                        #         pass
                     except:
                         pass
                 
@@ -232,9 +240,9 @@ class InstantImporter:
         
         conn.close()
         
-        # Save all rental data
+        # Save all rental data - NO duplicate checking
         if rental_entries:
-            print(f"💾 Saving {len(rental_entries):,} rental records...")
+            print(f"💾 Saving {len(rental_entries):,} rental records (no duplicate checking)...")
             try:
                 # Just save to rental history file
                 import json
@@ -250,7 +258,7 @@ class InstantImporter:
                     except:
                         existing_data = []
                 
-                # Add new entries
+                # Add ALL new entries without duplicate checking
                 all_data = existing_data + rental_entries
                 
                 # Save back to file
@@ -262,6 +270,8 @@ class InstantImporter:
                 
             except Exception as e:
                 print(f"❌ Save failed: {e}")
+        else:
+            print("❌ No rental entries to save - check data mapping")
         
         print(f"✅ INSTANT COMPLETE: {imported:,} imported | {skipped:,} skipped")
         return imported, skipped, []
