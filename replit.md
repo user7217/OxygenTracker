@@ -20,12 +20,13 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - **Middleware**: ProxyFix for handling reverse proxy headers
 
 ### Data Storage Solutions
-- **Primary Storage**: JSON files stored in local `data/` directory
-- **Database Files**:
-  - `customers.json`: Customer information
-  - `cylinders.json`: Cylinder inventory data
-  - `users.json`: User authentication data
-- **File Structure**: Each model uses a JSONDatabase base class for consistent file operations
+- **Primary Storage**: PostgreSQL database for all operational data
+- **Database Tables**:
+  - `customers`: Customer information with new field structure
+  - `cylinders`: Cylinder inventory data with rental tracking
+  - `rental_history`: Completed rental transactions
+- **Authentication**: JSON file (`users.json`) for user authentication only
+- **File Structure**: SQLAlchemy models with service layer architecture
 
 ## Key Components
 
@@ -115,6 +116,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 24, 2025: Completed full migration from JSON to PostgreSQL database. Migrated 249 customers, 6774 cylinders, and rental history data. Removed all JSON data files except users.json for authentication. Fixed customer table sorting by active dispatches, optimized performance by reducing queries from 10K to 5K records, fixed foreign key constraints for cylinder returns, and improved cylinder sorting by rental duration. Added comprehensive JSON import utility for easy data migration. System now fully PostgreSQL-based with significant performance improvements.
 - July 24, 2025: Created dedicated Rental History system for 6-month completed transactions. Added new rental_history import type in instant importer that specifically imports completed transactions (with return dates) from the past 6 months. Created separate rental transactions model and dedicated rental history page with search/filter capabilities. Simplified transaction importer to focus on basic customer-cylinder linking. Added rental history navigation link in main menu. System now supports four import types: customers, cylinders, transactions (linking), and rental_history (6-month completed rentals).
 - July 23, 2025: Updated rental duration filters in cylinder table to use clearer time ranges: "Under 1 Month", "1-3 Months", "3-6 Months", "6-12 Months", and "Over 12 Months" instead of minimum thresholds. Removed date filtering from transaction imports to process ALL historical data instead of past year only. Fixed AccessConnector database connection errors by properly using cursor objects instead of connection objects. Enhanced instant import system to handle complete historical datasets without any date restrictions.
 - July 22, 2025: Fixed critical Access database connector indentation errors that prevented application startup. Enhanced transaction import to handle large datasets (292k+ rows) by increasing error threshold from 1000 to 5000, adding 50% skip limit to prevent endless processing, and implementing comprehensive error reporting with detailed statistics. Made cylinder type and size optional during imports with intelligent defaults (Medical Oxygen, 40L) to reduce import failures and improve data flexibility. Updated field mapping interface to show optional status for type and size fields.
