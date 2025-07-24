@@ -1863,15 +1863,35 @@ def customer_active_dispatches(customer_id):
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    # Get all cylinders rented to this customer
-    cylinders = cylinder_model.get_all()
-    customer_cylinders = [c for c in cylinders if c.get('rented_to') == customer_id]
+    # Get all cylinders rented to this customer using the service
+    from db_service import CylinderService
     
-    # Add rental days and display IDs for each cylinder
+    with CylinderService() as cylinder_service:
+        customer_cylinders = cylinder_service.get_by_customer(customer_id)
+    
+    # Convert to dictionaries and add rental info - data already includes rental_days from service
+    customer_cylinders_dict = []
     for cylinder in customer_cylinders:
-        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        cylinder['display_id'] = cylinder_model.get_display_id(cylinder)
-        cylinder['rental_months'] = cylinder['rental_days'] // 30
+        if isinstance(cylinder, dict):
+            customer_cylinders_dict.append(cylinder)
+        else:
+            # Convert SQLAlchemy object to dict
+            cylinder_dict = {
+                'id': cylinder.id,
+                'custom_id': cylinder.custom_id or '',
+                'serial_number': cylinder.serial_number or '',
+                'display_id': cylinder.custom_id or cylinder.serial_number or f"ID-{cylinder.id[:8]}",
+                'type': cylinder.type or '',
+                'size': cylinder.size or '',
+                'status': cylinder.status or '',
+                'location': cylinder.location or '',
+                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if cylinder.date_borrowed else 0,
+                'rental_months': ((datetime.utcnow() - cylinder.date_borrowed).days // 30) if cylinder.date_borrowed else 0,
+                'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else ''
+            }
+            customer_cylinders_dict.append(cylinder_dict)
+    
+    customer_cylinders = customer_cylinders_dict
     
     # Sort by rental days (longest first)
     customer_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
