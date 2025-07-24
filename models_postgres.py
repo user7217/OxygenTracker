@@ -188,5 +188,6 @@ class Cylinder:
             # Calculated fields
             'rental_days': rental_days,
             'rental_months': rental_months,
-            'display_id': display_id
+            'display_id': display_id,
+            'display_serial': display_id  # Alias for template compatibility
         }

@@ -259,13 +259,13 @@
                                         {% if cylinder.get('status', '').lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-display="{{ cylinder.display_serial }}" title="Dispatch">
+                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Dispatch">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
                                         {% elif cylinder.get('status', '').lower() == 'rented' %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-display="{{ cylinder.display_serial }}" title="Return">
+                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}

@@ -301,8 +301,8 @@ class CylinderService(DatabaseService):
         else:
             cylinder.date_returned = datetime.utcnow()
         
-        # Clear rental info
-        cylinder.rented_to = ''
+        # Clear rental info (use None for foreign key to avoid constraint violation)
+        cylinder.rented_to = None
         cylinder.customer_name = ''
         cylinder.customer_email = ''
         cylinder.customer_phone = ''
