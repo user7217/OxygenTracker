@@ -295,11 +295,28 @@
         .breadcrumb {
             background: var(--light-background);
             border: 1px solid var(--light-border);
+            padding: 8px 12px;
         }
         
         .breadcrumb-item a {
-            color: var(--light-primary);
+            color: var(--light-primary) !important;
             font-weight: 500;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item a:hover {
+            color: #004085 !important;
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-item.active {
+            color: var(--light-dark) !important;
+            font-weight: 600;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            color: var(--light-secondary) !important;
+            content: ">";
         }
         
         .dropdown-menu {
