@@ -799,7 +799,14 @@ def delete_customer(customer_id):
 @app.route('/rental_history')
 @login_required
 def rental_history():
-    """View rental history records from the past 6 months"""
+    """Display rental history with automatic cleanup of old records"""
+    # Auto-cleanup records older than 6 months
+    from models_rental_history import RentalHistory
+    history_model = RentalHistory()
+    removed_count = history_model.cleanup_old_records()
+    
+    if removed_count > 0:
+        flash(f'Automatically removed {removed_count} records older than 6 months', 'info')
     from models_rental_transactions import RentalTransactions
     
     # Get pagination parameters

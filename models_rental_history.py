@@ -65,6 +65,29 @@ class RentalHistory:
         self._save_data(history_records)
         return return_record
     
+    def cleanup_old_records(self):
+        """Remove rental history records older than 6 months automatically"""
+        six_months_ago = datetime.now() - timedelta(days=180)
+        cutoff_date = six_months_ago.isoformat()
+        
+        history_records = self._load_data()
+        original_count = len(history_records)
+        
+        # Filter out records older than 6 months
+        filtered_records = []
+        for record in history_records:
+            record_date = record.get('date_returned', record.get('created_at', ''))
+            if record_date and record_date >= cutoff_date:
+                filtered_records.append(record)
+        
+        # Save filtered data if any records were removed
+        if len(filtered_records) != original_count:
+            self._save_data(filtered_records)
+            removed_count = original_count - len(filtered_records)
+            return removed_count
+        
+        return 0
+    
     def _calculate_rental_days(self, start_date: str, end_date: str) -> int:
         """Calculate rental days between two dates"""
         if not start_date or not end_date:
@@ -104,27 +127,6 @@ class RentalHistory:
             'active': active_cylinders,
             'past': past_rentals
         }
-    
-    def cleanup_old_records(self, months_old: int = 6) -> int:
-        """Remove rental history records older than specified months"""
-        cutoff_date = datetime.now() - timedelta(days=months_old * 30)
-        history_records = self._load_data()
-        
-        original_count = len(history_records)
-        
-        # Filter out old records
-        filtered_records = []
-        for record in history_records:
-            try:
-                return_date = datetime.fromisoformat(record.get('date_returned', '').replace('Z', '+00:00').split('.')[0])
-                if return_date >= cutoff_date:
-                    filtered_records.append(record)
-            except:
-                # Keep records with invalid dates for manual review
-                filtered_records.append(record)
-        
-        self._save_data(filtered_records)
-        return original_count - len(filtered_records)
     
     def import_historical_data(self, historical_records: List[Dict], cutoff_months: int = 6):
         """Import historical rental data, excluding records older than cutoff"""
