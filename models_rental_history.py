@@ -43,6 +43,7 @@ class RentalHistory:
         return_record = {
             'id': f"return_{len(history_records) + 1}_{int(datetime.now().timestamp())}",
             'customer_id': customer_data.get('id', ''),
+            'customer_no': customer_data.get('customer_no', ''),
             'customer_name': customer_data.get('customer_name', '') or customer_data.get('name', ''),
             'customer_phone': customer_data.get('customer_phone', '') or customer_data.get('phone', ''),
             'customer_email': customer_data.get('customer_email', '') or customer_data.get('email', ''),

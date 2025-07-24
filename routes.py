@@ -826,12 +826,12 @@ def rental_history():
         all_transactions = [t for t in all_transactions 
                           if search_query.lower() in t.get('customer_name', '').lower() or
                              search_query.lower() in t.get('cylinder_custom_id', '').lower() or
-                             search_query.lower() in t.get('customer_id', '').lower()]
+                             search_query.lower() in t.get('customer_no', '').lower()]
     
     # Apply customer filter  
     if customer_filter:
         all_transactions = [t for t in all_transactions 
-                          if t.get('customer_id', '').upper() == customer_filter.upper()]
+                          if t.get('customer_no', '').upper() == customer_filter.upper()]
     
     # Sort by return date (most recent first)
     all_transactions.sort(key=lambda x: x.get('date_returned', ''), reverse=True)
@@ -861,8 +861,8 @@ def rental_history():
     }
     
     # Get unique customers for filter dropdown
-    unique_customers = list(set((t.get('customer_id', ''), t.get('customer_name', '')) 
-                               for t in all_transactions if t.get('customer_id')))
+    unique_customers = list(set((t.get('customer_no', ''), t.get('customer_name', '')) 
+                               for t in all_transactions if t.get('customer_no')))
     unique_customers.sort(key=lambda x: x[1])  # Sort by customer name
     
     return render_template('rental_history.html',
