@@ -1769,6 +1769,25 @@ def bulk_rental_management():
     customers, _ = customer_model.get_all()
     cylinders, _ = cylinder_model.get_all()
     
+    # Convert customers to dict format if needed
+    customers_dict = []
+    for customer in customers:
+        if isinstance(customer, dict):
+            customers_dict.append(customer)
+        else:
+            # Convert SQLAlchemy object to dict
+            customer_dict = {
+                'id': customer.id,
+                'customer_no': customer.customer_no or '',
+                'customer_name': customer.customer_name or '',
+                'customer_email': customer.customer_email or '',
+                'customer_phone': customer.customer_phone or '',
+                'customer_address': customer.customer_address or '',
+                'customer_city': customer.customer_city or '',
+                'customer_state': customer.customer_state or ''
+            }
+            customers_dict.append(customer_dict)
+    
     # Convert cylinders to dict format if needed and add customer names
     cylinders_dict = []
     for cylinder in cylinders:
@@ -1799,7 +1818,7 @@ def bulk_rental_management():
         
         cylinders_dict.append(cylinder_dict)
     
-    return render_template('bulk_rental_management.html', customers=customers, cylinders=cylinders_dict)
+    return render_template('bulk_rental_management.html', customers=customers_dict, cylinders=cylinders_dict)
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
