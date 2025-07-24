@@ -90,15 +90,28 @@ gunicorn --bind 127.0.0.1:5000 --reload main:app
 
 The application will be available at: http://localhost:5000
 
-## Step 6: Initial Setup
+## Step 6: Import Your Existing Data (Optional)
+
+### Option A: Import from JSON Files
+If you have existing JSON data files (customers.json, cylinders.json, etc.):
+
+```bash
+# Run the JSON import utility
+python import_from_json.py
+```
+
+This will automatically import your existing data into PostgreSQL.
+
+### Option B: Import from Access Database
+Use the Import tab in the web interface if you have existing Access database files.
+
+## Step 7: Initial Setup
 
 1. **Login with default admin account:**
    - Username: `admin`
    - Password: `admin123`
 
 2. **Change the admin password** immediately after first login
-
-3. **Import your data** using the Import tab if you have existing Access database files
 
 ## Database Migration
 
