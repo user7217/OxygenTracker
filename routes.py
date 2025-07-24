@@ -817,12 +817,13 @@ def delete_customer(customer_id):
 @login_required
 def rental_history():
     """Display rental history"""
+    from db_service import RentalHistoryService
+    
     # Only cleanup if explicitly requested
     cleanup_requested = request.args.get('cleanup', False)
     removed_count = 0
     
     if cleanup_requested and session.get('role') == 'admin':
-        from db_service import RentalHistoryService
         with RentalHistoryService() as service:
             removed_count = service.cleanup_old_records()
         
