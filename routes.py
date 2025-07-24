@@ -649,9 +649,48 @@ def customer_details(customer_id):
     with RentalHistoryService() as history_service:
         past_transactions = history_service.get_customer_history(customer['id'])['past']
     
+    # Convert active rentals to dictionaries if they're SQLAlchemy objects
+    active_rentals_dict = []
+    for rental in active_rentals:
+        if hasattr(rental, 'id'):  # SQLAlchemy object
+            rental_dict = {
+                'id': rental.id,
+                'custom_id': rental.custom_id or '',
+                'serial_number': rental.serial_number or '',
+                'display_id': rental.custom_id or rental.serial_number or f"ID-{rental.id[:8]}",
+                'type': rental.type or '',
+                'size': rental.size or '',
+                'status': rental.status or '',
+                'location': rental.location or '',
+                'rental_days': (datetime.utcnow() - rental.date_borrowed).days if rental.date_borrowed else 0,
+                'rental_months': ((datetime.utcnow() - rental.date_borrowed).days // 30) if rental.date_borrowed else 0,
+                'date_borrowed': rental.date_borrowed.isoformat() if rental.date_borrowed else ''
+            }
+            active_rentals_dict.append(rental_dict)
+        else:  # Already a dict
+            active_rentals_dict.append(rental)
+    
+    # Convert past transactions to dictionaries if needed
+    past_transactions_dict = []
+    for transaction in past_transactions[:100]:  # Limit to recent 100 transactions
+        if hasattr(transaction, 'id'):  # SQLAlchemy object
+            trans_dict = {
+                'customer_name': transaction.customer_name or '',
+                'cylinder_custom_id': transaction.cylinder_custom_id or '',
+                'customer_no': transaction.customer_no or '',
+                'return_date': transaction.return_date.isoformat() if transaction.return_date else '',
+                'dispatch_date': transaction.dispatch_date.isoformat() if transaction.dispatch_date else '',
+                'rental_days': transaction.rental_days or 0,
+                'cylinder_type': transaction.cylinder_type or '',
+                'cylinder_size': transaction.cylinder_size or ''
+            }
+            past_transactions_dict.append(trans_dict)
+        else:  # Already a dict
+            past_transactions_dict.append(transaction)
+    
     history_data = {
-        'active': active_rentals,
-        'past': past_transactions[:100]  # Limit to recent 100 transactions
+        'active': active_rentals_dict,
+        'past': past_transactions_dict
     }
     
     # Get tab parameter
