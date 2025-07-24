@@ -636,10 +636,29 @@ def customer_details(customer_id):
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
-    # Get rental history (active and past)
-    from db_service import RentalHistoryService
-    with RentalHistoryService() as service:
-        history_data = service.get_customer_history(customer_id)
+    # Get rental history (active and past) from PostgreSQL
+    cylinder_model = Cylinder()
+    
+    # Get customer's active cylinders (currently rented)
+    active_cylinders, _ = cylinder_model.get_all(page=1, per_page=1000)
+    active_rentals = [c for c in active_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
+    
+    # Get customer's rental history (completed transactions)
+    try:
+        from models_rental_history import RentalHistory
+        rental_history_model = RentalHistory()
+        past_transactions = rental_history_model.get_by_customer(customer.get('customer_no', customer.get('id')))
+    except:
+        # Fallback: use returned cylinders that were previously rented to this customer
+        all_cylinders, _ = cylinder_model.get_all(page=1, per_page=5000)
+        past_transactions = [c for c in all_cylinders if c.get('date_returned') and 
+                           (c.get('customer_name', '').lower() == customer.get('customer_name', '').lower() or
+                            str(c.get('rented_to', '')) == str(customer.get('id', '')))]
+    
+    history_data = {
+        'active': active_rentals,
+        'past': past_transactions[:100]  # Limit to recent 100 transactions
+    }
     
     # Get tab parameter
     tab = request.args.get('tab', 'active')
