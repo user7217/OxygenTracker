@@ -147,8 +147,8 @@ class InstantImporter:
         return imported, skipped, []
     
     def _instant_import_transactions(self, rows, columns, field_mapping, conn):
-        """Import transactions - link customers/cylinders + create rental history"""
-        print("🚀 INSTANT TRANSACTION MODE: Linking customers/cylinders + rental history")
+        """Import transactions with 6-month filter - update cylinders + customer rental history"""
+        print("🚀 INSTANT TRANSACTION MODE: 6-month filter + customer rental history")
         
         # Pre-load ALL data for fast lookups
         customers_raw = self.customer_model.get_all()
@@ -182,9 +182,13 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # Process transactions
+        # 6-month cutoff filter
+        six_months_ago = datetime.now() - timedelta(days=180)
+        
+        # Process transactions with 6-month filter
         operations = []
         rental_entries = []
+        customer_rentals = {}  # Group by customer for embedding
         imported = 0
         skipped = 0
         
@@ -207,6 +211,8 @@ class InstantImporter:
                 
                 # Get dates
                 dispatch_date = ''
+                return_date = ''
+                
                 if dispatch_idx is not None and row[dispatch_idx]:
                     try:
                         dispatch_raw = row[dispatch_idx]
@@ -217,7 +223,6 @@ class InstantImporter:
                     except:
                         pass
                 
-                return_date = ''
                 if return_idx is not None and row[return_idx]:
                     try:
                         return_raw = row[return_idx]
@@ -225,6 +230,16 @@ class InstantImporter:
                             return_date = return_raw[:10] if len(return_raw) >= 10 else return_raw
                         elif hasattr(return_raw, 'strftime'):
                             return_date = return_raw.strftime('%Y-%m-%d')
+                    except:
+                        pass
+                
+                # Apply 6-month filter - only import if return date is within 6 months OR no return date
+                if return_date:
+                    try:
+                        return_dt = datetime.strptime(return_date, '%Y-%m-%d')
+                        if return_dt < six_months_ago:
+                            skipped += 1
+                            continue
                     except:
                         pass
                 
@@ -244,6 +259,12 @@ class InstantImporter:
                     'created_at': datetime.now().isoformat()
                 }
                 rental_entries.append(rental_entry)
+                
+                # Group by customer for embedding in customer records
+                if customer['id'] not in customer_rentals:
+                    customer_rentals[customer['id']] = []
+                customer_rentals[customer['id']].append(rental_entry)
+                
                 imported += 1
                 
             except Exception:
