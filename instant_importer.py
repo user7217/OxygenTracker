@@ -8,11 +8,13 @@ import json
 import pyodbc
 from datetime import datetime, timedelta
 from models import CustomerModel, CylinderModel
+from models_rental_history import RentalHistory
 
 class InstantImporter:
     def __init__(self):
         self.customer_model = CustomerModel()
         self.cylinder_model = CylinderModel()
+        self.rental_history = RentalHistory()
     
     def instant_import(self, access_file: str, table_name: str, field_mapping: dict) -> tuple:
         """Import transactions with zero processing overhead"""
@@ -61,7 +63,8 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # Import all data without date restrictions
+        # Import with 6-month cutoff for completed rentals
+        six_months_ago = datetime.now() - timedelta(days=180)
         
         # Process ALL rows with minimal overhead
         operations = []
@@ -112,6 +115,13 @@ class InstantImporter:
                                     return_date = return_dt.strftime('%Y-%m-%d')
                                 elif not isinstance(return_raw, str):
                                     return_date = return_raw.strftime('%Y-%m-%d')
+                                
+                                # Skip if return date is older than 6 months
+                                if return_date:
+                                    return_dt_check = datetime.strptime(return_date, '%Y-%m-%d')
+                                    if return_dt_check < six_months_ago:
+                                        skipped += 1
+                                        continue
                             except:
                                 pass
                         

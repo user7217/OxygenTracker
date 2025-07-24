@@ -503,12 +503,25 @@ class Cylinder:
         return False
     
     def return_cylinder(self, cylinder_id: str, return_date: str = None) -> bool:
-        """Return a cylinder from rental with return date"""
+        """Return a cylinder from rental with return date and save to history"""
         from datetime import datetime
+        from models_rental_history import RentalHistory
+        from models import Customer
         
         cylinders = self.db.load_data()
         for cylinder in cylinders:
             if cylinder['id'] == cylinder_id:
+                # Get customer data before clearing it
+                customer_id = cylinder.get('rented_to', '')
+                if customer_id:
+                    customer_model = Customer()
+                    customer_data = customer_model.get_by_id(customer_id)
+                    
+                    # Save return record to history
+                    if customer_data:
+                        history = RentalHistory()
+                        history.add_return_record(cylinder, customer_data, return_date)
+                
                 cylinder['status'] = 'available'
                 cylinder['date_returned'] = return_date or datetime.now().isoformat()
                 cylinder['updated_at'] = datetime.now().isoformat()

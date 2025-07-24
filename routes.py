@@ -633,38 +633,37 @@ def customers():
 @app.route('/customer/<customer_id>/details')
 @login_required
 def customer_details(customer_id):
-    """Display detailed information for a specific customer with pagination"""
+    """Display detailed information for a specific customer with rental history tabs"""
     customer_model = Customer()
-    cylinder_model = Cylinder()
     
     customer = customer_model.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
+    # Get rental history (active and past)
+    from models_rental_history import RentalHistory
+    rental_history = RentalHistory()
+    history_data = rental_history.get_customer_history(customer_id)
+    
+    # Get tab parameter
+    tab = request.args.get('tab', 'active')
+    
     # Get pagination parameters
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    # Get all cylinders rented to this customer
-    all_cylinders = cylinder_model.get_all()
-    rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer_id]
-    
-    # Add rental days and display data for each cylinder
-    for i, cylinder in enumerate(rented_cylinders):
-        cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        cylinder['rental_months'] = cylinder['rental_days'] // 30
-        cylinder['display_id'] = cylinder_model.get_display_id(cylinder)
-        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
-    
-    # Sort by rental days (longest first)
-    rented_cylinders.sort(key=lambda x: x.get('rental_days', 0), reverse=True)
+    # Select data based on tab
+    if tab == 'past':
+        cylinders_data = history_data['past']
+    else:
+        cylinders_data = history_data['active']
     
     # Pagination
-    total_cylinders = len(rented_cylinders)
+    total_cylinders = len(cylinders_data)
     start = (page - 1) * per_page
     end = start + per_page
-    cylinders_paginated = rented_cylinders[start:end]
+    cylinders_paginated = cylinders_data[start:end]
     
     # Calculate pagination info
     total_pages = (total_cylinders + per_page - 1) // per_page
@@ -684,14 +683,26 @@ def customer_details(customer_id):
         'end_index': min(end, total_cylinders)
     }
     
-    # Calculate summary statistics (from all data, not just current page)
-    avg_rental_days = sum(c.get('rental_days', 0) for c in rented_cylinders) // total_cylinders if total_cylinders > 0 else 0
-    long_term_count = len([c for c in rented_cylinders if c.get('rental_days', 0) > 90])  # 3+ months
+    # Calculate summary statistics
+    active_count = len(history_data['active'])
+    past_count = len(history_data['past'])
     
-    return render_template('customer_details.html', 
+    if tab == 'active' and history_data['active']:
+        avg_rental_days = sum(c.get('rental_days', 0) for c in history_data['active']) // active_count
+        long_term_count = len([c for c in history_data['active'] if c.get('rental_days', 0) > 90])
+    elif tab == 'past' and history_data['past']:
+        avg_rental_days = sum(c.get('rental_days', 0) for c in history_data['past']) // past_count
+        long_term_count = len([c for c in history_data['past'] if c.get('rental_days', 0) > 90])
+    else:
+        avg_rental_days = 0
+        long_term_count = 0
+    
+    return render_template('customer_details_new.html', 
                          customer=customer, 
-                         rented_cylinders=cylinders_paginated,
-                         total_cylinders=total_cylinders,
+                         cylinders_data=cylinders_paginated,
+                         active_count=active_count,
+                         past_count=past_count,
+                         current_tab=tab,
                          avg_rental_days=avg_rental_days,
                          long_term_count=long_term_count,
                          pagination=pagination_info)
@@ -2765,3 +2776,84 @@ def export_rental_activities_pdf():
         mimetype='application/pdf',
         headers={'Content-Disposition': f'attachment; filename=rental_activities_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
     )
+
+
+@app.route('/export/rental_history')
+@login_required
+def export_rental_history():
+    """Export complete rental history to Excel"""
+    from models_rental_history import RentalHistory
+    import io
+    from openpyxl import Workbook
+    
+    try:
+        rental_history = RentalHistory()
+        all_history = rental_history.get_all_history()
+        
+        workbook = Workbook()
+        
+        # Create separate sheets for active and past rentals
+        active_sheet = workbook.active
+        active_sheet.title = "Active Rentals"
+        past_sheet = workbook.create_sheet("Past Rentals")
+        
+        # Headers
+        headers = [
+            'Customer No', 'Customer Name', 'Customer Phone', 'Customer Address',
+            'Cylinder ID', 'Cylinder Type', 'Cylinder Size', 
+            'Dispatch Date', 'Return Date', 'Rental Days'
+        ]
+        
+        # Active rentals sheet
+        for col, header in enumerate(headers, 1):
+            active_sheet.cell(row=1, column=col, value=header)
+        
+        row = 2
+        for record in all_history['active']:
+            active_sheet.cell(row=row, column=1, value=record.get('customer_no', ''))
+            active_sheet.cell(row=row, column=2, value=record.get('customer_name', ''))
+            active_sheet.cell(row=row, column=3, value=record.get('customer_phone', ''))
+            active_sheet.cell(row=row, column=4, value=record.get('customer_address', ''))
+            active_sheet.cell(row=row, column=5, value=record.get('cylinder_custom_id', '') or record.get('cylinder_serial', ''))
+            active_sheet.cell(row=row, column=6, value=record.get('cylinder_type', ''))
+            active_sheet.cell(row=row, column=7, value=record.get('cylinder_size', ''))
+            active_sheet.cell(row=row, column=8, value=record.get('date_borrowed', '')[:10] if record.get('date_borrowed') else '')
+            active_sheet.cell(row=row, column=9, value='')  # No return date for active
+            active_sheet.cell(row=row, column=10, value=record.get('rental_days', 0))
+            row += 1
+        
+        # Past rentals sheet
+        for col, header in enumerate(headers, 1):
+            past_sheet.cell(row=1, column=col, value=header)
+        
+        row = 2
+        for record in all_history['past']:
+            past_sheet.cell(row=row, column=1, value=record.get('customer_no', ''))
+            past_sheet.cell(row=row, column=2, value=record.get('customer_name', ''))
+            past_sheet.cell(row=row, column=3, value=record.get('customer_phone', ''))
+            past_sheet.cell(row=row, column=4, value=record.get('customer_address', ''))
+            past_sheet.cell(row=row, column=5, value=record.get('cylinder_custom_id', '') or record.get('cylinder_serial', ''))
+            past_sheet.cell(row=row, column=6, value=record.get('cylinder_type', ''))
+            past_sheet.cell(row=row, column=7, value=record.get('cylinder_size', ''))
+            past_sheet.cell(row=row, column=8, value=record.get('date_borrowed', '')[:10] if record.get('date_borrowed') else '')
+            past_sheet.cell(row=row, column=9, value=record.get('date_returned', '')[:10] if record.get('date_returned') else '')
+            past_sheet.cell(row=row, column=10, value=record.get('rental_days', 0))
+            row += 1
+        
+        # Save to memory
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+        
+        filename = f"rental_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+        flash(f'Error exporting rental history: {str(e)}', 'error')
+        return redirect(url_for('reports'))
