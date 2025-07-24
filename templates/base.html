@@ -533,6 +533,11 @@
                             </svg>Cylinders
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('rental_history') }}">
+                            <i class="bi bi-clock-history me-2"></i>Rental History
+                        </a>
+                    </li>
                     {% if session.role == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{{ url_for('reports') }}">

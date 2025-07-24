@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Rental History{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Rental History (Past 6 Months)</h1>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('import_data') }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Import Data
+                    </a>
+                </div>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Customer name, number, or cylinder ID">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="customer" class="form-label">Customer</label>
+                            <select class="form-select" id="customer" name="customer">
+                                <option value="">All Customers</option>
+                                {% for customer_no, customer_name in unique_customers %}
+                                <option value="{{ customer_no }}" {% if customer_filter == customer_no %}selected{% endif %}>
+                                    {{ customer_name }} ({{ customer_no }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="per_page" class="form-label">Per Page</label>
+                            <select class="form-select" id="per_page" name="per_page">
+                                <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+                                <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+                                <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
+                                <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">Search</button>
+                                <a href="{{ url_for('rental_history') }}" class="btn btn-outline-secondary">Clear</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results Summary -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="text-muted">
+                    Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }} rental records
+                </div>
+                <div class="text-muted">
+                    Total Completed Rentals: {{ total_transactions }}
+                </div>
+            </div>
+
+            <!-- Rental History Table -->
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Customer</th>
+                                <th>Cylinder</th>
+                                <th>Dispatch Date</th>
+                                <th>Return Date</th>
+                                <th>Rental Days</th>
+                                <th>Customer Address</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ transaction.customer_name }}</div>
+                                    <small class="text-muted">{{ transaction.customer_no }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ transaction.cylinder_custom_id }}</div>
+                                    <small class="text-muted">{{ transaction.cylinder_type }} {{ transaction.cylinder_size }}</small>
+                                </td>
+                                <td>
+                                    {% if transaction.dispatch_date %}
+                                        {{ transaction.dispatch_date }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if transaction.return_date %}
+                                        <span class="badge bg-success">{{ transaction.return_date }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if transaction.rental_days > 0 %}
+                                        <span class="badge bg-info">{{ transaction.rental_days }} days</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>{{ transaction.customer_address }}</div>
+                                    {% if transaction.customer_city or transaction.customer_state %}
+                                    <small class="text-muted">{{ transaction.customer_city }}{% if transaction.customer_city and transaction.customer_state %}, {% endif %}{{ transaction.customer_state }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if transaction.customer_phone %}
+                                        {{ transaction.customer_phone }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-history fa-2x mb-3"></i>
+                                        <p>No rental history records found.</p>
+                                        {% if not total_transactions %}
+                                        <p>Import transaction data to see rental history.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if pagination.total_pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Rental history pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('rental_history', page=pagination.prev_num, search=search_query, customer=customer_filter, per_page=pagination.per_page) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                            </li>
+                            {% endif %}
+
+                            {% for page_num in range(1, pagination.total_pages + 1) %}
+                                {% if page_num == pagination.page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% elif page_num == 1 or page_num == pagination.total_pages or (page_num >= pagination.page - 2 and page_num <= pagination.page + 2) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('rental_history', page=page_num, search=search_query, customer=customer_filter, per_page=pagination.per_page) }}">{{ page_num }}</a>
+                                </li>
+                                {% elif page_num == pagination.page - 3 or page_num == pagination.page + 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('rental_history', page=pagination.next_num, search=search_query, customer=customer_filter, per_page=pagination.per_page) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

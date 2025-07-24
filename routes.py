@@ -795,6 +795,78 @@ def delete_customer(customer_id):
     
     return redirect(url_for('customers'))
 
+# Rental History routes
+@app.route('/rental_history')
+@login_required
+def rental_history():
+    """View rental history records from the past 6 months"""
+    from models_rental_transactions import RentalTransactions
+    
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    
+    # Limit per_page to reasonable values
+    per_page = min(max(per_page, 10), 200)
+    
+    search_query = request.args.get('search', '')
+    customer_filter = request.args.get('customer', '')
+    
+    rental_model = RentalTransactions()
+    all_transactions = rental_model.get_recent_transactions(6)  # Past 6 months
+    
+    # Apply search filter
+    if search_query:
+        all_transactions = [t for t in all_transactions 
+                          if search_query.lower() in t.get('customer_name', '').lower() or
+                             search_query.lower() in t.get('cylinder_custom_id', '').lower() or
+                             search_query.lower() in t.get('customer_no', '').lower()]
+    
+    # Apply customer filter
+    if customer_filter:
+        all_transactions = [t for t in all_transactions 
+                          if t.get('customer_no', '').upper() == customer_filter.upper()]
+    
+    # Sort by return date (most recent first)
+    all_transactions.sort(key=lambda x: x.get('return_date', ''), reverse=True)
+    
+    # Calculate pagination
+    total_transactions = len(all_transactions)
+    start = (page - 1) * per_page
+    end = start + per_page
+    transactions_paginated = all_transactions[start:end]
+    
+    # Calculate pagination info
+    total_pages = (total_transactions + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_transactions,
+        'total_pages': total_pages,
+        'has_prev': has_prev,
+        'has_next': has_next,
+        'prev_num': page - 1 if has_prev else None,
+        'next_num': page + 1 if has_next else None,
+        'start_index': start + 1 if transactions_paginated else 0,
+        'end_index': min(end, total_transactions)
+    }
+    
+    # Get unique customers for filter dropdown
+    unique_customers = list(set((t.get('customer_no', ''), t.get('customer_name', '')) 
+                               for t in all_transactions if t.get('customer_no')))
+    unique_customers.sort(key=lambda x: x[1])  # Sort by customer name
+    
+    return render_template('rental_history.html',
+                         transactions=transactions_paginated,
+                         pagination=pagination_info,
+                         search_query=search_query,
+                         customer_filter=customer_filter,
+                         unique_customers=unique_customers,
+                         total_transactions=total_transactions)
+
 # Cylinder routes
 @app.route('/cylinders')
 @login_required
@@ -1260,7 +1332,7 @@ def preview_table(table_name):
         import_type = request.args.get('type', 'customer')
         
         # Get suggested field mapping based on import type
-        if import_type == 'transaction':
+        if import_type == 'transaction' or import_type == 'rental_history':
             suggested_mapping = importer.suggest_transaction_field_mapping(table_name)
         else:
             suggested_mapping = importer.suggest_field_mapping(table_name, import_type)
@@ -1320,6 +1392,8 @@ def execute_import():
             item_type = 'cylinders'
         elif import_type == 'transaction':
             item_type = 'transactions'
+        elif import_type == 'rental_history':
+            item_type = 'rental history records'
         else:
             flash('Invalid import type', 'error')
             return redirect(url_for('import_data'))
@@ -1364,6 +1438,8 @@ def execute_import():
         # Redirect to appropriate page
         if import_type == 'customer':
             return redirect(url_for('customers'))
+        elif import_type == 'rental_history':
+            return redirect(url_for('rental_history'))
         else:
             return redirect(url_for('cylinders'))
         
