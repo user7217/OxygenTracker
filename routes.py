@@ -834,7 +834,7 @@ def rental_history():
                           if t.get('customer_no', '').upper() == customer_filter.upper()]
     
     # Sort by return date (most recent first)
-    all_transactions.sort(key=lambda x: x.get('date_returned', ''), reverse=True)
+    all_transactions.sort(key=lambda x: x.get('return_date', '') or x.get('date_returned', ''), reverse=True)
     
     # Calculate pagination
     total_transactions = len(all_transactions)
