@@ -215,7 +215,7 @@ def login():
             return render_template('login.html')
         
         # Authenticate user credentials
-        user = user_manager.authenticate_user(username, password)
+        user = user_manager.authenticate(username, password)
         if user:
             # Create secure session
             session['user_id'] = user['id']
@@ -330,8 +330,8 @@ def index():
     Returns:
         Dashboard template with comprehensive system statistics
     """
-    customers = customer_model.get_all()
-    cylinders = cylinder_model.get_all()
+    customers, _ = customer_model.get_all()
+    cylinders, _ = cylinder_model.get_all()
     
     # Calculate cylinder status distribution
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
@@ -580,12 +580,12 @@ def customers():
     per_page = int(request.args.get('per_page', 25))
     
     if search_query:
-        customers_list = customer_model.search(search_query)
+        customers_list, total_customers = customer_model.get_all(search_query, page, per_page)
     else:
-        customers_list = customer_model.get_all()
+        customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
     # Add rental count for each customer and sort by number of rentals (descending)
-    all_cylinders = cylinder_model.get_all()
+    all_cylinders, _ = cylinder_model.get_all()
     for customer in customers_list:
         # Count rented cylinders for this customer
         rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer['id']]
@@ -601,11 +601,8 @@ def customers():
     # Sort customers by rental count in descending order
     customers_list.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
     
-    # Pagination
-    total_customers = len(customers_list)
-    start = (page - 1) * per_page
-    end = start + per_page
-    customers_paginated = customers_list[start:end]
+    # Pagination (already handled by PostgreSQL)
+    customers_paginated = customers_list
     
     # Calculate pagination info
     total_pages = (total_customers + per_page - 1) // per_page
