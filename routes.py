@@ -1302,58 +1302,50 @@ def execute_import():
             flash('Please map at least one field', 'error')
             return redirect(url_for('preview_table', table_name=table_name, type=import_type))
         
-        # Execute import with proper cleanup
-        importer = DataImporter()
-        try:
-            if not importer.connect_to_access(session['access_file_path']):
-                flash('Failed to reconnect to Access database', 'error')
-                return redirect(url_for('import_data'))
-            
-            # Use instant importer for all import types
-            from instant_importer import InstantImporter
-            instant_importer = InstantImporter()
-            imported, skipped, errors = instant_importer.instant_import(
-                session['access_file_path'], 
-                table_name, 
-                field_mapping,
-                import_type
-            )
-            
-            if import_type == 'customer':
-                item_type = 'customers'
-            elif import_type == 'cylinder':
-                item_type = 'cylinders'
-            elif import_type == 'transaction':
-                item_type = 'transactions'
-            else:
-                flash('Invalid import type', 'error')
-                return redirect(url_for('import_data'))
-        finally:
-            # Always close connection and clean up temp file
-            importer.close_connection()
-            
-            # Clean up temp file with retry logic for Windows
-            temp_file_path = session.get('access_file_path')
-            if temp_file_path and os.path.exists(temp_file_path):
-                max_retries = 5
-                for attempt in range(max_retries):
-                    try:
-                        import time
-                        time.sleep(0.2)  # Small delay to let file handles close
-                        os.remove(temp_file_path)
-                        print(f"Successfully removed temporary file: {temp_file_path}")
-                        break
-                    except PermissionError as pe:
-                        if attempt == max_retries - 1:
-                            print(f"Warning: Could not remove temp file after {max_retries} attempts: {pe}")
-                        else:
-                            time.sleep(1)  # Wait longer between retries
-                    except Exception as e:
-                        print(f"Warning: Error removing temp file: {e}")
-                        break
-            
-            session.pop('access_file_path', None)
-            session.pop('access_file_name', None)
+        # Execute instant import - no DataImporter needed
+        from instant_importer import InstantImporter
+        instant_importer = InstantImporter()
+        
+        print(f"🚀 Starting INSTANT {import_type.upper()} import...")
+        imported, skipped, errors = instant_importer.instant_import(
+            session['access_file_path'], 
+            table_name, 
+            field_mapping,
+            import_type
+        )
+        
+        if import_type == 'customer':
+            item_type = 'customers'
+        elif import_type == 'cylinder':
+            item_type = 'cylinders'
+        elif import_type == 'transaction':
+            item_type = 'transactions'
+        else:
+            flash('Invalid import type', 'error')
+            return redirect(url_for('import_data'))
+        
+        # Clean up temp file with retry logic for Windows
+        temp_file_path = session.get('access_file_path')
+        if temp_file_path and os.path.exists(temp_file_path):
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    import time
+                    time.sleep(0.2)  # Small delay to let file handles close
+                    os.remove(temp_file_path)
+                    print(f"Successfully removed temporary file: {temp_file_path}")
+                    break
+                except PermissionError as pe:
+                    if attempt == max_retries - 1:
+                        print(f"Warning: Could not remove temp file after {max_retries} attempts: {pe}")
+                    else:
+                        time.sleep(1)  # Wait longer between retries
+                except Exception as e:
+                    print(f"Warning: Error removing temp file: {e}")
+                    break
+        
+        session.pop('access_file_path', None)
+        session.pop('access_file_name', None)
         
         # Show results
         if imported > 0:
@@ -1378,8 +1370,6 @@ def execute_import():
     except Exception as e:
         flash(f'Error during import: {str(e)}', 'error')
         # Clean up on error
-        if 'importer' in locals():
-            importer.close_connection()
         temp_file_path = session.get('access_file_path')
         if temp_file_path and os.path.exists(temp_file_path):
             try:
