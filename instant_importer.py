@@ -147,8 +147,8 @@ class InstantImporter:
         return imported, skipped, []
     
     def _instant_import_transactions(self, rows, columns, field_mapping, conn):
-        """Import rental transactions ONLY - no cylinder creation, just rental history"""
-        print("🚀 TRANSACTION MODE: Importing rental records only (6-month cutoff)")
+        """Import rental transactions - simple and fast with 6-month cutoff"""
+        print("🚀 INSTANT TRANSACTION MODE: Importing rental data (6-month filter)")
         
         # Pre-calculate column indices
         try:
@@ -160,66 +160,66 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # 6-month cutoff for old rentals
+        # 6-month cutoff for old data
         six_months_ago = datetime.now() - timedelta(days=180)
         
-        # Process rows and create rental history entries
+        # Process ALL rows - no validation checks, just import what exists
         rental_entries = []
         imported = 0
         skipped = 0
         
         for row in rows:
             try:
-                # Extract basic data
+                # Extract data - simple and direct
                 cust_no = str(row[cust_idx] or '').strip()
                 cyl_no = str(row[cyl_idx] or '').strip()
                 
+                # Skip only if completely empty
                 if not cust_no or not cyl_no:
                     skipped += 1
                     continue
                 
-                # Process dispatch date
-                dispatch_date = None
+                # Get dispatch date
+                dispatch_date = ''
                 if dispatch_idx is not None and row[dispatch_idx]:
                     try:
                         dispatch_raw = row[dispatch_idx]
-                        if isinstance(dispatch_raw, str) and len(dispatch_raw) >= 10:
-                            dispatch_date = dispatch_raw[:10]  # YYYY-MM-DD
+                        if isinstance(dispatch_raw, str):
+                            dispatch_date = dispatch_raw[:10] if len(dispatch_raw) >= 10 else dispatch_raw
                         elif hasattr(dispatch_raw, 'strftime'):
                             dispatch_date = dispatch_raw.strftime('%Y-%m-%d')
                     except:
                         pass
                 
-                # Process return date (optional)
-                return_date = None
+                # Get return date
+                return_date = ''
                 if return_idx is not None and row[return_idx]:
                     try:
                         return_raw = row[return_idx]
-                        if isinstance(return_raw, str) and len(return_raw) >= 10:
-                            return_date = return_raw[:10]  # YYYY-MM-DD
+                        if isinstance(return_raw, str):
+                            return_date = return_raw[:10] if len(return_raw) >= 10 else return_raw
                         elif hasattr(return_raw, 'strftime'):
                             return_date = return_raw.strftime('%Y-%m-%d')
                         
-                        # Skip if return date is older than 6 months
-                        if return_date:
-                            return_dt = datetime.strptime(return_date, '%Y-%m-%d')
-                            if return_dt < six_months_ago:
-                                skipped += 1
-                                continue
+                        # Apply 6-month filter ONLY if return date exists
+                        if return_date and len(return_date) >= 10:
+                            try:
+                                return_dt = datetime.strptime(return_date[:10], '%Y-%m-%d')
+                                if return_dt < six_months_ago:
+                                    skipped += 1
+                                    continue
+                            except:
+                                pass
                     except:
                         pass
                 
-                if not dispatch_date:
-                    skipped += 1
-                    continue
-                
-                # Create rental history entry
+                # Create rental record - no validation, just save the data
                 rental_entry = {
                     'id': f"RENT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
                     'customer_no': cust_no,
                     'cylinder_no': cyl_no,
                     'dispatch_date': dispatch_date,
-                    'return_date': return_date or '',
+                    'return_date': return_date,
                     'status': 'returned' if return_date else 'active',
                     'created_at': datetime.now().isoformat()
                 }
@@ -232,17 +232,38 @@ class InstantImporter:
         
         conn.close()
         
-        # Save rental history in bulk
+        # Save all rental data
         if rental_entries:
-            print(f"Saving {len(rental_entries):,} rental history records...")
+            print(f"💾 Saving {len(rental_entries):,} rental records...")
             try:
-                existing_history = self.rental_history._load_data()
-                final_history = existing_history + rental_entries
-                self.rental_history._save_data(final_history)
+                # Just save to rental history file
+                import json
+                import os
+                
+                rental_file = 'data/rental_history.json'
+                existing_data = []
+                
+                if os.path.exists(rental_file):
+                    try:
+                        with open(rental_file, 'r') as f:
+                            existing_data = json.load(f)
+                    except:
+                        existing_data = []
+                
+                # Add new entries
+                all_data = existing_data + rental_entries
+                
+                # Save back to file
+                os.makedirs('data', exist_ok=True)
+                with open(rental_file, 'w') as f:
+                    json.dump(all_data, f, indent=2)
+                
+                print(f"✅ Saved {len(rental_entries):,} rental records to {rental_file}")
+                
             except Exception as e:
-                print(f"Rental history save failed: {e}")
+                print(f"❌ Save failed: {e}")
         
-        print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} rental records imported | {skipped:,} skipped")
+        print(f"✅ INSTANT COMPLETE: {imported:,} imported | {skipped:,} skipped")
         return imported, skipped, []
 
 if __name__ == "__main__":
