@@ -192,10 +192,8 @@ class CylinderService(DatabaseService):
                 (Cylinder.status == 'available', 1),  # Available cylinders second
                 else_=2  # Others last (maintenance, etc.)
             ),
-            case(
-                (Cylinder.status == 'rented', Cylinder.date_borrowed.asc().nulls_last()),  # Rented: oldest first
-                else_=Cylinder.updated_at.desc().nulls_last()  # Others: newest first
-            )
+            Cylinder.date_borrowed.asc().nulls_last(),  # For rented: oldest first (longest rentals)
+            Cylinder.updated_at.desc().nulls_last()  # For available: newest first
         ).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
