@@ -251,58 +251,9 @@ class InstantImporter:
         
         conn.close()
         
-        # Bulk update cylinders with customer links
-        if operations:
-            print(f"📊 Updating {len(operations):,} cylinder-customer links...")
-            all_cylinders = self.cylinder_model.get_all()
-            cylinders_by_id = {c['id']: c for c in all_cylinders}
-            
-            cylinders_updated = []
-            linked = 0
-            
-            for cyl_id, cust_id, customer, dispatch, return_dt in operations:
-                if cyl_id in cylinders_by_id:
-                    cylinder = cylinders_by_id[cyl_id]
-                    
-                    # Update cylinder with customer info
-                    cylinder['rented_to'] = cust_id
-                    cylinder['rental_date'] = dispatch
-                    cylinder['date_borrowed'] = dispatch
-                    cylinder['status'] = 'rented'
-                    
-                    # Add customer details
-                    cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
-                    cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
-                    cylinder['customer_address'] = customer.get('customer_address') or customer.get('address', '')
-                    cylinder['customer_city'] = customer.get('customer_city', '')
-                    cylinder['customer_state'] = customer.get('customer_state', '')
-                    cylinder['location'] = customer.get('customer_address') or customer.get('address', 'Customer Location')
-                    
-                    # Handle returns
-                    if return_dt:
-                        cylinder['date_returned'] = return_dt
-                        cylinder['status'] = 'available'
-                        cylinder['location'] = 'Warehouse'
-                        cylinder['rented_to'] = None
-                        # Clear customer info on return
-                        cylinder['customer_name'] = ''
-                        cylinder['customer_phone'] = ''
-                        cylinder['customer_address'] = ''
-                        cylinder['customer_city'] = ''
-                        cylinder['customer_state'] = ''
-                    else:
-                        cylinder['date_returned'] = ''
-                    
-                    cylinder['updated_at'] = datetime.now().isoformat()
-                    cylinders_updated.append(cylinder)
-                    linked += 1
-            
-            # Single bulk write to cylinders.json
-            if cylinders_updated:
-                updated_ids = {c['id'] for c in cylinders_updated}
-                final_data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
-                self.cylinder_model.db.save_data(final_data)
-                print(f"✅ Updated {len(cylinders_updated):,} cylinders")
+        # DON'T update cylinders - just track the rental history
+        print(f"📊 Processing {len(operations):,} transactions for rental history only...")
+        linked = len(operations)
         
         # Save rental history
         if rental_entries:
