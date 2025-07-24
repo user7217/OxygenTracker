@@ -147,8 +147,30 @@ class InstantImporter:
         return imported, skipped, []
     
     def _instant_import_transactions(self, rows, columns, field_mapping, conn):
-        """Import ALL transactions - complete history, no filters"""
-        print("🚀 INSTANT TRANSACTION MODE: Importing ALL transaction history")
+        """Import transactions - link customers/cylinders + create rental history"""
+        print("🚀 INSTANT TRANSACTION MODE: Linking customers/cylinders + rental history")
+        
+        # Pre-load ALL data for fast lookups
+        customers_raw = self.customer_model.get_all()
+        cylinders_raw = self.cylinder_model.get_all()
+        
+        # Build lookup tables
+        customers = {}
+        for c in customers_raw:
+            key = str(c.get('customer_no', '')).upper()
+            if key:
+                customers[key] = c
+        
+        cylinders = {}
+        for cyl in cylinders_raw:
+            # Multiple lookup keys for cylinders
+            sn = str(cyl.get('serial_number', '')).upper()
+            cid = str(cyl.get('custom_id', '')).upper()
+            sid = str(cyl.get('id', '')).upper()
+            
+            if sn: cylinders[sn] = cyl
+            if cid: cylinders[cid] = cyl  
+            if sid: cylinders[sid] = cyl
         
         # Pre-calculate column indices
         try:
@@ -160,31 +182,30 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # Process ALL rows - no filters, no validation, import everything
+        # Process transactions
+        operations = []
         rental_entries = []
         imported = 0
         skipped = 0
         
-        # Debug: Print first few rows to see the data format
-        debug_count = 0
-        
         for row in rows:
             try:
-                # Extract data - accept any non-empty values
-                cust_no = str(row[cust_idx] or '').strip()
-                cyl_no = str(row[cyl_idx] or '').strip()
+                # Extract data
+                cust_no = str(row[cust_idx] or '').strip().upper()
+                cyl_no = str(row[cyl_idx] or '').strip().upper()
                 
-                # Debug first 5 rows
-                if debug_count < 5:
-                    print(f"DEBUG Row {debug_count}: cust_no='{cust_no}', cyl_no='{cyl_no}'")
-                    debug_count += 1
-                
-                # Accept ANY data - don't skip anything unless completely null
-                if not cust_no and not cyl_no:
+                if not cust_no or not cyl_no:
                     skipped += 1
                     continue
                 
-                # Get dispatch date
+                customer = customers.get(cust_no)
+                cylinder = cylinders.get(cyl_no)
+                
+                if not customer or not cylinder:
+                    skipped += 1
+                    continue
+                
+                # Get dates
                 dispatch_date = ''
                 if dispatch_idx is not None and row[dispatch_idx]:
                     try:
@@ -196,7 +217,6 @@ class InstantImporter:
                     except:
                         pass
                 
-                # Get return date
                 return_date = ''
                 if return_idx is not None and row[return_idx]:
                     try:
@@ -205,23 +225,25 @@ class InstantImporter:
                             return_date = return_raw[:10] if len(return_raw) >= 10 else return_raw
                         elif hasattr(return_raw, 'strftime'):
                             return_date = return_raw.strftime('%Y-%m-%d')
-                        
-                        # No filters - import ALL data regardless of date
                     except:
                         pass
                 
-                # Create transaction record - save ALL data
-                transaction_entry = {
+                # Queue cylinder update operation
+                operations.append((cylinder['id'], customer['id'], customer, dispatch_date, return_date))
+                
+                # Create rental history entry
+                rental_entry = {
                     'id': f"TXN-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
                     'customer_no': cust_no,
                     'cylinder_no': cyl_no,
+                    'customer_name': customer.get('customer_name') or customer.get('name', ''),
+                    'cylinder_custom_id': cylinder.get('custom_id', ''),
                     'dispatch_date': dispatch_date,
                     'return_date': return_date,
                     'status': 'returned' if return_date else 'active',
                     'created_at': datetime.now().isoformat()
                 }
-                
-                rental_entries.append(transaction_entry)
+                rental_entries.append(rental_entry)
                 imported += 1
                 
             except Exception:
@@ -229,11 +251,63 @@ class InstantImporter:
         
         conn.close()
         
-        # Save all transaction data - NO duplicate checking, NO filters
+        # Bulk update cylinders with customer links
+        if operations:
+            print(f"📊 Updating {len(operations):,} cylinder-customer links...")
+            all_cylinders = self.cylinder_model.get_all()
+            cylinders_by_id = {c['id']: c for c in all_cylinders}
+            
+            cylinders_updated = []
+            linked = 0
+            
+            for cyl_id, cust_id, customer, dispatch, return_dt in operations:
+                if cyl_id in cylinders_by_id:
+                    cylinder = cylinders_by_id[cyl_id]
+                    
+                    # Update cylinder with customer info
+                    cylinder['rented_to'] = cust_id
+                    cylinder['rental_date'] = dispatch
+                    cylinder['date_borrowed'] = dispatch
+                    cylinder['status'] = 'rented'
+                    
+                    # Add customer details
+                    cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                    cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
+                    cylinder['customer_address'] = customer.get('customer_address') or customer.get('address', '')
+                    cylinder['customer_city'] = customer.get('customer_city', '')
+                    cylinder['customer_state'] = customer.get('customer_state', '')
+                    cylinder['location'] = customer.get('customer_address') or customer.get('address', 'Customer Location')
+                    
+                    # Handle returns
+                    if return_dt:
+                        cylinder['date_returned'] = return_dt
+                        cylinder['status'] = 'available'
+                        cylinder['location'] = 'Warehouse'
+                        cylinder['rented_to'] = None
+                        # Clear customer info on return
+                        cylinder['customer_name'] = ''
+                        cylinder['customer_phone'] = ''
+                        cylinder['customer_address'] = ''
+                        cylinder['customer_city'] = ''
+                        cylinder['customer_state'] = ''
+                    else:
+                        cylinder['date_returned'] = ''
+                    
+                    cylinder['updated_at'] = datetime.now().isoformat()
+                    cylinders_updated.append(cylinder)
+                    linked += 1
+            
+            # Single bulk write to cylinders.json
+            if cylinders_updated:
+                updated_ids = {c['id'] for c in cylinders_updated}
+                final_data = [c for c in all_cylinders if c['id'] not in updated_ids] + cylinders_updated
+                self.cylinder_model.db.save_data(final_data)
+                print(f"✅ Updated {len(cylinders_updated):,} cylinders")
+        
+        # Save rental history
         if rental_entries:
-            print(f"💾 Saving {len(rental_entries):,} transaction records (complete history)...")
+            print(f"📝 Saving {len(rental_entries):,} rental history records...")
             try:
-                # Just save to rental history file
                 import json
                 import os
                 
@@ -247,22 +321,18 @@ class InstantImporter:
                     except:
                         existing_data = []
                 
-                # Add ALL new entries without duplicate checking
                 all_data = existing_data + rental_entries
                 
-                # Save back to file
                 os.makedirs('data', exist_ok=True)
                 with open(rental_file, 'w') as f:
                     json.dump(all_data, f, indent=2)
                 
-                print(f"✅ Saved {len(rental_entries):,} transaction records to {rental_file}")
+                print(f"✅ Saved rental history records")
                 
             except Exception as e:
-                print(f"❌ Save failed: {e}")
-        else:
-            print("❌ No transaction entries to save - check data mapping")
+                print(f"❌ Rental history save failed: {e}")
         
-        print(f"✅ INSTANT COMPLETE: {imported:,} imported | {skipped:,} skipped")
+        print(f"✅ INSTANT COMPLETE: {imported:,} imported | {linked if 'linked' in locals() else 0:,} linked | {skipped:,} skipped")
         return imported, skipped, []
 
 if __name__ == "__main__":
