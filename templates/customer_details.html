@@ -74,64 +74,7 @@
                                 <label class="form-label fs-5 fw-bold">State:</label>
                                 <input type="text" class="form-control form-control-lg" value="{{ customer.customer_state or 'N/A' }}" readonly style="font-size: 1.1rem;">
                             </div>
-                            {% if customer.customer_apgst %}
-                            <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">APGST:</label>
-                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_apgst }}" readonly style="font-size: 1.1rem;">
-                            </div>
-                            {% endif %}
-                            {% if customer.customer_cst %}
-                            <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">CST:</label>
-                                <input type="text" class="form-control form-control-lg" value="{{ customer.customer_cst }}" readonly style="font-size: 1.1rem;">
-                            </div>
-                            {% endif %}
                         </div>
-                    </div>
-                    
-                    {% if customer.created_at or customer.updated_at %}
-                    <hr>
-                    <h6 class="fs-5 mb-3 text-secondary">
-                        <i class="bi bi-clock me-2"></i>Record Information
-                    </h6>
-                    <div class="row">
-                        {% if customer.created_at %}
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">Created:</label>
-                                <input type="text" class="form-control form-control-lg" value="{{ customer.created_at[:10] }}" readonly style="font-size: 1.1rem;">
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if customer.updated_at %}
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fs-5 fw-bold">Last Updated:</label>
-                                <input type="text" class="form-control form-control-lg" value="{{ customer.updated_at[:10] }}" readonly style="font-size: 1.1rem;">
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="card-footer bg-light d-flex justify-content-between">
-                    <a href="{{ url_for('customers') }}" class="btn btn-secondary btn-lg">
-                        <i class="bi bi-arrow-left me-2"></i>Back to Customers
-                    </a>
-                    
-                    <div class="btn-group">
-                        {% if session.role == 'admin' %}
-                        <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" class="btn btn-warning btn-lg">
-                            <i class="bi bi-pencil me-2"></i>Edit
-                        </a>
-                        {% endif %}
-                        
-                        {% if session.role in ['admin', 'user'] %}
-                        <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" class="btn btn-primary btn-lg">
-                            <i class="bi bi-cylinder me-2"></i>Manage Cylinders
-                        </a>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -141,212 +84,229 @@
             <div class="card">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0 fs-4">
-                        <i class="bi bi-graph-up me-2"></i>Cylinder Summary
+                        <i class="bi bi-graph-up me-2"></i>Rental Statistics
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="text-center mb-4">
-                        <div class="display-6 fw-bold text-success">{{ total_cylinders }}</div>
-                        <p class="text-muted">Total Active Dispatches</p>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="display-6 text-primary mb-1">{{ active_count }}</h3>
+                            <p class="text-muted mb-3 fs-5">Active Rentals</p>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="display-6 text-info mb-1">{{ past_count }}</h3>
+                            <p class="text-muted mb-3 fs-5">Rental History</p>
+                        </div>
                     </div>
                     
-                    {% if total_cylinders > 0 %}
                     <div class="row text-center">
-                        <div class="col">
-                            <div class="fw-bold fs-5 text-info">{{ avg_rental_days }}</div>
-                            <small class="text-muted">Average Days</small>
+                        <div class="col-6">
+                            <h4 class="text-warning mb-1">{{ avg_rental_days }}</h4>
+                            <p class="text-muted fs-5">Avg Days</p>
                         </div>
-                        <div class="col">
-                            <div class="fw-bold fs-5 text-warning">{{ long_term_count }}</div>
-                            <small class="text-muted">Long-term (3+ months)</small>
+                        <div class="col-6">
+                            <h4 class="text-danger mb-1">{{ long_term_count }}</h4>
+                            <p class="text-muted fs-5">Long-term (90+ days)</p>
                         </div>
                     </div>
-                    {% else %}
-                    <div class="alert alert-info text-center">
-                        <i class="bi bi-info-circle me-2"></i>
-                        No active cylinders
+                    
+                    {% if session.role in ['admin', 'user'] %}
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" class="btn btn-warning btn-lg">
+                            <i class="bi bi-boxes me-2"></i>Bulk Cylinder Management
+                        </a>
                     </div>
                     {% endif %}
                 </div>
             </div>
-            
-            {% if total_cylinders > 0 %}
-            <div class="card mt-4">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0">
-                        <i class="bi bi-cylinder me-2"></i>Active Cylinders
-                    </h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for cylinder in rented_cylinders[:5] %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <code class="text-primary">{{ cylinder.display_serial }}</code>
-                                <br>
-                                <small class="text-muted">{{ cylinder.type }}</small>
-                            </div>
-                            <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">
-                                {{ cylinder.rental_days }}d
-                            </span>
-                        </div>
-                        {% endfor %}
-                        {% if rented_cylinders|length > 5 %}
-                        <div class="list-group-item text-center text-muted">
-                            <small>... and {{ rented_cylinders|length - 5 }} more</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('bulk_cylinder_management', customer_id=customer.id) }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-cylinder me-2"></i>Manage All Cylinders
-                    </a>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
-    
-    {% if rented_cylinders %}
-    <!-- Pagination Controls and Items Per Page -->
-    {% if pagination.total > 0 %}
-    <div class="row mt-4 mb-3">
-        <div class="col-md-6">
-            <form method="GET" class="d-flex align-items-center gap-2">
-                <label for="per_page" class="form-label mb-0">Items per page:</label>
-                <select name="per_page" id="per_page" class="form-select" style="width: auto;" onchange="this.form.submit()">
-                    <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
-                    <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
-                    <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
-                    <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200</option>
-                </select>
-                <input type="hidden" name="page" value="1">
-            </form>
-        </div>
-        <div class="col-md-6 text-end">
-            <span class="text-muted">
-                Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }} cylinders
-            </span>
-        </div>
-    </div>
-    {% endif %}
 
+    <!-- Rental History Tabs -->
     <div class="row mt-4">
         <div class="col">
             <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-list me-2"></i>All Dispatched Cylinders
-                        <span class="badge bg-light text-dark ms-2">{{ pagination.total if pagination else total_cylinders }} cylinder(s)</span>
-                    </h5>
+                <div class="card-header">
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if current_tab == 'active' %}active{% endif %}" 
+                               href="{{ url_for('customer_details', customer_id=customer.id, tab='active') }}">
+                                <i class="bi bi-arrow-right-circle me-2"></i>Active Dispatches
+                                <span class="badge bg-warning text-dark ms-2">{{ active_count }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if current_tab == 'past' %}active{% endif %}" 
+                               href="{{ url_for('customer_details', customer_id=customer.id, tab='past') }}">
+                                <i class="bi bi-clock-history me-2"></i>Rental History
+                                <span class="badge bg-secondary ms-2">{{ past_count }}</span>
+                            </a>
+                        </li>
+                    </ul>
                 </div>
+                
+                {% if cylinders_data %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
-                                <th style="width: 15%;">Serial</th>
-                                <th style="width: 10%;">ID</th>
-                                <th style="width: 12%;">Type</th>
-                                <th style="width: 8%;">Size</th>
-                                <th style="width: 20%;">Location</th>
-                                <th style="width: 12%;">Dispatch</th>
-                                <th style="width: 15%;">Duration</th>
-                                <th style="width: 8%;">Status</th>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                {% if current_tab == 'active' %}
+                                <th>Location</th>
+                                <th>Dispatch Date</th>
+                                <th>Days Dispatched</th>
+                                <th>Status</th>
+                                {% else %}
+                                <th>Dispatch Date</th>
+                                <th>Return Date</th>
+                                <th>Rental Days</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cylinder in rented_cylinders %}
+                            {% for item in cylinders_data %}
                             <tr>
                                 <td>
-                                    <code class="text-primary">{{ cylinder.display_serial }}</code>
-                                </td>
-                                <td>
-                                    <code class="text-primary">{{ cylinder.display_id }}</code>
-                                </td>
-                                <td>{{ cylinder.type }}</td>
-                                <td>{{ cylinder.size }}</td>
-                                <td>{{ cylinder.location or 'N/A' }}</td>
-                                <td>
-                                    {% if cylinder.date_borrowed %}
-                                        {{ cylinder.date_borrowed[:10] }}
+                                    {% if current_tab == 'active' %}
+                                    <strong>{{ item.display_id }}</strong>
                                     {% else %}
-                                        <span class="text-muted">-</span>
+                                    <strong>{{ item.cylinder_custom_id or item.cylinder_serial or 'N/A' }}</strong>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.get('type') or item.get('cylinder_type', 'N/A') }}</td>
+                                <td>{{ item.get('size') or item.get('cylinder_size', 'N/A') }}</td>
+                                {% if current_tab == 'active' %}
+                                <td>{{ item.get('location', 'N/A') }}</td>
+                                <td>
+                                    {% set dispatch_date = item.get('date_borrowed', '') or item.get('rental_date', '') %}
+                                    {% if dispatch_date %}
+                                    <small class="text-muted">{{ dispatch_date[:10] }}</small>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge {% if cylinder.rental_months >= 6 %}bg-danger{% elif cylinder.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                        {{ cylinder.rental_days }} days ({{ cylinder.rental_months }} months)
+                                    <span class="badge {% if item.rental_months >= 6 %}bg-danger{% elif item.rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {{ item.rental_days }} days
                                     </span>
                                 </td>
                                 <td>
                                     <span class="badge bg-warning text-dark">Dispatched</span>
                                 </td>
+                                {% else %}
+                                <td>
+                                    {% if item.get('date_borrowed') %}
+                                    <small class="text-muted">{{ item.date_borrowed[:10] }}</small>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.get('date_returned') %}
+                                    <small class="text-muted">{{ item.date_returned[:10] }}</small>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ item.get('rental_days', 0) }} days</span>
+                                </td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Pagination Controls -->
+                {% if pagination.total_pages > 1 %}
+                <div class="card-footer">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <p class="mb-0 text-muted">
+                                Showing {{ pagination.start_index }} to {{ pagination.end_index }} of {{ pagination.total }} {{ current_tab }} dispatches
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <nav aria-label="Customer history pagination">
+                                <ul class="pagination pagination-sm justify-content-end mb-0">
+                                    <!-- Previous page -->
+                                    {% if pagination.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, tab=current_tab, page=pagination.prev_num, per_page=pagination.per_page) }}">
+                                            <i class="bi bi-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    <!-- Page numbers -->
+                                    {% set start_page = [1, pagination.page - 2]|max %}
+                                    {% set end_page = [pagination.total_pages, pagination.page + 2]|min %}
+                                    
+                                    {% if start_page > 1 %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, tab=current_tab, page=1, per_page=pagination.per_page) }}">1</a>
+                                    </li>
+                                    {% if start_page > 2 %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                    {% endif %}
+                                    {% endif %}
+                                    
+                                    {% for page_num in range(start_page, end_page + 1) %}
+                                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, tab=current_tab, page=page_num, per_page=pagination.per_page) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% endfor %}
+                                    
+                                    {% if end_page < pagination.total_pages %}
+                                    {% if end_page < pagination.total_pages - 1 %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                    {% endif %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, tab=current_tab, page=pagination.total_pages, per_page=pagination.per_page) }}">{{ pagination.total_pages }}</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    <!-- Next page -->
+                                    {% if pagination.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, tab=current_tab, page=pagination.next_num, per_page=pagination.per_page) }}">
+                                            <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                    <h4 class="text-muted">No {{ current_tab }} dispatches found</h4>
+                    <p class="text-muted">This customer has no {{ current_tab }} cylinder dispatches.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
-
-    <!-- Pagination Navigation -->
-    {% if pagination.total_pages > 1 %}
-    <div class="row mt-4">
-        <div class="col">
-            <nav aria-label="Cylinder pagination">
-                <ul class="pagination justify-content-center">
-                    <!-- Previous button -->
-                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                        <a class="page-link" href="{% if pagination.has_prev %}{{ url_for('customer_details', customer_id=customer.id, page=pagination.prev_num, per_page=pagination.per_page) }}{% else %}#{% endif %}">
-                            <i class="bi bi-chevron-left"></i> Previous
-                        </a>
-                    </li>
-                    
-                    <!-- Page numbers -->
-                    {% set start_page = [1, pagination.page - 2]|max %}
-                    {% set end_page = [pagination.total_pages, pagination.page + 2]|min %}
-                    
-                    {% if start_page > 1 %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, page=1, per_page=pagination.per_page) }}">1</a>
-                    </li>
-                    {% if start_page > 2 %}
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                    {% endif %}
-                    {% endif %}
-                    
-                    {% for page_num in range(start_page, end_page + 1) %}
-                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, page=page_num, per_page=pagination.per_page) }}">{{ page_num }}</a>
-                    </li>
-                    {% endfor %}
-                    
-                    {% if end_page < pagination.total_pages %}
-                    {% if end_page < pagination.total_pages - 1 %}
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                    {% endif %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('customer_details', customer_id=customer.id, page=pagination.total_pages, per_page=pagination.per_page) }}">{{ pagination.total_pages }}</a>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Next button -->
-                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                        <a class="page-link" href="{% if pagination.has_next %}{{ url_for('customer_details', customer_id=customer.id, page=pagination.next_num, per_page=pagination.per_page) }}{% else %}#{% endif %}">
-                            Next <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-    </div>
-    {% endif %}
-    {% endif %}
+    
 </div>
 {% endblock %}

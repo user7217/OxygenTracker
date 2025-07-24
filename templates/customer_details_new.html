@@ -95,7 +95,7 @@
                         </div>
                         <div class="col-6">
                             <h3 class="display-6 text-info mb-1">{{ past_count }}</h3>
-                            <p class="text-muted mb-3 fs-5">Past Rentals</p>
+                            <p class="text-muted mb-3 fs-5">Rental History</p>
                         </div>
                     </div>
                     
@@ -139,7 +139,7 @@
                         <li class="nav-item" role="presentation">
                             <a class="nav-link {% if current_tab == 'past' %}active{% endif %}" 
                                href="{{ url_for('customer_details', customer_id=customer.id, tab='past') }}">
-                                <i class="bi bi-arrow-left-circle me-2"></i>Past Dispatches
+                                <i class="bi bi-clock-history me-2"></i>Rental History
                                 <span class="badge bg-secondary ms-2">{{ past_count }}</span>
                             </a>
                         </li>

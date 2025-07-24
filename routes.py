@@ -697,7 +697,7 @@ def customer_details(customer_id):
         avg_rental_days = 0
         long_term_count = 0
     
-    return render_template('customer_details_new.html', 
+    return render_template('customer_details.html', 
                          customer=customer, 
                          cylinders_data=cylinders_paginated,
                          active_count=active_count,
