@@ -330,16 +330,14 @@ def index():
     Returns:
         Dashboard template with comprehensive system statistics
     """
-    customers, _ = customer_model.get_all()
-    cylinders, _ = cylinder_model.get_all()
+    # Get actual total counts from PostgreSQL without pagination limits
+    customers_data, total_customers = customer_model.get_all(page=1, per_page=1)
+    cylinders, total_cylinders = cylinder_model.get_all(page=1, per_page=10000)  # Get all cylinders for status calculation
     
     # Calculate cylinder status distribution
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
     rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
     maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
-    
-    # Calculate fun metrics
-    total_cylinders = len(cylinders)
     utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
     
     # Find top customer (most rentals)
@@ -381,7 +379,7 @@ def index():
     growth_rate = random.randint(5, 25)
     
     stats = {
-        'total_customers': len(customers),
+        'total_customers': total_customers,
         'total_cylinders': total_cylinders,
         'available_cylinders': available_cylinders,
         'rented_cylinders': rented_cylinders,
