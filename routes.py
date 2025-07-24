@@ -1309,14 +1309,21 @@ def execute_import():
                 flash('Failed to reconnect to Access database', 'error')
                 return redirect(url_for('import_data'))
             
+            # Use instant importer for all import types
+            from instant_importer import InstantImporter
+            instant_importer = InstantImporter()
+            imported, skipped, errors = instant_importer.instant_import(
+                session['access_file_path'], 
+                table_name, 
+                field_mapping,
+                import_type
+            )
+            
             if import_type == 'customer':
-                imported, skipped, errors = importer.import_customers(table_name, field_mapping, skip_duplicates)
                 item_type = 'customers'
             elif import_type == 'cylinder':
-                imported, skipped, errors = importer.import_cylinders(table_name, field_mapping, skip_duplicates)
                 item_type = 'cylinders'
             elif import_type == 'transaction':
-                imported, skipped, errors = importer.import_transactions(table_name, field_mapping, skip_duplicates)
                 item_type = 'transactions'
             else:
                 flash('Invalid import type', 'error')

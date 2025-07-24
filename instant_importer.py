@@ -16,9 +16,9 @@ class InstantImporter:
         self.cylinder_model = CylinderModel()
         self.rental_history = RentalHistory()
     
-    def instant_import(self, access_file: str, table_name: str, field_mapping: dict) -> tuple:
-        """Import transactions with zero processing overhead"""
-        print("🚀 INSTANT MODE: Direct memory operations")
+    def instant_import(self, access_file: str, table_name: str, field_mapping: dict, import_type: str = 'transaction') -> tuple:
+        """Import data with zero processing overhead - supports transactions, customers, and cylinders"""
+        print(f"🚀 INSTANT MODE: Direct memory operations for {import_type}")
         
         # Direct connection without wrapper overhead
         conn = pyodbc.connect(f'DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={access_file};')
@@ -31,6 +31,123 @@ class InstantImporter:
         
         print(f"Loaded {len(rows):,} rows - processing instantly...")
         
+        if import_type == 'customer':
+            return self._instant_import_customers(rows, columns, field_mapping, conn)
+        elif import_type == 'cylinder':
+            return self._instant_import_cylinders(rows, columns, field_mapping, conn)
+        else:  # transaction
+            return self._instant_import_transactions(rows, columns, field_mapping, conn)
+    
+    def _instant_import_customers(self, rows, columns, field_mapping, conn):
+        """Instant customer import"""
+        # Build field mapping indices
+        field_indices = {}
+        for target_field, source_field in field_mapping.items():
+            if source_field and source_field in columns:
+                field_indices[target_field] = columns.index(source_field)
+        
+        # Get existing customers for duplicate checking
+        existing_customers = self.customer_model.get_all()
+        existing_customer_nos = {c.get('customer_no', '').upper() for c in existing_customers}
+        
+        imported = 0
+        skipped = 0
+        
+        for row in rows:
+            try:
+                # Extract customer data using direct array access
+                customer_data = {
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Map fields from row data
+                for target_field, col_idx in field_indices.items():
+                    if col_idx < len(row) and row[col_idx] is not None:
+                        value = str(row[col_idx]).strip()
+                        if value:
+                            customer_data[target_field] = value
+                
+                # Validate required fields
+                if not customer_data.get('customer_no') or not customer_data.get('customer_name'):
+                    skipped += 1
+                    continue
+                
+                # Check for duplicates
+                if customer_data['customer_no'].upper() in existing_customer_nos:
+                    skipped += 1
+                    continue
+                
+                # Add customer
+                self.customer_model.add(customer_data)
+                existing_customer_nos.add(customer_data['customer_no'].upper())
+                imported += 1
+                
+            except Exception:
+                skipped += 1
+        
+        conn.close()
+        print(f"✅ INSTANT CUSTOMER COMPLETE: {imported:,} imported | {skipped:,} skipped")
+        return imported, skipped, []
+    
+    def _instant_import_cylinders(self, rows, columns, field_mapping, conn):
+        """Instant cylinder import"""
+        # Build field mapping indices
+        field_indices = {}
+        for target_field, source_field in field_mapping.items():
+            if source_field and source_field in columns:
+                field_indices[target_field] = columns.index(source_field)
+        
+        # Get existing cylinders for duplicate checking
+        existing_cylinders = self.cylinder_model.get_all()
+        existing_custom_ids = {c.get('custom_id', '').upper() for c in existing_cylinders if c.get('custom_id')}
+        
+        imported = 0
+        skipped = 0
+        
+        for row in rows:
+            try:
+                # Extract cylinder data using direct array access
+                cylinder_data = {
+                    'type': 'Medical Oxygen',  # Default type
+                    'size': '40L',             # Default size
+                    'status': 'available',     # Default status
+                    'location': 'Warehouse',   # Default location
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Map fields from row data
+                for target_field, col_idx in field_indices.items():
+                    if col_idx < len(row) and row[col_idx] is not None:
+                        value = str(row[col_idx]).strip()
+                        if value:
+                            cylinder_data[target_field] = value
+                
+                # Validate required fields - custom_id is required
+                if not cylinder_data.get('custom_id'):
+                    skipped += 1
+                    continue
+                
+                # Check for duplicates by custom_id
+                if cylinder_data['custom_id'].upper() in existing_custom_ids:
+                    skipped += 1
+                    continue
+                
+                # Add cylinder
+                self.cylinder_model.add(cylinder_data)
+                existing_custom_ids.add(cylinder_data['custom_id'].upper())
+                imported += 1
+                
+            except Exception:
+                skipped += 1
+        
+        conn.close()
+        print(f"✅ INSTANT CYLINDER COMPLETE: {imported:,} imported | {skipped:,} skipped")
+        return imported, skipped, []
+    
+    def _instant_import_transactions(self, rows, columns, field_mapping, conn):
+        """Instant transaction import"""
         # Pre-load ALL data structures
         customers_raw = self.customer_model.get_all()
         cylinders_raw = self.cylinder_model.get_all()
@@ -151,7 +268,7 @@ class InstantImporter:
             except:
                 pass
         
-        print(f"✅ INSTANT COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
+        print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
         return imported, skipped, []
 
 if __name__ == "__main__":
@@ -159,4 +276,5 @@ if __name__ == "__main__":
     if len(sys.argv) >= 4:
         importer = InstantImporter()
         mapping = json.loads(sys.argv[3])
-        importer.instant_import(sys.argv[1], sys.argv[2], mapping)
+        import_type = sys.argv[4] if len(sys.argv) > 4 else 'transaction'
+        importer.instant_import(sys.argv[1], sys.argv[2], mapping, import_type)
