@@ -1766,7 +1766,7 @@ def archive_data():
 @login_required
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
-    customers, _ = customer_model.get_all()
+    customers, _ = customer_model.get_all(page=1, per_page=500)  # Get all customers
     cylinders, _ = cylinder_model.get_all()
     
     # Convert customers to dict format if needed
