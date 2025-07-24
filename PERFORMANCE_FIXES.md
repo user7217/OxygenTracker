@@ -7,7 +7,7 @@
    - Customers with most active dispatches now appear first
 
 2. **✓ Cylinder table sorted by rental days (descending)** 
-   - Updated db_service.py line 176 to sort by date_borrowed desc
+   - Updated db_service.py line 177 to sort by date_borrowed asc (oldest first = longest rentals)
    - Long-term rentals now appear first for better visibility
 
 3. **✓ Performance optimization for customers page**
@@ -21,6 +21,15 @@
 5. **✓ Fixed foreign key constraint error**
    - Updated db_service.py update method to handle empty rented_to values
    - Prevents database errors when returning cylinders
+
+6. **✓ Customer filter functionality in cylinders page**
+   - Added customer_filter parameter to db_service.py get_all method
+   - Fixed routes.py to properly pass customer data to template
+   - Customer names now visible in cylinder filter dropdown
+
+7. **✓ Database connection SSL error handling**
+   - Added graceful error handling in db_service.py close method
+   - Prevents application crashes from PostgreSQL SSL disconnections
 
 ## Remaining Issues to Address:
 

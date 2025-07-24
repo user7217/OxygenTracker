@@ -15,7 +15,12 @@ class DatabaseService:
     def close(self):
         """Close database connection"""
         if self.db:
-            self.db.close()
+            try:
+                self.db.close()
+            except Exception as e:
+                # Handle SSL connection closed errors gracefully
+                print(f"Database close error (ignored): {e}")
+                pass
     
     def __enter__(self):
         return self
@@ -105,7 +110,7 @@ class CylinderService(DatabaseService):
     
     def get_all(self, search_query: str = None, page: int = 1, per_page: int = 25, 
                 filter_type: str = None, filter_status: str = None, 
-                rental_duration_filter: str = None) -> Tuple[List[Cylinder], int]:
+                rental_duration_filter: str = None, customer_filter: str = None) -> Tuple[List[Cylinder], int]:
         """Get all cylinders with filters and pagination"""
         query = self.db.query(Cylinder)
         
@@ -124,6 +129,9 @@ class CylinderService(DatabaseService):
         
         if filter_status:
             query = query.filter(Cylinder.status == filter_status)
+        
+        if customer_filter:
+            query = query.filter(Cylinder.rented_to == customer_filter)
         
         # Rental duration filter
         if rental_duration_filter and rental_duration_filter != 'all':
@@ -168,9 +176,11 @@ class CylinderService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply sorting - sort by rental days descending for better visibility (issue #5)
+        # Apply sorting - sort by rental days descending (longest rentals first)
         offset = (page - 1) * per_page
-        cylinders = query.order_by(Cylinder.date_borrowed.desc().nulls_last()).offset(offset).limit(per_page).all()
+        cylinders = query.order_by(
+            Cylinder.date_borrowed.asc().nulls_last()  # Oldest rental dates first = longest rentals
+        ).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
     

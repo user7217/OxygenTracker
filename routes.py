@@ -939,7 +939,8 @@ def cylinders():
         per_page=per_page,
         filter_type=type_filter,
         filter_status=status_filter,
-        rental_duration_filter=rental_duration_filter
+        rental_duration_filter=rental_duration_filter,
+        customer_filter=customer_filter
     )
     
     # PostgreSQL model already returns dictionaries with calculated fields
@@ -965,8 +966,8 @@ def cylinders():
         'pages': list(range(max(1, page - 2), min(total_pages + 1, page + 3)))  # Show 5 pages around current
     }
     
-    # Get all customers for the filter dropdown
-    customers = customer_model.get_all()
+    # Get all customers for the filter dropdown (issue #2 - customer names not visible)
+    customers, _ = customer_model.get_all(page=1, per_page=1000)
 
     return render_template('cylinders.html', 
                          cylinders=paginated_cylinders, 
