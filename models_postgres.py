@@ -73,12 +73,12 @@ class Cylinder:
     
     def get_all(self, search_query: str = None, page: int = 1, per_page: int = 25,
                          filter_type: str = None, filter_status: str = None,
-                         rental_duration_filter: str = None) -> Tuple[List[Dict], int]:
+                         rental_duration_filter: str = None, customer_filter: str = None) -> Tuple[List[Dict], int]:
         """Get all cylinders with filters and pagination"""
         with CylinderService() as service:
             cylinders, total_count = service.get_all(
                 search_query, page, per_page, filter_type, 
-                filter_status, rental_duration_filter
+                filter_status, rental_duration_filter, customer_filter
             )
             return [self._to_dict(c) for c in cylinders], total_count
     
