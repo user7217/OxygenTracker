@@ -100,6 +100,10 @@ class RentalHistory:
         except:
             return 0
     
+    def get_all_history(self) -> List[Dict]:
+        """Get all rental history records"""
+        return self._load_data()
+    
     def get_customer_history(self, customer_id: str) -> Dict[str, List[Dict]]:
         """Get all rental history for a customer, separated by active and past"""
         from models import Cylinder

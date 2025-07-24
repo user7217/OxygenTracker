@@ -807,7 +807,6 @@ def rental_history():
     
     if removed_count > 0:
         flash(f'Automatically removed {removed_count} records older than 6 months', 'info')
-    from models_rental_transactions import RentalTransactions
     
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
@@ -819,23 +818,23 @@ def rental_history():
     search_query = request.args.get('search', '')
     customer_filter = request.args.get('customer', '')
     
-    rental_model = RentalTransactions()
-    all_transactions = rental_model.get_recent_transactions(6)  # Past 6 months
+    # Use RentalHistory model to get return records
+    all_transactions = history_model.get_all_history()  # Get all rental history records
     
     # Apply search filter
     if search_query:
         all_transactions = [t for t in all_transactions 
                           if search_query.lower() in t.get('customer_name', '').lower() or
                              search_query.lower() in t.get('cylinder_custom_id', '').lower() or
-                             search_query.lower() in t.get('customer_no', '').lower()]
+                             search_query.lower() in t.get('customer_id', '').lower()]
     
-    # Apply customer filter
+    # Apply customer filter  
     if customer_filter:
         all_transactions = [t for t in all_transactions 
-                          if t.get('customer_no', '').upper() == customer_filter.upper()]
+                          if t.get('customer_id', '').upper() == customer_filter.upper()]
     
     # Sort by return date (most recent first)
-    all_transactions.sort(key=lambda x: x.get('return_date', ''), reverse=True)
+    all_transactions.sort(key=lambda x: x.get('date_returned', ''), reverse=True)
     
     # Calculate pagination
     total_transactions = len(all_transactions)
@@ -862,8 +861,8 @@ def rental_history():
     }
     
     # Get unique customers for filter dropdown
-    unique_customers = list(set((t.get('customer_no', ''), t.get('customer_name', '')) 
-                               for t in all_transactions if t.get('customer_no')))
+    unique_customers = list(set((t.get('customer_id', ''), t.get('customer_name', '')) 
+                               for t in all_transactions if t.get('customer_id')))
     unique_customers.sort(key=lambda x: x[1])  # Sort by customer name
     
     return render_template('rental_history.html',
