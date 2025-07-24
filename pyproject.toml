@@ -16,4 +16,6 @@ dependencies = [
     "oauthlib>=3.3.1",
     "sendgrid>=6.12.4",
     "reportlab>=4.4.2",
+    "openpyxl>=3.1.5",
+    "sqlalchemy>=2.0.41",
 ]
