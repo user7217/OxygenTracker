@@ -1766,17 +1766,40 @@ def archive_data():
 @login_required
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
-    customers = customer_model.get_all()
-    cylinders = cylinder_model.get_all()
+    customers, _ = customer_model.get_all()
+    cylinders, _ = cylinder_model.get_all()
     
-    # Add customer names to cylinders for display
+    # Convert cylinders to dict format if needed and add customer names
+    cylinders_dict = []
     for cylinder in cylinders:
-        if cylinder.get('rented_to'):
-            customer = customer_model.get_by_id(cylinder['rented_to'])
+        if isinstance(cylinder, dict):
+            cylinder_dict = cylinder
+        else:
+            # Convert SQLAlchemy object to dict
+            cylinder_dict = {
+                'id': cylinder.id,
+                'custom_id': cylinder.custom_id or '',
+                'serial_number': cylinder.serial_number or '',
+                'display_id': cylinder.custom_id or cylinder.serial_number or f"ID-{cylinder.id[:8]}",
+                'type': cylinder.type or '',
+                'size': cylinder.size or '',
+                'status': cylinder.status or '',
+                'location': cylinder.location or '',
+                'rented_to': cylinder.rented_to or '',
+                'customer_name': cylinder.customer_name or '',
+                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if cylinder.date_borrowed else 0,
+                'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else ''
+            }
+        
+        # Add customer name for rented cylinders
+        if cylinder_dict.get('rented_to'):
+            customer = customer_model.get_by_id(cylinder_dict['rented_to'])
             if customer:
-                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+                cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+        
+        cylinders_dict.append(cylinder_dict)
     
-    return render_template('bulk_rental_management.html', customers=customers, cylinders=cylinders)
+    return render_template('bulk_rental_management.html', customers=customers, cylinders=cylinders_dict)
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
