@@ -1067,11 +1067,12 @@ def add_cylinder():
         cylinder_data['notes'] = request.form.get('notes', '').strip()
         
         # Validate custom_id uniqueness (now required)
-        existing_cylinders = cylinder_model.get_all()
+        existing_cylinders, _ = cylinder_model.get_all()
         for existing in existing_cylinders:
-            if existing.get('custom_id') == cylinder_data['custom_id']:
+            existing_custom_id = existing.custom_id if hasattr(existing, 'custom_id') else existing.get('custom_id', '')
+            if existing_custom_id == cylinder_data['custom_id']:
                 flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all()
                 return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
         
         # Handle customer assignment for rented cylinders
@@ -1079,14 +1080,14 @@ def add_cylinder():
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all()
                 return render_template('add_cylinder.html', customers=customers)
             
             # Verify customer exists
             customer = customer_model.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all()
                 return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
@@ -1118,7 +1119,7 @@ def add_cylinder():
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and today's date
-    customers = customer_model.get_all()
+    customers, _ = customer_model.get_all()
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)
@@ -1154,11 +1155,13 @@ def edit_cylinder(cylinder_id):
         
         # Validate custom_id uniqueness if provided and different from current
         if cylinder_data['custom_id']:
-            existing_cylinders = cylinder_model.get_all()
+            existing_cylinders, _ = cylinder_model.get_all()
             for existing in existing_cylinders:
-                if existing.get('custom_id') == cylinder_data['custom_id'] and existing.get('id') != cylinder_id:
+                existing_custom_id = existing.custom_id if hasattr(existing, 'custom_id') else existing.get('custom_id', '')
+                existing_id = existing.id if hasattr(existing, 'id') else existing.get('id', '')
+                if existing_custom_id == cylinder_data['custom_id'] and existing_id != cylinder_id:
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                    customers = customer_model.get_all()
+                    customers, _ = customer_model.get_all()
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -2015,27 +2018,50 @@ def reports():
     cylinder_model = Cylinder()
     
     # Get current stats
-    customers = customer_model.get_all()
-    cylinders = cylinder_model.get_all()
+    customers, _ = customer_model.get_all()
+    cylinders, _ = cylinder_model.get_all()
+    
+    # Convert to dict format if needed for stats calculation
+    cylinders_dict = []
+    for cylinder in cylinders:
+        if isinstance(cylinder, dict):
+            cylinders_dict.append(cylinder)
+        else:
+            cylinders_dict.append({
+                'id': cylinder.id,
+                'status': cylinder.status or '',
+                'rented_to': cylinder.rented_to or ''
+            })
+    
+    customers_dict = []
+    for customer in customers:
+        if isinstance(customer, dict):
+            customer_dict = customer
+        else:
+            customer_dict = {
+                'id': customer.id,
+                'customer_name': customer.customer_name or '',
+                'customer_no': customer.customer_no or ''
+            }
+        
+        # Add rental count for sorting customers
+        rented_cylinders = [c for c in cylinders_dict if c.get('rented_to') == customer_dict['id']]
+        customer_dict['rental_count'] = len(rented_cylinders)
+        customers_dict.append(customer_dict)
     
     # Calculate stats
-    active_rentals = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
-    
-    # Add rental count for sorting customers
-    for customer in customers:
-        rented_cylinders = [c for c in cylinders if c.get('rented_to') == customer['id']]
-        customer['rental_count'] = len(rented_cylinders)
+    active_rentals = len([c for c in cylinders_dict if c.get('status', '').lower() == 'rented'])
     
     # Sort customers by rental count descending
-    customers.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
+    customers_dict.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
     
     stats = {
-        'total_customers': len(customers),
-        'total_cylinders': len(cylinders),
+        'total_customers': len(customers_dict),
+        'total_cylinders': len(cylinders_dict),
         'active_rentals': active_rentals
     }
     
-    return render_template('reports.html', stats=stats, customers=customers)
+    return render_template('reports.html', stats=stats, customers=customers_dict)
 
 @app.route('/export/customers.csv')
 @login_required
