@@ -92,15 +92,15 @@
                                     <small class="text-muted">{{ transaction.cylinder_type }} {{ transaction.cylinder_size }}</small>
                                 </td>
                                 <td>
-                                    {% if transaction.date_borrowed %}
-                                        {{ transaction.date_borrowed[:10] }}
+                                    {% if transaction.dispatch_date or transaction.date_borrowed %}
+                                        {{ (transaction.dispatch_date or transaction.date_borrowed)[:10] }}
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if transaction.date_returned %}
-                                        <span class="badge bg-success">{{ transaction.date_returned[:10] }}</span>
+                                    {% if transaction.return_date or transaction.date_returned %}
+                                        <span class="badge bg-success">{{ (transaction.return_date or transaction.date_returned)[:10] }}</span>
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
