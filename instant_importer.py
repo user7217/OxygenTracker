@@ -7,13 +7,13 @@ Zero overhead, direct memory operations
 import json
 import pyodbc
 from datetime import datetime, timedelta
-from models import CustomerModel, CylinderModel
+from models import Customer, Cylinder
 from models_rental_history import RentalHistory
 
 class InstantImporter:
     def __init__(self):
-        self.customer_model = CustomerModel()
-        self.cylinder_model = CylinderModel()
+        self.customer_model = Customer()
+        self.cylinder_model = Cylinder()
         self.rental_history = RentalHistory()
     
     def instant_import(self, access_file: str, table_name: str, field_mapping: dict, import_type: str = 'transaction') -> tuple:
