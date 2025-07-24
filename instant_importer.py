@@ -334,9 +334,9 @@ class InstantImporter:
             
             # Bulk add rental history
             if rental_entries:
-                existing_history = self.rental_history.get_all()
+                existing_history = self.rental_history._load_data()
                 final_history = existing_history + rental_entries
-                self.rental_history.db.save_data(final_history)
+                self.rental_history._save_data(final_history)
                 print(f"Added {len(rental_entries):,} rental history entries")
         
         print(f"✅ INSTANT TRANSACTION COMPLETE: {imported:,} imported | {linked:,} linked | {skipped:,} skipped")
