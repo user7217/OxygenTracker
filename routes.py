@@ -582,11 +582,11 @@ def customers():
     else:
         customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
-    # Add rental count for each customer and sort by number of rentals (descending)
-    all_cylinders, _ = cylinder_model.get_all()
+    # Get all cylinders to calculate active dispatches for each customer
+    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=10000)  # Get all cylinders
     for customer in customers_list:
-        # Count rented cylinders for this customer
-        rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer['id']]
+        # Count cylinders currently rented to this customer (active dispatches)
+        rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
         
         # Add rental days calculation for each cylinder
         for cylinder in rented_cylinders:
@@ -595,6 +595,7 @@ def customers():
         
         customer['rented_cylinders'] = rented_cylinders
         customer['rental_count'] = len(rented_cylinders)
+        customer['active_dispatches'] = len(rented_cylinders)  # Clear field name for active dispatches
     
     # Sort customers by rental count in descending order
     customers_list.sort(key=lambda x: x.get('rental_count', 0), reverse=True)
