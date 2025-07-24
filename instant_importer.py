@@ -147,8 +147,8 @@ class InstantImporter:
         return imported, skipped, []
     
     def _instant_import_transactions(self, rows, columns, field_mapping, conn):
-        """Import rental transactions - simple and fast with 6-month cutoff"""
-        print("🚀 INSTANT TRANSACTION MODE: Importing rental data (6-month filter)")
+        """Import ALL transactions - complete history, no filters"""
+        print("🚀 INSTANT TRANSACTION MODE: Importing ALL transaction history")
         
         # Pre-calculate column indices
         try:
@@ -160,10 +160,7 @@ class InstantImporter:
             conn.close()
             return 0, 0, ["Required field mapping not found"]
         
-        # 6-month cutoff for old data
-        six_months_ago = datetime.now() - timedelta(days=180)
-        
-        # Process ALL rows - no validation checks, just import what exists
+        # Process ALL rows - no filters, no validation, import everything
         rental_entries = []
         imported = 0
         skipped = 0
@@ -209,21 +206,13 @@ class InstantImporter:
                         elif hasattr(return_raw, 'strftime'):
                             return_date = return_raw.strftime('%Y-%m-%d')
                         
-                        # Temporarily disable 6-month filter to test import
-                        # if return_date and len(return_date) >= 10:
-                        #     try:
-                        #         return_dt = datetime.strptime(return_date[:10], '%Y-%m-%d')
-                        #         if return_dt < six_months_ago:
-                        #             skipped += 1
-                        #             continue
-                        #     except:
-                        #         pass
+                        # No filters - import ALL data regardless of date
                     except:
                         pass
                 
-                # Create rental record - no validation, just save the data
-                rental_entry = {
-                    'id': f"RENT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
+                # Create transaction record - save ALL data
+                transaction_entry = {
+                    'id': f"TXN-{datetime.now().strftime('%Y%m%d%H%M%S')}-{len(rental_entries):04d}",
                     'customer_no': cust_no,
                     'cylinder_no': cyl_no,
                     'dispatch_date': dispatch_date,
@@ -232,7 +221,7 @@ class InstantImporter:
                     'created_at': datetime.now().isoformat()
                 }
                 
-                rental_entries.append(rental_entry)
+                rental_entries.append(transaction_entry)
                 imported += 1
                 
             except Exception:
@@ -240,9 +229,9 @@ class InstantImporter:
         
         conn.close()
         
-        # Save all rental data - NO duplicate checking
+        # Save all transaction data - NO duplicate checking, NO filters
         if rental_entries:
-            print(f"💾 Saving {len(rental_entries):,} rental records (no duplicate checking)...")
+            print(f"💾 Saving {len(rental_entries):,} transaction records (complete history)...")
             try:
                 # Just save to rental history file
                 import json
@@ -266,12 +255,12 @@ class InstantImporter:
                 with open(rental_file, 'w') as f:
                     json.dump(all_data, f, indent=2)
                 
-                print(f"✅ Saved {len(rental_entries):,} rental records to {rental_file}")
+                print(f"✅ Saved {len(rental_entries):,} transaction records to {rental_file}")
                 
             except Exception as e:
                 print(f"❌ Save failed: {e}")
         else:
-            print("❌ No rental entries to save - check data mapping")
+            print("❌ No transaction entries to save - check data mapping")
         
         print(f"✅ INSTANT COMPLETE: {imported:,} imported | {skipped:,} skipped")
         return imported, skipped, []
