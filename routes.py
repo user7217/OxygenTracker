@@ -788,11 +788,12 @@ def cylinders():
         
         cylinders_list = filtered_cylinders
     
-    # Add rental days calculation and type-specific serial numbers for each cylinder
+    # Add rental days calculation and display ID for each cylinder
     for i, cylinder in enumerate(cylinders_list):
         cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-        # Generate type-specific serial number for display
-        cylinder['display_serial'] = cylinder_model.get_serial_number(cylinder.get('type', 'Other'), i + 1)
+        cylinder['rental_months'] = cylinder_model.get_rental_months(cylinder)
+        # Get display ID (custom_id or generated serial)
+        cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
         # Customer name should already be stored in the cylinder data
         if not cylinder.get('customer_name') and cylinder.get('rented_to'):
             # Fallback: get customer name if not stored
@@ -1067,7 +1068,8 @@ def edit_cylinder(cylinder_id):
         try:
             updated_cylinder = cylinder_model.update(cylinder_id, cylinder_data)
             if updated_cylinder:
-                flash(f'Cylinder {updated_cylinder["serial_number"]} updated successfully', 'success')
+                display_id = cylinder_model.get_display_id(updated_cylinder)
+                flash(f'Cylinder {display_id} updated successfully', 'success')
                 return redirect(url_for('cylinders'))
             else:
                 flash('Error updating cylinder', 'error')
@@ -1387,11 +1389,15 @@ def rent_cylinder(cylinder_id):
             flash('Invalid rental date format', 'error')
             return redirect(url_for('cylinders'))
     
+    # Get cylinder for display
+    cylinder = cylinder_model.get_by_id(cylinder_id)
+    display_id = cylinder_model.get_display_id(cylinder) if cylinder else 'Unknown'
+    
     # Rent the cylinder with optional rental date
     if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_date_iso):
-        flash(f'Cylinder rented to {customer["name"]} successfully', 'success')
+        flash(f'Cylinder {display_id} rented to {customer.get("customer_name") or customer.get("name", "customer")} successfully', 'success')
     else:
-        flash('Error renting cylinder', 'error')
+        flash(f'Error renting cylinder {display_id}', 'error')
     
     return redirect(url_for('cylinders'))
 

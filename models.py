@@ -223,6 +223,27 @@ class Cylinder:
         prefix = self.type_prefixes.get(cylinder_type, 'GAS')
         return f"{prefix}-{index:03d}"
     
+    def get_display_id(self, cylinder: Dict) -> str:
+        """Get the display ID for a cylinder (custom_id if available, otherwise generated serial)"""
+        # Prioritize custom_id if it exists and is not empty
+        custom_id = cylinder.get('custom_id', '').strip()
+        if custom_id:
+            return custom_id
+        
+        # Fallback to serial number if available
+        serial_number = cylinder.get('serial_number', '').strip()
+        if serial_number:
+            return serial_number
+        
+        # Generate a display serial as last resort using type and system ID
+        cylinder_type = cylinder.get('type', 'Other')
+        cylinder_id = cylinder.get('id', '')
+        # Use last 3 characters of system ID for uniqueness
+        suffix = cylinder_id[-3:] if len(cylinder_id) >= 3 else '001'
+        
+        prefix = self.type_prefixes.get(cylinder_type, 'GAS')
+        return f"{prefix}-{suffix}"
+    
     def get_type_prefix(self, cylinder_type: str) -> str:
         """Get prefix for a cylinder type"""
         return self.type_prefixes.get(cylinder_type, 'GAS')
@@ -277,8 +298,8 @@ class Cylinder:
             customer_model = Customer()
             customer = customer_model.get_by_id(cylinder_data['rented_to'])
             if customer:
-                cylinder_data['customer_name'] = customer.get('name', '')
-                cylinder_data['customer_email'] = customer.get('email', '')
+                cylinder_data['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                cylinder_data['customer_email'] = customer.get('customer_email') or customer.get('email', '')
         else:
             # Initialize customer fields as empty
             cylinder_data['customer_name'] = ''
@@ -311,8 +332,8 @@ class Cylinder:
                     customer_model = Customer()
                     customer = customer_model.get_by_id(cylinder_data['rented_to'])
                     if customer:
-                        cylinder_data['customer_name'] = customer.get('name', '')
-                        cylinder_data['customer_email'] = customer.get('email', '')
+                        cylinder_data['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+                        cylinder_data['customer_email'] = customer.get('customer_email') or customer.get('email', '')
                 else:
                     # Clear customer info if not rented
                     cylinder_data['customer_name'] = ''
