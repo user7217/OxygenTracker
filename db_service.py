@@ -145,13 +145,13 @@ class CylinderService(DatabaseService):
         if rental_duration_filter and rental_duration_filter != 'all':
             current_date = datetime.utcnow()
             
-            if rental_duration_filter == 'under_1_month':
+            if rental_duration_filter == 'under_1':
                 cutoff_date = current_date - timedelta(days=30)
                 query = query.filter(and_(
                     Cylinder.status == 'rented',
                     Cylinder.date_borrowed >= cutoff_date
                 ))
-            elif rental_duration_filter == '1_to_3_months':
+            elif rental_duration_filter == '1_to_3':
                 start_date = current_date - timedelta(days=90)
                 end_date = current_date - timedelta(days=30)
                 query = query.filter(and_(
@@ -159,7 +159,7 @@ class CylinderService(DatabaseService):
                     Cylinder.date_borrowed >= start_date,
                     Cylinder.date_borrowed < end_date
                 ))
-            elif rental_duration_filter == '3_to_6_months':
+            elif rental_duration_filter == '3_to_6':
                 start_date = current_date - timedelta(days=180)
                 end_date = current_date - timedelta(days=90)
                 query = query.filter(and_(
@@ -167,7 +167,7 @@ class CylinderService(DatabaseService):
                     Cylinder.date_borrowed >= start_date,
                     Cylinder.date_borrowed < end_date
                 ))
-            elif rental_duration_filter == '6_to_12_months':
+            elif rental_duration_filter == '6_to_12':
                 start_date = current_date - timedelta(days=365)
                 end_date = current_date - timedelta(days=180)
                 query = query.filter(and_(
@@ -175,7 +175,7 @@ class CylinderService(DatabaseService):
                     Cylinder.date_borrowed >= start_date,
                     Cylinder.date_borrowed < end_date
                 ))
-            elif rental_duration_filter == 'over_12_months':
+            elif rental_duration_filter == 'over_12':
                 cutoff_date = current_date - timedelta(days=365)
                 query = query.filter(and_(
                     Cylinder.status == 'rented',
