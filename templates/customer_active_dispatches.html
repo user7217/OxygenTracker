@@ -124,6 +124,13 @@
                                            class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <form method="POST" action="{{ url_for('return_cylinder', cylinder_id=cylinder.id) }}" class="d-inline">
+                                            <input type="hidden" name="return_date" id="return_date_{{ cylinder.id }}" value="">
+                                            <button type="submit" class="btn btn-outline-success btn-sm" title="Return Cylinder"
+                                                    onclick="document.getElementById('return_date_{{ cylinder.id }}').value = new Date().toISOString().split('T')[0]; return confirm('Return cylinder {{ cylinder.display_id }} from {{ customer.customer_name or customer.name }}?')">
+                                                <i class="bi bi-arrow-return-left"></i>
+                                            </button>
+                                        </form>
                                         {% endif %}
                                     </div>
                                 </td>
