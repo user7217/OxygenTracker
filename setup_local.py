@@ -98,6 +98,7 @@ FLASK_SECRET_KEY={flask_secret}
 SESSION_SECRET={session_secret}
 FLASK_ENV=development
 DATABASE_URL=sqlite:///oxygen_tracker.db
+DEBUG=True
 """
         
         with open(env_file, 'w') as f:

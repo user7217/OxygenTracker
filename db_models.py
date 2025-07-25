@@ -7,8 +7,29 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
-# Database configuration
+# Load environment variables from .env file for local development
+def load_environment():
+    """Load environment variables from .env file"""
+    from pathlib import Path
+    env_file = Path(".env")
+    if env_file.exists():
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ.setdefault(key.strip(), value.strip())
+
+# Load environment before database setup
+load_environment()
+
+# Database configuration with fallback for local development
 DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    # Fallback to SQLite for local development
+    DATABASE_URL = 'sqlite:///oxygen_tracker.db'
+    print("Warning: Using SQLite fallback database for local development")
+
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
