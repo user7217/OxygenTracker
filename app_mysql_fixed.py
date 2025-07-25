@@ -159,9 +159,16 @@ with app.app_context():
 
 # Import routes after everything is set up
 try:
-    from routes import *
+    from routes_mysql import *
+    print("✓ MySQL-compatible routes loaded successfully!")
 except ImportError as e:
     print(f"⚠️  Routes will be imported on PythonAnywhere: {str(e)}")
+    # Fallback to regular routes if needed
+    try:
+        from routes import *
+        print("⚠️  Using fallback routes - may have database compatibility issues")
+    except ImportError as e2:
+        print(f"⚠️  No routes available: {str(e2)}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
