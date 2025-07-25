@@ -1,4 +1,4 @@
-# app_mysql.py - Flask application setup for MySQL (PythonAnywhere deployment)
+# app_sqlite.py - Flask application setup for SQLite (PythonAnywhere deployment)
 import os
 import logging
 from flask import Flask
@@ -17,22 +17,22 @@ app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
 # Configure ProxyFix for deployment environments
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure MySQL database with proper URL encoding
-default_db_url = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db_url)
+# Configure SQLite database
+database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
-# This file is deprecated - use app_mysql_fixed.py instead
-print("⚠️  app_mysql.py is deprecated. Use app_mysql_fixed.py for deployment.")
+# Import models and create tables
+from sqlite_models import Customer, Cylinder, RentalHistory
 
-# Import routes after everything is set up
+with app.app_context():
+    db.create_all()
+    print("✓ SQLite database tables created successfully!")
+
+# Import routes after app and db setup
 from routes import *
 
 if __name__ == '__main__':

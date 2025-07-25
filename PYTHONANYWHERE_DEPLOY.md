@@ -1,6 +1,6 @@
-# PythonAnywhere Deployment Guide (MySQL - Free Account)
+# PythonAnywhere Deployment Guide (SQLite - Free Account)
 
-This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using MySQL database with a free account.
+This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using SQLite database with a free account.
 
 ## Prerequisites
 
@@ -22,18 +22,9 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
 1. Use the **Files** tab in PythonAnywhere dashboard
 2. Upload all your project files to `/home/yourusername/mysite/`
 
-## Step 2: Set Up MySQL Database
+## Step 2: Set Up SQLite Database
 
-1. Go to **Databases** tab in your PythonAnywhere dashboard
-2. Create a new **MySQL** database:
-   - Database name: `yourusername$databasename` (e.g., `varasicyl$Oxygen`)
-   - Note: Replace `yourusername` with your actual PythonAnywhere username
-3. Set a password for your database
-4. Note down your database details:
-   - **Database name**: `yourusername$databasename`
-   - **Username**: `yourusername`
-   - **Password**: [your database password]
-   - **Host**: `yourusername.mysql.pythonanywhere-services.com`
+SQLite requires no setup - the database file will be created automatically when the app starts!
 
 ## Step 3: Install Dependencies
 
@@ -46,7 +37,7 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
 
    If you don't have a requirements.txt, install manually:
    ```bash
-   pip3.11 install --user flask flask-sqlalchemy werkzeug python-dotenv reportlab pandas openpyxl mysqlclient
+   pip3.11 install --user flask flask-sqlalchemy werkzeug python-dotenv reportlab pandas openpyxl
    ```
 
 ## Step 4: Configure Database Connection
@@ -59,15 +50,10 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
 
 2. Add your database configuration:
    ```env
-   DATABASE_URL=mysql://yourusername:yourpassword@yourusername.mysql.pythonanywhere-services.com/yourusername$databasename
+   DATABASE_URL=sqlite:///database.db
    SESSION_SECRET=your-very-secure-secret-key-here
    FLASK_ENV=production
    ```
-   
-   **Replace the placeholders:**
-   - `yourusername`: Your PythonAnywhere username
-   - `yourpassword`: Your MySQL database password
-   - `databasename`: Your database name (e.g., `oxygen`)
 
 ## Step 5: Update WSGI Configuration
 
@@ -88,8 +74,8 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
    # Load environment variables
    load_dotenv(os.path.join(path, '.env'))
 
-   # Import your Flask application (MySQL version)
-   from app_mysql import app as application
+   # Import your Flask application (SQLite version)
+   from app_sqlite import app as application
 
    if __name__ == "__main__":
        application.run()
@@ -109,10 +95,10 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
    ```bash
    cd ~/mysite
    python3.11 -c "
-   from app_mysql import app, db
+   from app_sqlite import app, db
    with app.app_context():
        db.create_all()
-       print('✓ MySQL database tables created successfully!')
+       print('✓ SQLite database tables created successfully!')
    "
    ```
 
@@ -121,10 +107,10 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
 If you have existing JSON data files, import them:
 
 1. Upload your JSON data files to `/home/yourusername/mysite/data/`
-2. Run the MySQL import script:
+2. Run the SQLite import script:
    ```bash
    cd ~/mysite
-   python3.11 import_to_mysql.py
+   python3.11 import_to_sqlite.py
    ```
 
 ## Step 9: Test Your Application
@@ -169,13 +155,9 @@ if __name__ == "__main__":
    - Database connection errors
 
 ### Database Connection Issues
-1. Verify database credentials in PythonAnywhere dashboard
-2. Check DATABASE_URL format in your .env file
-3. Ensure MySQL database is created and accessible
-4. Test database connection from console:
-   ```bash
-   mysql -u yourusername -p -h yourusername.mysql.pythonanywhere-services.com yourusername$databasename
-   ```
+1. Check if database.db file was created in your project folder
+2. Verify SQLite permissions in your home directory
+3. Ensure DATABASE_URL is set to sqlite:///database.db
 
 ### Import Errors
 1. Check if all files are uploaded correctly
@@ -205,7 +187,7 @@ To deploy updates:
 
 ## Backup Strategy
 
-1. **Database Backup**: Use mysqldump or PythonAnywhere's database backup tools
+1. **Database Backup**: Download the database.db file regularly via Files tab
 2. **Code Backup**: Keep code in Git repository
 3. **Data Export**: Regularly export data to JSON using Reports feature
 

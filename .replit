@@ -2,7 +2,7 @@ modules = ["python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["freetype", "glibcLocales", "libmysqlclient", "openssl", "postgresql", "unixODBC"]
+packages = ["freetype", "glibcLocales", "openssl", "postgresql", "unixODBC"]
 
 [deployment]
 deploymentTarget = "autoscale"
