@@ -49,7 +49,7 @@ os.environ['FLASK_ENV'] = 'production'
 os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
 
 # Import your Flask application
-from app_mysql import app as application
+from app_mysql_fixed import app as application
 
 if __name__ == "__main__":
     application.run()
@@ -64,7 +64,7 @@ In **Web** tab, add static file mapping:
 ```bash
 cd ~/mysite
 python3.11 -c "
-from app_mysql import app, db
+from app_mysql_fixed import app, db
 with app.app_context():
     db.create_all()
     print('✓ Database tables created!')
@@ -74,7 +74,7 @@ with app.app_context():
 ### ✅ Step 8: Import Data (if you have existing data)
 ```bash
 cd ~/mysite
-python3.11 import_to_mysql.py
+python3.11 import_to_mysql_fixed.py
 ```
 
 ### ✅ Step 9: Test Deployment

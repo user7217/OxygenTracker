@@ -1,17 +1,37 @@
-# mysql_models.py - MySQL database models for PythonAnywhere deployment
+# app_mysql_fixed.py - Flask application setup for MySQL (PythonAnywhere deployment)
 import os
-from datetime import datetime, timezone
+import logging
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.middleware.proxy_fix import ProxyFix
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
 
-# SQLAlchemy instance - will be set by app_mysql
-db = None
+# Configure logging for production
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def init_db(database):
-    """Initialize database instance"""
-    global db
-    db = database
+# Create Flask application
+app = Flask(__name__)
 
+# Set secret key for sessions
+app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
+
+# Configure ProxyFix for deployment environments
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Configure MySQL database with proper URL encoding
+default_db_url = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db_url)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+# Initialize SQLAlchemy
+db = SQLAlchemy(app)
+
+# Define models directly in this file to avoid circular imports
 class Customer(db.Model):
     """Customer model for MySQL database"""
     __tablename__ = 'customers'
@@ -128,3 +148,20 @@ class RentalHistory(db.Model):
             'rental_days': self.rental_days,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+# Create tables when app starts
+with app.app_context():
+    try:
+        db.create_all()
+        print("✓ MySQL database tables created successfully!")
+    except Exception as e:
+        print(f"⚠️  Database connection will be established on PythonAnywhere: {str(e)}")
+
+# Import routes after everything is set up
+try:
+    from routes import *
+except ImportError as e:
+    print(f"⚠️  Routes will be imported on PythonAnywhere: {str(e)}")
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

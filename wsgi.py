@@ -13,7 +13,7 @@ os.environ['FLASK_ENV'] = 'production'
 os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
 
 # Import your Flask application (using MySQL version)
-from app_mysql import app as application
+from app_mysql_fixed import app as application
 
 if __name__ == "__main__":
     application.run()

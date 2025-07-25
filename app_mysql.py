@@ -29,14 +29,19 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
-# Import models and create tables
+# Initialize models with database instance
+import mysql_models
+mysql_models.init_db(db)
+
+# Import models after db initialization
 from mysql_models import Customer, Cylinder, RentalHistory
 
+# Create tables
 with app.app_context():
     db.create_all()
     print("✓ MySQL database tables created successfully!")
 
-# Import routes after app and db setup
+# Import routes after everything is set up
 from routes import *
 
 if __name__ == '__main__':
