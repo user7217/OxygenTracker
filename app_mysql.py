@@ -29,17 +29,8 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
-# Initialize models with database instance
-import mysql_models
-mysql_models.init_db(db)
-
-# Import models after db initialization
-from mysql_models import Customer, Cylinder, RentalHistory
-
-# Create tables
-with app.app_context():
-    db.create_all()
-    print("✓ MySQL database tables created successfully!")
+# This file is deprecated - use app_mysql_fixed.py instead
+print("⚠️  app_mysql.py is deprecated. Use app_mysql_fixed.py for deployment.")
 
 # Import routes after everything is set up
 from routes import *
