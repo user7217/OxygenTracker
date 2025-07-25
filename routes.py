@@ -1055,7 +1055,7 @@ def add_cylinder():
             if not value:
                 field_display = 'ID' if field == 'custom_id' else field.replace('_', ' ').title()
                 flash(f'{field_display} is required', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all()
                 return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             cylinder_data[field] = value
         
@@ -1081,18 +1081,20 @@ def add_cylinder():
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
                 customers, _ = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers)
+                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             
             # Verify customer exists
             customer = customer_model.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
                 customers, _ = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers)
+                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             
             cylinder_data['rented_to'] = rented_to
-            cylinder_data['customer_name'] = customer.get('name', '')
-            cylinder_data['customer_email'] = customer.get('email', '')
+            cylinder_data['customer_name'] = customer.get('customer_name') or customer.get('name', '')
+            cylinder_data['customer_email'] = customer.get('customer_email') or customer.get('email', '')
+            cylinder_data['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
+            cylinder_data['customer_no'] = customer.get('customer_no', '')
             
             # Handle rental date from form or use current date
             rental_date = request.form.get('rental_date', '').strip()
