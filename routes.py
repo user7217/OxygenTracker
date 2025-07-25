@@ -1114,8 +1114,8 @@ def add_cylinder():
                 cylinder_data['rental_date'] = datetime.now().isoformat()
         
         try:
-            new_cylinder = cylinder_model.add(cylinder_data)
-            flash(f'Cylinder added successfully with ID: {new_cylinder["id"]}', 'success')
+            new_cylinder_id = cylinder_model.add_cylinder(cylinder_data)
+            flash(f'Cylinder added successfully with ID: {new_cylinder_id}', 'success')
             return redirect(url_for('cylinders'))
         except Exception as e:
             flash(f'Error adding cylinder: {str(e)}', 'error')
