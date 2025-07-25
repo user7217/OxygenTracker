@@ -104,8 +104,8 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if user_manager.verify_password(username, password):
-            user = user_manager.get_user(username)
+        user = user_manager.authenticate(username, password)
+        if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['user_role'] = user.get('role', 'user')
