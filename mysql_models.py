@@ -4,8 +4,13 @@ from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
 
-# Initialize SQLAlchemy with declarative base
-db = SQLAlchemy()
+# SQLAlchemy instance - will be set by app_mysql
+db = None
+
+def init_db(database):
+    """Initialize database instance"""
+    global db
+    db = database
 
 class Customer(db.Model):
     """Customer model for MySQL database"""
