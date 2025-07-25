@@ -10,7 +10,7 @@ if path not in sys.path:
 # Set environment variables for production
 os.environ['SESSION_SECRET'] = 'your-production-secret-key-here'  # Replace with a secure secret key
 os.environ['FLASK_ENV'] = 'production'
-os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$oxygen'
+os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
 
 # Import your Flask application (using MySQL version)
 from app_mysql import app as application

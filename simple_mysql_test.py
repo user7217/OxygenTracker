@@ -13,7 +13,7 @@ def test_database_url():
     username = "varasicyl"
     password = "root@123"
     host = "varasicyl.mysql.pythonanywhere-services.com"
-    database = "varasicyl$oxygen"
+    database = "varasicyl$Oxygen"
     
     # URL encode the password (@ becomes %40)
     encoded_password = password.replace("@", "%40")
@@ -26,7 +26,7 @@ def test_database_url():
     print(f"Database URL: {database_url}")
     
     print("\n📋 Steps to deploy on PythonAnywhere:")
-    print("1. Make sure database 'varasicyl$oxygen' exists in PythonAnywhere Databases tab")
+    print("1. Make sure database 'varasicyl$Oxygen' exists in PythonAnywhere Databases tab")
     print("2. Upload all files to /home/varasicyl/mysite/")
     print("3. Install dependencies: pip3.11 install --user flask flask-sqlalchemy mysqlclient")
     print("4. Create web app pointing to app_mysql.py")

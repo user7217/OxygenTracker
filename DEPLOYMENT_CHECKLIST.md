@@ -4,7 +4,7 @@
 
 ### ✅ Step 1: Database Setup
 1. Go to PythonAnywhere **Databases** tab
-2. Create MySQL database named: `varasicyl$oxygen`
+2. Create MySQL database named: `varasicyl$Oxygen`
 3. Set password: `root@123` (or confirm current password)
 4. Note the connection details
 
@@ -46,7 +46,7 @@ if path not in sys.path:
 # Set environment variables for production
 os.environ['SESSION_SECRET'] = 'your-production-secret-key-here'
 os.environ['FLASK_ENV'] = 'production'
-os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$oxygen'
+os.environ['DATABASE_URL'] = 'mysql://varasicyl:root%40123@varasicyl.mysql.pythonanywhere-services.com/varasicyl$Oxygen'
 
 # Import your Flask application
 from app_mysql import app as application
@@ -88,7 +88,7 @@ python3.11 import_to_mysql.py
 - The MySQL connection error you saw is normal when running locally
 - The app will connect correctly when deployed on PythonAnywhere
 - Always use encoded password in URL: `root@123` becomes `root%40123`
-- Make sure database `varasicyl$oxygen` exists before deployment
+- Make sure database `varasicyl$Oxygen` exists before deployment
 
 ## 📞 Troubleshooting
 
@@ -98,9 +98,9 @@ python3.11 import_to_mysql.py
 - Confirm database exists and password is correct
 
 **If database connection fails:**
-- Test connection: `mysql -u varasicyl -p -h varasicyl.mysql.pythonanywhere-services.com varasicyl$oxygen`
+- Test connection: `mysql -u varasicyl -p -h varasicyl.mysql.pythonanywhere-services.com varasicyl$Oxygen`
 - Verify password is exactly: `root@123`
-- Check database name is exactly: `varasicyl$oxygen`
+- Check database name is exactly: `varasicyl$Oxygen`
 
 **If static files don't load:**
 - Check static files mapping in Web tab

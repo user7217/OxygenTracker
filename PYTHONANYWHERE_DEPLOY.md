@@ -26,7 +26,7 @@ This guide helps you deploy your Oxygen Cylinder Tracker to PythonAnywhere using
 
 1. Go to **Databases** tab in your PythonAnywhere dashboard
 2. Create a new **MySQL** database:
-   - Database name: `yourusername$databasename` (e.g., `john$oxygen`)
+   - Database name: `yourusername$databasename` (e.g., `varasicyl$Oxygen`)
    - Note: Replace `yourusername` with your actual PythonAnywhere username
 3. Set a password for your database
 4. Note down your database details:
