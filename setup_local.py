@@ -141,7 +141,7 @@ def create_sqlite_database():
         )
     """)
     
-    # Create cylinders table
+    # Create cylinders table with performance indexes
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cylinders (
             id TEXT PRIMARY KEY,
@@ -166,6 +166,14 @@ def create_sqlite_database():
             FOREIGN KEY (rented_to) REFERENCES customers (id)
         )
     """)
+    
+    # Create performance indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_status ON cylinders (status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_rented_to ON cylinders (rented_to)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_custom_id ON cylinders (custom_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_date_borrowed ON cylinders (date_borrowed)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers (customer_name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_no ON customers (customer_no)")
     
     # Create rental_history table
     cursor.execute("""
