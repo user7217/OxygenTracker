@@ -1,0 +1,222 @@
+[
+  {
+    "id": "CUST-ABC12345",
+    "name": "John Smith",
+    "email": "john.smith@email.com",
+    "phone": "555-123-4567",
+    "address": "123 Main Street, Cityville, ST 12345",
+    "company": "Smith Industries",
+    "notes": "Regular customer, good payment history",
+    "created_at": "2025-07-09T11:30:00.000000",
+    "updated_at": "2025-07-09T11:30:00.000000"
+  },
+  {
+    "id": "CUST-DEF67890",
+    "name": "Medical Center",
+    "email": "orders@medicalcenter.com",
+    "phone": "555-987-6543",
+    "address": "456 Hospital Avenue, Medtown, ST 67890",
+    "company": "City Medical Center",
+    "notes": "Medical facility, monthly oxygen supply",
+    "created_at": "2025-07-09T11:30:00.000000",
+    "updated_at": "2025-07-09T11:30:00.000000"
+  },
+  {
+    "name": "Srinivasa Reddy",
+    "email": "",
+    "phone": "0.0",
+    "address": "Pulivendala",
+    "id": "CUST-B1ACD00C",
+    "created_at": "2025-07-17T14:54:20.898949",
+    "updated_at": "2025-07-17T14:54:20.898949"
+  },
+  {
+    "name": "Manishreni",
+    "email": "",
+    "phone": "0.0",
+    "address": "Kodur",
+    "id": "CUST-2EC928D7",
+    "created_at": "2025-07-17T14:54:20.915725",
+    "updated_at": "2025-07-17T14:54:20.915725"
+  },
+  {
+    "name": "Salaam",
+    "email": "",
+    "phone": "0.0",
+    "address": "Kadapa",
+    "id": "CUST-0FD1AFA3",
+    "created_at": "2025-07-17T14:54:20.925160",
+    "updated_at": "2025-07-17T14:54:20.925160"
+  },
+  {
+    "name": "Ramakrishna",
+    "email": "",
+    "phone": "0.0",
+    "address": "Narayanadri",
+    "id": "CUST-5947754C",
+    "created_at": "2025-07-17T14:54:20.935625",
+    "updated_at": "2025-07-17T14:54:20.935625"
+  },
+  {
+    "name": "VAPL",
+    "email": "",
+    "phone": "0.0",
+    "address": "Nellore",
+    "id": "CUST-0A22C1EA",
+    "created_at": "2025-07-17T14:54:20.945101",
+    "updated_at": "2025-07-17T14:54:20.945101"
+  },
+  {
+    "name": "Prasanna",
+    "email": "",
+    "phone": "0.0",
+    "address": "Yerraguntla",
+    "id": "CUST-FEF36DE2",
+    "created_at": "2025-07-17T14:54:20.953613",
+    "updated_at": "2025-07-17T14:54:20.953613"
+  },
+  {
+    "name": "GHOUSPEER",
+    "email": "",
+    "phone": "0.0",
+    "address": "Yerraguntla",
+    "id": "CUST-B17E156F",
+    "created_at": "2025-07-17T14:54:20.961404",
+    "updated_at": "2025-07-17T14:54:20.961404"
+  },
+  {
+    "name": "S.G.I.G",
+    "email": "",
+    "phone": "0.0",
+    "address": "PRODDATUR",
+    "id": "CUST-61EA8CB4",
+    "created_at": "2025-07-17T14:54:20.969722",
+    "updated_at": "2025-07-17T14:54:20.969722"
+  },
+  {
+    "name": "RIMS",
+    "email": "",
+    "phone": "0.0",
+    "address": "Kadapa",
+    "id": "CUST-91931517",
+    "created_at": "2025-07-17T14:54:20.977530",
+    "updated_at": "2025-07-17T14:54:20.977530"
+  },
+  {
+    "name": "Haneef",
+    "email": "",
+    "phone": "0.0",
+    "address": "Yerraguntla",
+    "id": "CUST-B2137F53",
+    "created_at": "2025-07-17T14:54:20.986632",
+    "updated_at": "2025-07-17T14:54:20.986632"
+  },
+  {
+    "name": "A.D.E Store",
+    "email": "",
+    "phone": "0.0",
+    "address": "RTPP",
+    "id": "CUST-02050B85",
+    "created_at": "2025-07-17T14:54:20.994771",
+    "updated_at": "2025-07-17T14:54:20.994771"
+  },
+  {
+    "name": "Govt hospetal",
+    "email": "",
+    "phone": "0.0",
+    "address": "Karnool",
+    "id": "CUST-E5C10061",
+    "created_at": "2025-07-17T14:54:21.002841",
+    "updated_at": "2025-07-17T14:54:21.002841"
+  },
+  {
+    "name": "sudarshan reddy",
+    "email": "",
+    "phone": "0.0",
+    "address": "yerraguntla",
+    "id": "CUST-6EF5577A",
+    "created_at": "2025-07-17T14:54:21.010464",
+    "updated_at": "2025-07-17T14:54:21.010464"
+  },
+  {
+    "name": "Ultratech. Jaiganesh",
+    "email": "0",
+    "phone": "0.0",
+    "address": "Tadipatri",
+    "id": "CUST-D70B2C27",
+    "created_at": "2025-07-17T14:54:21.018519",
+    "updated_at": "2025-07-17T14:54:21.018519"
+  },
+  {
+    "name": "SALES TO CR",
+    "email": "",
+    "phone": "0.0",
+    "address": "MUDDANUR",
+    "id": "CUST-A9055D5F",
+    "created_at": "2025-07-17T14:54:21.026796",
+    "updated_at": "2025-07-17T14:54:21.026796"
+  },
+  {
+    "name": "FAROOK HUSSAIN DOCTOR",
+    "email": "10000",
+    "phone": "0.0",
+    "address": "KLM",
+    "id": "CUST-A53A88D4",
+    "created_at": "2025-07-17T14:54:21.035568",
+    "updated_at": "2025-07-17T14:54:21.035568"
+  },
+  {
+    "name": "SHANKER REDDY SADIPIRALLA",
+    "email": "9849462812",
+    "phone": "9703375407.0",
+    "address": "SADIPIRALLA",
+    "id": "CUST-E4B7020C",
+    "created_at": "2025-07-17T14:54:21.045451",
+    "updated_at": "2025-07-17T14:54:21.045451"
+  },
+  {
+    "name": "DIVAKAR REDDY KOTHAPALLI",
+    "email": "8000",
+    "phone": "9966323499.0",
+    "address": "KOTHAPALLI",
+    "id": "CUST-B6956FAD",
+    "created_at": "2025-07-17T14:54:21.053460",
+    "updated_at": "2025-07-17T14:54:21.053460"
+  },
+  {
+    "name": "MOULALAI KAMALAPURAM",
+    "email": "ADVANCE PAID",
+    "phone": "9949518004.0",
+    "address": "KAMALAPURAM",
+    "id": "CUST-DBDD7DDE",
+    "created_at": "2025-07-17T14:54:21.061162",
+    "updated_at": "2025-07-17T14:54:21.061162"
+  },
+  {
+    "name": "WALLS & BRIDGES PDTR",
+    "email": "120000 ADVANCE PAY",
+    "phone": "8008616047.0",
+    "address": "PDTR",
+    "id": "CUST-42B1774D",
+    "created_at": "2025-07-17T14:54:21.069200",
+    "updated_at": "2025-07-17T14:54:21.069200"
+  },
+  {
+    "name": "JEEVITHA CONSTRUCTIONS ZUARI",
+    "email": "ADVANCE 50000 PAY",
+    "phone": "9949466950.0",
+    "address": "ZUARI",
+    "id": "CUST-C8733A8F",
+    "created_at": "2025-07-17T14:54:21.076200",
+    "updated_at": "2025-07-17T14:54:21.076200"
+  },
+  {
+    "name": "SLV CRANE / NARASIMHA REDDY",
+    "email": "NO ADVANCE",
+    "phone": "8008167295.0",
+    "address": "YGL",
+    "id": "CUST-8FB8441C",
+    "created_at": "2025-07-17T14:54:21.086664",
+    "updated_at": "2025-07-17T14:54:21.086664"
+  }
+]

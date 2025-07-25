@@ -1,0 +1,10 @@
+{
+  "backup_type": "auto",
+  "created_at": "2025-07-21 16:28:15",
+  "files_backed_up": [
+    "customers.json",
+    "cylinders.json",
+    "users.json"
+  ],
+  "system": "Varasai Oxygen"
+}

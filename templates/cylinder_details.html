@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Cylinder Details - Varasai Oxygen{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 mb-3" style="font-size: 2.5rem;">
+                <svg width="32" height="32" fill="currentColor" class="me-3" viewBox="0 0 16 16">
+                    <rect x="5" y="1" width="6" height="1.5" rx="0.5"/>
+                    <rect x="6.5" y="2.5" width="3" height="1" rx="0.5"/>
+                    <rect x="4" y="4" width="8" height="10" rx="1"/>
+                    <ellipse cx="8" cy="14" rx="4" ry="1"/>
+                    <text x="8" y="10" text-anchor="middle" font-size="3" font-weight="bold">O₂</text>
+                </svg>Cylinder Details
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('cylinders') }}">Cylinders</a></li>
+                    <li class="breadcrumb-item active">Details</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('cylinders') }}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left me-2"></i>Back to Cylinders
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0 fs-4">
+                        <i class="bi bi-info-circle me-2"></i>Cylinder Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fs-5 mb-3 text-secondary">
+                                <i class="bi bi-gear me-2"></i>Basic Information
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">ID:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% if cylinder.get('serial_number') and cylinder.get('serial_number') != cylinder.display_serial %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Manufacturer Serial:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.serial_number }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            {% endif %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Type:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('type', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Size:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('size', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Status:</label>
+                                <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
+                                    <span class="badge fs-6 {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Location:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('location', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Pressure:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('pressure', 'N/A') }}{% if cylinder.get('pressure') %} PSI{% endif %}" readonly style="font-size: 1.1rem;">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="fs-5 mb-3 text-secondary">
+                                <i class="bi bi-person-check me-2"></i>Dispatch Information
+                            </h6>
+                            {% if cylinder.get('status', '').lower() == 'rented' %}
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Customer:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_name or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Customer Phone:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.customer_phone or 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Dispatch Date:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.date_borrowed[:10] if cylinder.get('date_borrowed') else 'N/A' }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Days Dispatched:</label>
+                                <div class="form-control form-control-lg d-flex align-items-center" style="font-size: 1.1rem;">
+                                    {% set rental_days = cylinder.get('rental_days', 0) %}
+                                    {% set rental_months = cylinder.get('rental_months', 0) %}
+                                    <span class="badge fs-6 {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {{ rental_days }} days ({{ rental_months }} months)
+                                    </span>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Not currently dispatched</strong><br>
+                                This cylinder is available for dispatch.
+                            </div>
+                            {% endif %}
+                            
+                            <h6 class="fs-5 mb-3 mt-4 text-secondary">
+                                <i class="bi bi-tools me-2"></i>Maintenance Information
+                            </h6>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Last Inspection:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('last_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Next Inspection:</label>
+                                <input type="text" class="form-control form-control-lg" value="{{ cylinder.get('next_inspection', 'N/A') }}" readonly style="font-size: 1.1rem;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fs-5 fw-bold">Notes:</label>
+                                <textarea class="form-control form-control-lg" rows="4" readonly style="font-size: 1.1rem;">{{ cylinder.get('notes', 'None') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-light d-flex justify-content-between">
+                    <a href="{{ url_for('cylinders') }}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Cylinders
+                    </a>
+                    
+                    <div class="btn-group">
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-pencil me-2"></i>Edit
+                        </a>
+                        {% endif %}
+                        
+                        {% if session.role in ['admin', 'user'] %}
+                        {% if cylinder.get('status', '').lower() == 'available' %}
+                        <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#rentModal">
+                            <i class="bi bi-arrow-right-circle me-2"></i>Dispatch
+                        </button>
+                        {% elif cylinder.get('status', '').lower() == 'rented' %}
+                        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#returnModal">
+                            <i class="bi bi-arrow-left-circle me-2"></i>Return
+                        </button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rent Cylinder Modal -->
+<div class="modal fade" id="rentModal" tabindex="-1" aria-labelledby="rentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fs-4" id="rentModalLabel">
+                    <i class="bi bi-arrow-right-circle me-2"></i>Dispatch Cylinder
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('rent_cylinder', cylinder_id=cylinder.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="cylinder_info" class="form-label fs-5">Cylinder:</label>
+                        <input type="text" class="form-control form-control-lg" id="cylinder_info" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer_id" class="form-label fs-5">Select Customer:</label>
+                        <select class="form-select form-select-lg" id="customer_id" name="customer_id" required style="font-size: 1.1rem;">
+                            <option value="">Choose a customer...</option>
+                            <!-- Customers will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rental_date" class="form-label fs-5">Dispatch Date:</label>
+                        <input type="datetime-local" class="form-control form-control-lg" id="rental_date" name="rental_date" style="font-size: 1.1rem;">
+                        <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-lg" style="font-size: 1.1rem;">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Dispatch Cylinder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Cylinder Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-white border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title fs-4" id="returnModalLabel">
+                    <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('return_cylinder', cylinder_id=cylinder.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="return_cylinder_info" class="form-label fs-5">Cylinder:</label>
+                        <input type="text" class="form-control form-control-lg" id="return_cylinder_info" value="{{ cylinder.display_serial }}" readonly style="font-size: 1.1rem;">
+                    </div>
+                    <div class="mb-3">
+                        <label for="return_date" class="form-label fs-5">Return Date:</label>
+                        <input type="datetime-local" class="form-control form-control-lg" id="return_date" name="return_date" style="font-size: 1.1rem;">
+                        <small class="form-text text-muted">Can be any past or current date. Leave blank to use current date and time</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal" style="font-size: 1.1rem;">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-lg" style="font-size: 1.1rem;">
+                        <i class="bi bi-arrow-left-circle me-2"></i>Return Cylinder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

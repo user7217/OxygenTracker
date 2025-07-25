@@ -102,8 +102,8 @@ class InstantImporter:
             if source_field and source_field in columns:
                 field_indices[target_field] = columns.index(source_field)
         
-        # Get existing cylinders for duplicate checking
-        existing_cylinders, _ = self.cylinder_model.get_all(page=1, per_page=10000)
+        # Get existing cylinders for duplicate checking - limited for performance
+        existing_cylinders, _ = self.cylinder_model.get_all(page=1, per_page=2000)
         existing_custom_ids = {c.get('custom_id', '').upper() for c in existing_cylinders if c.get('custom_id')}
         
         imported = 0
@@ -154,9 +154,9 @@ class InstantImporter:
         """Simple transaction linking - connect customers and cylinders from transaction data"""
         print("🚀 INSTANT TRANSACTION LINKING: Connect customers with cylinders")
         
-        # Pre-load data for lookups
-        customers_raw, _ = self.customer_model.get_all(page=1, per_page=10000)
-        cylinders_raw, _ = self.cylinder_model.get_all(page=1, per_page=10000)
+        # Pre-load data for lookups - optimize to avoid loading massive datasets
+        customers_raw, _ = self.customer_model.get_all(page=1, per_page=1000)  # Reduced from 10k to 1k
+        cylinders_raw, _ = self.cylinder_model.get_all(page=1, per_page=2000)  # Reduced from 10k to 2k
         
         # Build lookup tables
         customers = {}

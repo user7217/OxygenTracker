@@ -55,13 +55,23 @@ def install_dependencies():
     """Install Python dependencies"""
     print_status("Installing Python dependencies...")
     
+    # Install dependencies from pyproject.toml
+    dependencies = [
+        "flask", "flask-login", "flask-sqlalchemy", "gunicorn", 
+        "pandas", "psycopg2-binary", "pyodbc", "werkzeug", 
+        "oauthlib", "sendgrid", "reportlab", "openpyxl", 
+        "sqlalchemy", "email-validator"
+    ]
+    
     # Check if uv is available for faster installation
     if run_command("uv --version", check=False, capture_output=True):
         print_status("Using uv for faster package installation...")
-        return run_command("uv pip install -r pyproject.toml")
+        deps_str = " ".join(dependencies)
+        return run_command(f"uv pip install {deps_str}")
     else:
         print_status("Using pip for package installation...")
-        return run_command("pip install -r pyproject.toml")
+        deps_str = " ".join(dependencies)
+        return run_command(f"pip install {deps_str}")
 
 def setup_directories():
     """Create necessary directories"""
@@ -88,6 +98,7 @@ FLASK_SECRET_KEY={flask_secret}
 SESSION_SECRET={session_secret}
 FLASK_ENV=development
 DATABASE_URL=sqlite:///oxygen_tracker.db
+DEBUG=True
 """
         
         with open(env_file, 'w') as f:
@@ -130,7 +141,7 @@ def create_sqlite_database():
         )
     """)
     
-    # Create cylinders table
+    # Create cylinders table with performance indexes
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cylinders (
             id TEXT PRIMARY KEY,
@@ -155,6 +166,14 @@ def create_sqlite_database():
             FOREIGN KEY (rented_to) REFERENCES customers (id)
         )
     """)
+    
+    # Create performance indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_status ON cylinders (status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_rented_to ON cylinders (rented_to)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_custom_id ON cylinders (custom_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_date_borrowed ON cylinders (date_borrowed)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers (customer_name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_no ON customers (customer_no)")
     
     # Create rental_history table
     cursor.execute("""

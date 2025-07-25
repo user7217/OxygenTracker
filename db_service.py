@@ -47,17 +47,12 @@ class CustomerService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply pagination with sorting by active rentals count (descending)
+        # Apply pagination with optimized sorting
         offset = (page - 1) * per_page
         
-        # Join with cylinders to get rental count, order by active rentals descending
-        customers = query.outerjoin(Cylinder, and_(
-            Customer.id == Cylinder.rented_to,
-            Cylinder.status == 'rented'
-        )).group_by(Customer.id).order_by(
-            desc(func.count(Cylinder.id)),  # Most active rentals first
-            Customer.customer_name  # Then by name for ties
-        ).offset(offset).limit(per_page).all()
+        # Simple ordering by customer name for better performance
+        # Join with cylinders only when needed for specific queries
+        customers = query.order_by(Customer.customer_name).offset(offset).limit(per_page).all()
         
         return customers, total_count
     
@@ -184,17 +179,19 @@ class CylinderService(DatabaseService):
         
         total_count = query.count()
         
-        # Apply sorting - rented cylinders first (by rental duration), then available cylinders
+        # Optimized sorting for performance
         offset = (page - 1) * per_page
-        cylinders = query.order_by(
-            case(
-                (Cylinder.status == 'rented', 0),  # Rented cylinders first
-                (Cylinder.status == 'available', 1),  # Available cylinders second
-                else_=2  # Others last (maintenance, etc.)
-            ),
-            Cylinder.date_borrowed.asc().nulls_last(),  # For rented: oldest first (longest rentals)
-            Cylinder.updated_at.desc().nulls_last()  # For available: newest first
-        ).offset(offset).limit(per_page).all()
+        
+        # Use simpler sorting based on filter status
+        if filter_status == 'rented':
+            # For rented cylinders, sort by date_borrowed (oldest first)
+            cylinders = query.order_by(Cylinder.date_borrowed.asc().nulls_last()).offset(offset).limit(per_page).all()
+        elif filter_status == 'available':
+            # For available cylinders, sort by custom_id
+            cylinders = query.order_by(Cylinder.custom_id.asc().nulls_last()).offset(offset).limit(per_page).all()
+        else:
+            # For mixed results, use simple status-based sort
+            cylinders = query.order_by(Cylinder.status.desc(), Cylinder.custom_id.asc().nulls_last()).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
     

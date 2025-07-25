@@ -1,0 +1,60 @@
+{
+  "field_mappings": {
+    "customers": {
+      "default": {
+        "customer_no": "customer_no",
+        "customer_name": "customer_name",
+        "customer_address": "customer_address", 
+        "customer_city": "customer_city",
+        "customer_state": "customer_state",
+        "customer_phone": "customer_phone",
+        "customer_apgst": "customer_apgst",
+        "customer_cst": "customer_cst",
+        "customer_email": "customer_email"
+      },
+      "alternative": {
+        "customer_no": "CustomerID",
+        "customer_name": "CustomerName",
+        "customer_address": "Address",
+        "customer_city": "City", 
+        "customer_state": "State",
+        "customer_phone": "Phone",
+        "customer_apgst": "APGST",
+        "customer_cst": "CST",
+        "customer_email": "Email"
+      }
+    },
+    "cylinders": {
+      "default": {
+        "custom_id": "id",
+        "serial_number": "serial_number",
+        "type": "type",
+        "size": "size",
+        "location": "location",
+        "status": "status"
+      },
+      "alternative": {
+        "custom_id": "ID",
+        "serial_number": "SerialNumber",
+        "type": "CylinderType",
+        "size": "Size",
+        "location": "Location",
+        "status": "Status"
+      }
+    },
+    "transactions": {
+      "default": {
+        "customer_no": "customer_no",
+        "cylinder_no": "cylinder_no", 
+        "rental_date": "rental_date",
+        "return_date": "return_date"
+      },
+      "alternative": {
+        "customer_no": "CustomerID",
+        "cylinder_no": "CylinderID",
+        "rental_date": "RentalDate",
+        "return_date": "ReturnDate"
+      }
+    }
+  }
+}
