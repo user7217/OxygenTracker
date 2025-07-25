@@ -1122,9 +1122,6 @@ def add_cylinder():
     
     # Get all customers for the dropdown and today's date
     customers, total_customers = customer_model.get_all(per_page=1000)  # Get more customers for dropdown
-    print(f"DEBUG: Loading {len(customers)} customers out of {total_customers} total for add cylinder dropdown")
-    if customers:
-        print(f"DEBUG: First customer sample: ID={customers[0].id}, Name={customers[0].customer_name}")
     
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
@@ -1148,7 +1145,7 @@ def edit_cylinder(cylinder_id):
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all(per_page=1000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             cylinder_data[field] = value
         
@@ -1167,7 +1164,7 @@ def edit_cylinder(cylinder_id):
                 existing_id = existing.id if hasattr(existing, 'id') else existing.get('id', '')
                 if existing_custom_id == cylinder_data['custom_id'] and existing_id != cylinder_id:
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                    customers, _ = customer_model.get_all()
+                    customers, _ = customer_model.get_all(per_page=1000)
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -1175,14 +1172,14 @@ def edit_cylinder(cylinder_id):
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all(per_page=1000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             # Verify customer exists
             customer = customer_model.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
-                customers = customer_model.get_all()
+                customers, _ = customer_model.get_all(per_page=1000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             cylinder_data['rented_to'] = rented_to
@@ -1254,7 +1251,7 @@ def edit_cylinder(cylinder_id):
             flash(f'Error updating cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and add display ID
-    customers = customer_model.get_all()
+    customers, _ = customer_model.get_all(per_page=1000)
     cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 
