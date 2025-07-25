@@ -101,16 +101,10 @@
                                     {% for customer in customers %}
                                     <option value="{{ customer.id }}">
                                         {{ customer.customer_name or customer.name or 'Unknown' }} 
-                                        {% if customer.customer_phone and customer.customer_phone != '0.0' %}
-                                        - {{ customer.customer_phone }}
-                                        {% elif customer.phone and customer.phone != '0.0' %}
-                                        - {{ customer.phone }}
-                                        {% elif customer.customer_email and customer.customer_email.strip() %}
-                                        - {{ customer.customer_email }}
-                                        {% elif customer.email and customer.email.strip() %}
-                                        - {{ customer.email }}
+                                        {% if customer.customer_no and customer.customer_no.strip() %}
+                                        - {{ customer.customer_no }}
                                         {% else %}
-                                        - No contact
+                                        - No customer number
                                         {% endif %}
                                     </option>
                                     {% endfor %}

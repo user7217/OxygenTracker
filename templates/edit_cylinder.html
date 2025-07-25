@@ -113,7 +113,14 @@
                                 <select class="form-select" id="rented_to" name="rented_to">
                                     <option value="">Select customer...</option>
                                     {% for customer in customers %}
-                                    <option value="{{ customer.id }}" {% if cylinder.rented_to == customer.id %}selected{% endif %}>{{ customer.customer_name or customer.name or 'Unknown Customer' }} - {{ customer.customer_email or customer.email or 'No Email' }}</option>
+                                    <option value="{{ customer.id }}" {% if cylinder.rented_to == customer.id %}selected{% endif %}>
+                                        {{ customer.customer_name or customer.name or 'Unknown' }} 
+                                        {% if customer.customer_no and customer.customer_no.strip() %}
+                                        - {{ customer.customer_no }}
+                                        {% else %}
+                                        - No customer number
+                                        {% endif %}
+                                    </option>
                                     {% endfor %}
                                 </select>
                                 <small class="form-text text-muted">Required when status is 'Rented'</small>
