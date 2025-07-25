@@ -1121,7 +1121,11 @@ def add_cylinder():
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and today's date
-    customers, _ = customer_model.get_all()
+    customers, total_customers = customer_model.get_all(per_page=1000)  # Get more customers for dropdown
+    print(f"DEBUG: Loading {len(customers)} customers out of {total_customers} total for add cylinder dropdown")
+    if customers:
+        print(f"DEBUG: First customer sample: ID={customers[0].id}, Name={customers[0].customer_name}")
+    
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)

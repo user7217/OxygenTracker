@@ -99,7 +99,20 @@
                                 <select class="form-select" id="rented_to" name="rented_to">
                                     <option value="">Select customer...</option>
                                     {% for customer in customers %}
-                                    <option value="{{ customer.id }}">{{ customer.customer_name or customer.name or 'Unknown' }} - {{ customer.customer_phone or customer.phone or customer.customer_email or customer.email or 'No contact' }}</option>
+                                    <option value="{{ customer.id }}">
+                                        {{ customer.customer_name or customer.name or 'Unknown' }} 
+                                        {% if customer.customer_phone and customer.customer_phone != '0.0' %}
+                                        - {{ customer.customer_phone }}
+                                        {% elif customer.phone and customer.phone != '0.0' %}
+                                        - {{ customer.phone }}
+                                        {% elif customer.customer_email and customer.customer_email.strip() %}
+                                        - {{ customer.customer_email }}
+                                        {% elif customer.email and customer.email.strip() %}
+                                        - {{ customer.email }}
+                                        {% else %}
+                                        - No contact
+                                        {% endif %}
+                                    </option>
                                     {% endfor %}
                                 </select>
                                 <small class="form-text text-muted">Required when status is 'Rented'</small>
