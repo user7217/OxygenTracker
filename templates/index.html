@@ -66,35 +66,25 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
+    <!-- Quick Navigation -->
     <div class="row mb-4">
         <div class="col">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                        <i class="bi bi-lightning-charge me-2"></i>Quick Navigation
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('add_customer') }}" class="btn btn-primary w-100">
-                                <i class="bi bi-person-plus me-2"></i>Add Customer
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('customers') }}" class="btn btn-primary w-100">
+                                <i class="bi bi-people me-2"></i>Manage Customers
                             </a>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('add_cylinder') }}" class="btn btn-info w-100">
-                                <i class="bi bi-plus-circle me-2"></i>Add Cylinder
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('import_data') }}" class="btn btn-warning w-100">
-                                <i class="bi bi-upload me-2"></i>Import Data
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('global_search') }}" class="btn btn-secondary w-100">
-                                <i class="bi bi-search me-2"></i>Search All
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('cylinders') }}" class="btn btn-info w-100">
+                                <i class="bi bi-cylinder me-2"></i>Manage Cylinders
                             </a>
                         </div>
                     </div>

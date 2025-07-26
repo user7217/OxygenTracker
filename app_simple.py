@@ -158,11 +158,16 @@ def index():
     
     conn.close()
     
-    return render_template('index.html', 
-                         customer_count=customer_count,
-                         cylinder_count=cylinder_count,
-                         rented_count=rented_count,
-                         available_count=available_count)
+    # Create stats object to match template expectations
+    stats = {
+        'total_customers': customer_count,
+        'total_cylinders': cylinder_count,
+        'rented_cylinders': rented_count,
+        'available_cylinders': available_count,
+        'maintenance_cylinders': 0  # Add this field for template compatibility
+    }
+    
+    return render_template('index.html', stats=stats)
 
 @app.route('/customers')
 @login_required
