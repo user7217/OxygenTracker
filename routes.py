@@ -577,10 +577,11 @@ def customers():
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
+    # Get ALL customers first for proper sorting by active dispatches
     if search_query:
-        customers_list, total_customers = customer_model.get_all(search_query, page, per_page)
+        customers_list, total_customers = customer_model.get_all(search_query, page=1, per_page=10000)
     else:
-        customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
+        customers_list, total_customers = customer_model.get_all(page=1, per_page=10000)
     
     # Get only rented cylinders for performance optimization (issue #7)
     all_cylinders, _ = cylinder_model.get_all(page=1, per_page=10000, filter_status='rented')
@@ -602,8 +603,10 @@ def customers():
     # Sort customers by active dispatches in descending order (issue #1)
     customers_list.sort(key=lambda x: x.get('active_dispatches', 0), reverse=True)
     
-    # Pagination (already handled by PostgreSQL)
-    customers_paginated = customers_list
+    # Manual pagination after sorting
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    customers_paginated = customers_list[start_index:end_index]
     
     # Calculate pagination info
     total_pages = (total_customers + per_page - 1) // per_page
