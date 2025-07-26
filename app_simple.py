@@ -158,7 +158,7 @@ def index():
     
     conn.close()
     
-    return render_template('dashboard.html', 
+    return render_template('index.html', 
                          customer_count=customer_count,
                          cylinder_count=cylinder_count,
                          rented_count=rented_count,
