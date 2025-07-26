@@ -583,7 +583,7 @@ def customers():
         customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
     # Get only rented cylinders for performance optimization (issue #7)
-    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=1000, filter_status='rented')
+    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=10000, filter_status='rented')
     for customer in customers_list:
         # Count cylinders currently rented to this customer (active dispatches)
         rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
