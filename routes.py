@@ -44,8 +44,8 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
-from app import app
-from models_postgres import Customer, Cylinder
+from app_sqlite import app
+from sqlite_models import Customer, Cylinder, RentalHistory
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -181,9 +181,74 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize data models for business logic operations
-customer_model = Customer()
-cylinder_model = Cylinder()
+# Import database and models from app_sqlite
+from app_sqlite import db
+from sqlite_models import Customer, Cylinder, RentalHistory
+
+# Create simple model wrappers using direct SQLAlchemy queries
+class CustomerModel:
+    def get_all(self, search_query=None, page=1, per_page=25):
+        """Get all customers with optional search and pagination"""
+        try:
+            query = Customer.query
+            if search_query:
+                query = query.filter(
+                    (Customer.customer_name.like(f'%{search_query}%')) |
+                    (Customer.customer_no.like(f'%{search_query}%')) |
+                    (Customer.customer_phone.like(f'%{search_query}%'))
+                )
+            total = query.count()
+            customers = query.all()
+            return [c.to_dict() for c in customers], total
+        except Exception as e:
+            print(f"Error in CustomerModel.get_all: {e}")
+            return [], 0
+    
+    def get_by_id(self, customer_id):
+        """Get customer by ID"""
+        try:
+            customer = Customer.query.get(customer_id)
+            return customer.to_dict() if customer else None
+        except Exception as e:
+            print(f"Error in CustomerModel.get_by_id: {e}")
+            return None
+
+class CylinderModel:
+    def get_all(self, search_query=None, page=1, per_page=25, filter_status=None, **kwargs):
+        """Get all cylinders with optional search and pagination"""
+        try:
+            query = Cylinder.query
+            if filter_status:
+                query = query.filter(Cylinder.status == filter_status)
+            if search_query:
+                query = query.filter(
+                    (Cylinder.custom_id.like(f'%{search_query}%')) |
+                    (Cylinder.serial_number.like(f'%{search_query}%'))
+                )
+            total = query.count()
+            cylinders = query.all()
+            return [c.to_dict() for c in cylinders], total
+        except Exception as e:
+            print(f"Error in CylinderModel.get_all: {e}")
+            return [], 0
+    
+    def add_cylinder(self, cylinder_data):
+        """Add a new cylinder"""
+        try:
+            new_cylinder = Cylinder(
+                id=f"CYL-{os.urandom(4).hex().upper()}",
+                **cylinder_data
+            )
+            db.session.add(new_cylinder)
+            db.session.commit()
+            return new_cylinder.id
+        except Exception as e:
+            print(f"Error in CylinderModel.add_cylinder: {e}")
+            return None
+
+# Initialize models
+customer_model = CustomerModel()
+cylinder_model = CylinderModel()
 
 # ============================================================================
 # AUTHENTICATION ROUTES

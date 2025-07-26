@@ -11,8 +11,8 @@ def import_all_data():
     """Import all data from JSON files to SQLite"""
     try:
         # Import Flask app and models
-        from app_sqlite import app, db
-        from sqlite_models import Customer, Cylinder, RentalHistory
+        from app_sqlite import app
+        from sqlite_models import Customer, Cylinder, RentalHistory, db
         
         with app.app_context():
             print("Starting SQLite data import...")
