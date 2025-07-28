@@ -1,9 +1,10 @@
 """
-Clean MySQL Flask app for Varasai Oxygen Cylinder Tracker
-Simple implementation using MySQL database with PyMySQL
+Clean PostgreSQL Flask app for Varasai Oxygen Cylinder Tracker
+Using PostgreSQL database with psycopg2
 """
 import os
-import pymysql
+import psycopg2
+import psycopg2.extras
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -13,19 +14,13 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
 
-# MySQL configuration for PythonAnywhere
-MYSQL_CONFIG = {
-    'host': os.environ.get('MYSQL_HOST', 'localhost'),
-    'user': os.environ.get('MYSQL_USER', 'root'),
-    'password': os.environ.get('MYSQL_PASSWORD', ''),
-    'database': os.environ.get('MYSQL_DATABASE', 'oxygen_tracker'),
-    'charset': 'utf8mb4'
-}
-
 def get_db_connection():
-    """Get MySQL database connection"""
+    """Get PostgreSQL database connection"""
     try:
-        connection = pymysql.connect(**MYSQL_CONFIG)
+        connection = psycopg2.connect(
+            os.environ.get("DATABASE_URL"),
+            cursor_factory=psycopg2.extras.RealDictCursor
+        )
         return connection
     except Exception as e:
         print(f"Database connection error: {e}")
