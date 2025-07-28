@@ -21,9 +21,9 @@
         </div>
         {% if session.role == 'admin' %}
         <div class="col-auto">
-            <a href="{{ url_for('add_cylinder') }}" class="btn btn-primary btn-lg" style="font-size: 1.2rem;">
-                <i class="bi bi-plus-lg me-2"></i>Add Cylinder
-            </a>
+            <button class="btn btn-primary btn-lg" style="font-size: 1.2rem;" disabled>
+                <i class="bi bi-plus-lg me-2"></i>Add Cylinder (Coming Soon)
+            </button>
         </div>
         {% endif %}
     </div>
@@ -388,7 +388,7 @@
                     {% if search_query or status_filter or customer_filter %}
                     Try adjusting your search criteria or <a href="{{ url_for('cylinders') }}">view all cylinders</a>.
                     {% else %}
-                    Get started by <a href="{{ url_for('add_cylinder') }}">adding your first cylinder</a>.
+                    Contact admin to add cylinders to the system.
                     {% endif %}
                 </p>
             </div>
