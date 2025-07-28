@@ -195,7 +195,45 @@ class CylinderService(DatabaseService):
             Cylinder.custom_id.asc().nulls_last()
         ).offset(offset).limit(per_page).all()
         
-        return cylinders, total_count
+        # Convert SQLAlchemy objects to dictionaries for template compatibility
+        cylinders_dict = []
+        for cylinder in cylinders:
+            cylinder_dict = {
+                'id': cylinder.id,
+                'custom_id': cylinder.custom_id,
+                'serial_number': cylinder.serial_number,
+                'type': cylinder.type,
+                'size': cylinder.size,
+                'status': cylinder.status,
+                'location': cylinder.location,
+                'pressure': cylinder.pressure,
+                'last_inspection': cylinder.last_inspection.isoformat() if cylinder.last_inspection else '',
+                'next_inspection': cylinder.next_inspection.isoformat() if cylinder.next_inspection else '',
+                'notes': cylinder.notes,
+                'rented_to': cylinder.rented_to,
+                'customer_name': cylinder.customer_name,
+                'customer_no': cylinder.customer_no,
+                'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else '',
+                'date_returned': cylinder.date_returned.isoformat() if cylinder.date_returned else '',
+                'created_at': cylinder.created_at.isoformat() if cylinder.created_at else '',
+                'updated_at': cylinder.updated_at.isoformat() if cylinder.updated_at else ''
+            }
+            
+            # Calculate rental days for rented cylinders
+            if cylinder.status == 'rented' and cylinder.date_borrowed:
+                rental_days = (datetime.utcnow() - cylinder.date_borrowed).days
+                cylinder_dict['rental_days'] = rental_days
+                cylinder_dict['rental_months'] = rental_days // 30
+            else:
+                cylinder_dict['rental_days'] = 0
+                cylinder_dict['rental_months'] = 0
+                
+            # Generate display ID
+            cylinder_dict['display_id'] = cylinder.custom_id or cylinder.serial_number or f"ID-{cylinder.id[:8]}"
+            
+            cylinders_dict.append(cylinder_dict)
+        
+        return cylinders_dict, total_count
     
     def get_by_id(self, cylinder_id: str) -> Optional[Cylinder]:
         """Get cylinder by ID"""

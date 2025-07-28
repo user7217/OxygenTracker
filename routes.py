@@ -328,46 +328,33 @@ def index():
     Returns:
         Dashboard template with comprehensive system statistics
     """
-    # Get actual total counts from PostgreSQL without pagination limits
+    # Get actual total counts from PostgreSQL database directly
     with CustomerService() as customer_service:
         customers_data, total_customers = customer_service.get_all(page=1, per_page=1)
+    
     with CylinderService() as cylinder_service:
-        cylinders, total_cylinders = cylinder_service.get_all(page=1, per_page=2000)  # Get cylinders for status calculation
-    
-    # Calculate cylinder status distribution (handle SQLAlchemy objects)
-    available_cylinders = 0
-    rented_cylinders = 0
-    maintenance_cylinders = 0
-    customer_rentals = {}
-    
-    for cylinder in cylinders:
-        # Handle both SQLAlchemy objects and dictionaries
-        if hasattr(cylinder, 'status'):  # SQLAlchemy object
-            status = cylinder.status.lower() if cylinder.status else ''
-            if status == 'available':
-                available_cylinders += 1
-            elif status == 'rented':
-                rented_cylinders += 1
-            elif status == 'maintenance':
-                maintenance_cylinders += 1
-            
-            # Count customer rentals
-            if cylinder.rented_to:
-                customer_id = cylinder.rented_to
-                customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
-        else:  # Dictionary object
-            status = cylinder.get('status', '').lower()
-            if status == 'available':
-                available_cylinders += 1
-            elif status == 'rented':
-                rented_cylinders += 1
-            elif status == 'maintenance':
-                maintenance_cylinders += 1
-            
-            # Count customer rentals
-            if cylinder.get('rented_to'):
-                customer_id = cylinder['rented_to']
-                customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+        # Get counts directly from database using SQL for accuracy
+        from sqlalchemy import text
+        
+        # Get total cylinder count
+        result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders")).scalar()
+        total_cylinders = result or 0
+        
+        # Get count by status (case-insensitive)
+        available_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'available'")).scalar()
+        available_cylinders = available_result or 0
+        
+        rented_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'rented'")).scalar()
+        rented_cylinders = rented_result or 0
+        
+        maintenance_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'maintenance'")).scalar()
+        maintenance_cylinders = maintenance_result or 0
+        
+        # Get customer rental counts for top customer calculation
+        customer_rentals = {}
+        rental_results = cylinder_service.db.execute(text("SELECT rented_to, COUNT(*) as count FROM cylinders WHERE status = 'rented' AND rented_to IS NOT NULL GROUP BY rented_to")).fetchall()
+        for row in rental_results:
+            customer_rentals[row[0]] = row[1]
     
     utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
     
