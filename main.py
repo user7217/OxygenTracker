@@ -16,7 +16,7 @@ def load_environment():
 # Load environment before importing app
 load_environment()
 
-from app_simple import app
+from app_mysql_clean import app
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

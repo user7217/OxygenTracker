@@ -1,8 +1,8 @@
-modules = ["python-3.11", "postgresql-16"]
+modules = ["python-3.11", "postgresql-16", "python3"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["freetype", "glibcLocales", "openssl", "postgresql", "unixODBC", "mariadb", "mariadb-connector-c"]
+packages = ["freetype", "glibcLocales", "mariadb", "mariadb-connector-c", "openssl", "postgresql", "unixODBC"]
 
 [deployment]
 deploymentTarget = "autoscale"

@@ -1,6 +1,6 @@
 """
-MySQL Flask app for Varasai Oxygen Cylinder Tracker
-Clean implementation using MySQL database with PyMySQL
+Clean MySQL Flask app for Varasai Oxygen Cylinder Tracker
+Simple implementation using MySQL database with PyMySQL
 """
 import os
 import pymysql
@@ -8,11 +8,12 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import json
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
 
-# MySQL configuration
+# MySQL configuration for PythonAnywhere
 MYSQL_CONFIG = {
     'host': os.environ.get('MYSQL_HOST', 'localhost'),
     'user': os.environ.get('MYSQL_USER', 'root'),
@@ -147,17 +148,16 @@ def save_users(users):
         json.dump(users, f, indent=2)
 
 def authenticate_user(username, password):
-    """Authenticate user credentials"""
+    """Authenticate user login"""
     users = load_users()
-    user = users.get(username)
-    if user and check_password_hash(user['password_hash'], password):
-        return user
+    if username in users:
+        user = users[username]
+        if check_password_hash(user['password_hash'], password):
+            return user
     return None
 
-# Authentication decorator
 def login_required(f):
     """Decorator to require login for routes"""
-    from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -173,8 +173,8 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user = authenticate_user(username, password)
         
+        user = authenticate_user(username, password)
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
@@ -200,36 +200,41 @@ def index():
     connection = get_db_connection()
     if not connection:
         flash('Database connection error', 'error')
-        return render_template('login.html')
+        return render_template('index.html', stats={'total_customers': 0, 'total_cylinders': 0, 'rented_cylinders': 0, 'available_cylinders': 0, 'maintenance_cylinders': 0})
     
     try:
         cursor = connection.cursor()
         
         # Get basic statistics
         cursor.execute('SELECT COUNT(*) as count FROM customers')
-        customer_count = cursor.fetchone()['count']
+        result = cursor.fetchone()
+        customer_count = result[0] if result else 0
         
         cursor.execute('SELECT COUNT(*) as count FROM cylinders')
-        cylinder_count = cursor.fetchone()['count']
+        result = cursor.fetchone()
+        cylinder_count = result[0] if result else 0
         
         cursor.execute("SELECT COUNT(*) as count FROM cylinders WHERE status = 'rented'")
-        rented_count = cursor.fetchone()['count']
+        result = cursor.fetchone()
+        rented_count = result[0] if result else 0
         
         available_count = cylinder_count - rented_count
         
-        return render_template('index.html', 
-                             customer_count=customer_count,
-                             cylinder_count=cylinder_count,
-                             rented_count=rented_count,
-                             available_count=available_count)
-                             
+        # Create stats object to match template expectations
+        stats = {
+            'total_customers': customer_count,
+            'total_cylinders': cylinder_count,
+            'rented_cylinders': rented_count,
+            'available_cylinders': available_count,
+            'maintenance_cylinders': 0  # Add this field for template compatibility
+        }
+        
+        return render_template('index.html', stats=stats)
+        
     except Exception as e:
-        flash(f'Error loading dashboard: {e}', 'error')
-        return render_template('index.html', 
-                             customer_count=0,
-                             cylinder_count=0,
-                             rented_count=0,
-                             available_count=0)
+        print(f"Error getting dashboard stats: {e}")
+        stats = {'total_customers': 0, 'total_cylinders': 0, 'rented_cylinders': 0, 'available_cylinders': 0, 'maintenance_cylinders': 0}
+        return render_template('index.html', stats=stats)
     finally:
         connection.close()
 
@@ -239,13 +244,13 @@ def customers():
     """Customers page"""
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '')
-    per_page = 25
+    per_page = request.args.get('per_page', 25, type=int)
     offset = (page - 1) * per_page
     
     connection = get_db_connection()
     if not connection:
         flash('Database connection error', 'error')
-        return render_template('customers.html', customers=[], total=0, page=1, total_pages=1, has_prev=False, has_next=False)
+        return render_template('customers.html', customers=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False}, search_query=search)
     
     try:
         cursor = connection.cursor()
@@ -260,37 +265,40 @@ def customers():
             '''
             search_term = f'%{search}%'
             cursor.execute(query, (search_term, search_term, search_term, per_page, offset))
-            customers = cursor.fetchall()
+            customers_list = cursor.fetchall()
             
-            cursor.execute('''
+            count_query = '''
                 SELECT COUNT(*) as total FROM customers 
                 WHERE customer_name LIKE %s OR customer_no LIKE %s OR customer_phone LIKE %s
-            ''', (search_term, search_term, search_term))
-            total = cursor.fetchone()['total']
+            '''
+            cursor.execute(count_query, (search_term, search_term, search_term))
+            result = cursor.fetchone()
+            total = result[0] if result else 0
         else:
-            cursor.execute('SELECT * FROM customers ORDER BY customer_name LIMIT %s OFFSET %s', (per_page, offset))
-            customers = cursor.fetchall()
+            query = 'SELECT * FROM customers ORDER BY customer_name LIMIT %s OFFSET %s'
+            cursor.execute(query, (per_page, offset))
+            customers_list = cursor.fetchall()
             
             cursor.execute('SELECT COUNT(*) as total FROM customers')
-            total = cursor.fetchone()['total']
+            result = cursor.fetchone()
+            total = result[0] if result else 0
         
-        # Calculate pagination
-        total_pages = (total + per_page - 1) // per_page
-        has_prev = page > 1
-        has_next = page < total_pages
+        # Create pagination info
+        pagination = {
+            'total': total,
+            'per_page': per_page,
+            'page': page,
+            'has_next': offset + per_page < total,
+            'has_prev': page > 1,
+            'next_num': page + 1,
+            'prev_num': page - 1
+        }
         
-        return render_template('customers.html',
-                             customers=customers,
-                             page=page,
-                             total_pages=total_pages,
-                             has_prev=has_prev,
-                             has_next=has_next,
-                             search=search,
-                             total=total)
-                             
+        return render_template('customers.html', customers=customers_list, pagination=pagination, search_query=search)
+        
     except Exception as e:
-        flash(f'Error loading customers: {e}', 'error')
-        return render_template('customers.html', customers=[], total=0, page=1, total_pages=1, has_prev=False, has_next=False)
+        print(f"Error getting customers: {e}")
+        return render_template('customers.html', customers=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False}, search_query=search)
     finally:
         connection.close()
 
@@ -301,75 +309,78 @@ def cylinders():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '')
     status_filter = request.args.get('status', '')
-    per_page = 25
+    per_page = request.args.get('per_page', 25, type=int)
     offset = (page - 1) * per_page
     
     connection = get_db_connection()
     if not connection:
         flash('Database connection error', 'error')
-        return render_template('cylinders.html', cylinders=[], total=0, page=1, total_pages=1, has_prev=False, has_next=False)
+        return render_template('cylinders.html', cylinders=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False}, search_query=search, status_filter=status_filter, customers=[])
     
     try:
         cursor = connection.cursor()
         
-        # Build query with filters
-        where_clauses = []
+        # Build query with search and filters
+        conditions = []
         params = []
         
         if search:
-            where_clauses.append('(custom_id LIKE %s OR serial_number LIKE %s OR customer_name LIKE %s)')
+            conditions.append("(custom_id LIKE %s OR serial_number LIKE %s OR type LIKE %s OR location LIKE %s)")
             search_term = f'%{search}%'
-            params.extend([search_term, search_term, search_term])
+            params.extend([search_term, search_term, search_term, search_term])
         
         if status_filter:
-            where_clauses.append('status = %s')
+            conditions.append("status = %s")
             params.append(status_filter)
         
-        where_sql = ' AND '.join(where_clauses) if where_clauses else '1=1'
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f'''
             SELECT * FROM cylinders 
-            WHERE {where_sql}
-            ORDER BY 
-                CASE WHEN status = 'rented' THEN 0 ELSE 1 END,
-                custom_id
+            {where_clause}
+            ORDER BY status DESC, date_borrowed DESC
             LIMIT %s OFFSET %s
         '''
         params.extend([per_page, offset])
-        cursor.execute(query, params)
-        cylinders = cursor.fetchall()
+        cursor.execute(query, tuple(params))
+        cylinders_list = cursor.fetchall()
         
-        # Count total
-        count_query = f'SELECT COUNT(*) as total FROM cylinders WHERE {where_sql}'
-        count_params = params[:-2]  # Remove LIMIT and OFFSET
-        cursor.execute(count_query, count_params)
-        total = cursor.fetchone()['total']
+        # Get total count for pagination
+        count_query = f'SELECT COUNT(*) as total FROM cylinders {where_clause}'
+        count_params = params[:-2]  # Remove limit and offset
+        cursor.execute(count_query, tuple(count_params))
+        result = cursor.fetchone()
+        total = result[0] if result else 0
         
-        # Calculate pagination
-        total_pages = (total + per_page - 1) // per_page
-        has_prev = page > 1
-        has_next = page < total_pages
+        # Get customers for rental modal
+        cursor.execute('SELECT * FROM customers ORDER BY customer_name')
+        customers_list = cursor.fetchall()
         
-        return render_template('cylinders.html',
-                             cylinders=cylinders,
-                             page=page,
-                             total_pages=total_pages,
-                             has_prev=has_prev,
-                             has_next=has_next,
-                             search=search,
+        # Create pagination info
+        pagination = {
+            'total': total,
+            'per_page': per_page,
+            'page': page,
+            'has_next': offset + per_page < total,
+            'has_prev': page > 1,
+            'next_num': page + 1,
+            'prev_num': page - 1
+        }
+        
+        return render_template('cylinders.html', 
+                             cylinders=cylinders_list, 
+                             pagination=pagination, 
+                             search_query=search,
                              status_filter=status_filter,
-                             total=total)
-                             
+                             customers=customers_list)
+        
     except Exception as e:
-        flash(f'Error loading cylinders: {e}', 'error')
-        return render_template('cylinders.html', cylinders=[], total=0, page=1, total_pages=1, has_prev=False, has_next=False)
+        print(f"Error getting cylinders: {e}")
+        return render_template('cylinders.html', cylinders=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False}, search_query=search, status_filter=status_filter, customers=[])
     finally:
         connection.close()
 
-# Initialize database on startup
 if __name__ == '__main__':
+    # Initialize database on startup
     init_mysql_database()
-    app.run(debug=True, host='0.0.0.0', port=5000)
-else:
-    # Initialize when imported
-    init_mysql_database()
+    app.run(host='0.0.0.0', port=5000, debug=True)
