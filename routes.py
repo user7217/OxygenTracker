@@ -710,6 +710,15 @@ def customer_details(customer_id):
     # Past transactions are already dictionaries from the service
     past_transactions_dict = past_transactions[:50]  # Limit to recent 50 transactions for performance
     
+    # Debug logging to see what data we're getting
+    print(f"DEBUG: Customer ID: {customer['id']}")
+    print(f"DEBUG: Active rentals count: {len(active_rentals_dict)}")
+    print(f"DEBUG: Past transactions count: {len(past_transactions_dict)}")
+    if active_rentals_dict:
+        print(f"DEBUG: Sample active rental: {active_rentals_dict[0]}")
+    if past_transactions_dict:
+        print(f"DEBUG: Sample past transaction: {past_transactions_dict[0]}")
+    
     history_data = {
         'active': active_rentals_dict,
         'past': past_transactions_dict
