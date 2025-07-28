@@ -1,17 +1,17 @@
 """
-Sample data loader for MySQL database
+Sample data loader for SQLite database
 Creates sample customers and cylinders for testing
 """
-import pymysql
+import sqlite3
 import uuid
 from datetime import datetime, timedelta
 import random
-from app import MYSQL_CONFIG, get_db_connection, init_mysql_database
+from app import get_db_connection, init_sqlite_database
 
 def create_sample_data():
     """Create sample customers and cylinders for testing"""
     # Initialize database first
-    if not init_mysql_database():
+    if not init_sqlite_database():
         print("Failed to initialize database")
         return False
     
@@ -117,11 +117,8 @@ def create_sample_data():
         connection.close()
 
 if __name__ == '__main__':
-    print("🚀 Creating sample data for MySQL database...")
-    print("📋 Configuration:")
-    print(f"   • MySQL Host: {MYSQL_CONFIG['host']}")
-    print(f"   • MySQL Database: {MYSQL_CONFIG['database']}")
-    print(f"   • MySQL User: {MYSQL_CONFIG['user']}")
+    print("🚀 Creating sample data for SQLite database...")
+    print("📋 Database: oxygen_tracker.db")
     print()
     
     if create_sample_data():

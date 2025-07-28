@@ -1,10 +1,9 @@
 """
-Clean PostgreSQL Flask app for Varasai Oxygen Cylinder Tracker
-Using PostgreSQL database with psycopg2
+Clean SQLite Flask app for Varasai Oxygen Cylinder Tracker
+Using SQLite database for simplicity and portability
 """
 import os
-import psycopg2
-import psycopg2.extras
+import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -14,106 +13,104 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "your-secret-key-here")
 
+DATABASE = 'oxygen_tracker.db'
+
 def get_db_connection():
-    """Get PostgreSQL database connection"""
+    """Get SQLite database connection"""
     try:
-        connection = psycopg2.connect(
-            os.environ.get("DATABASE_URL"),
-            cursor_factory=psycopg2.extras.RealDictCursor
-        )
+        connection = sqlite3.connect(DATABASE)
+        connection.row_factory = sqlite3.Row  # This allows dict-like access
         return connection
     except Exception as e:
         print(f"Database connection error: {e}")
         return None
 
-def init_mysql_database():
-    """Initialize MySQL database with tables"""
+def init_sqlite_database():
+    """Initialize SQLite database with tables"""
     connection = get_db_connection()
     if not connection:
-        print("Failed to connect to MySQL database")
+        print("Failed to connect to SQLite database")
         return False
         
     try:
         cursor = connection.cursor()
         
-        # Create database if it doesn't exist
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_CONFIG['database']}")
-        cursor.execute(f"USE {MYSQL_CONFIG['database']}")
-        
         # Create customers table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS customers (
-                id VARCHAR(50) PRIMARY KEY,
-                customer_no VARCHAR(50) UNIQUE,
-                customer_name VARCHAR(200) NOT NULL,
-                customer_email VARCHAR(200),
-                customer_phone VARCHAR(50),
+                id TEXT PRIMARY KEY,
+                customer_no TEXT UNIQUE,
+                customer_name TEXT NOT NULL,
+                customer_email TEXT,
+                customer_phone TEXT,
                 customer_address TEXT,
-                customer_city VARCHAR(100),
-                customer_state VARCHAR(100),
-                customer_apgst VARCHAR(50),
-                customer_cst VARCHAR(50),
+                customer_city TEXT,
+                customer_state TEXT,
+                customer_apgst TEXT,
+                customer_cst TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_customer_no (customer_no),
-                INDEX idx_customer_name (customer_name)
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
         # Create cylinders table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS cylinders (
-                id VARCHAR(50) PRIMARY KEY,
-                custom_id VARCHAR(50) UNIQUE,
-                serial_number VARCHAR(100),
-                type VARCHAR(50) DEFAULT 'Medical Oxygen',
-                size VARCHAR(20) DEFAULT '40L',
-                status VARCHAR(20) DEFAULT 'available',
-                location VARCHAR(200) DEFAULT 'Warehouse',
-                pressure VARCHAR(50),
-                last_inspection VARCHAR(50),
-                next_inspection VARCHAR(50),
+                id TEXT PRIMARY KEY,
+                custom_id TEXT UNIQUE,
+                serial_number TEXT,
+                type TEXT DEFAULT 'Medical Oxygen',
+                size TEXT DEFAULT '40L',
+                status TEXT DEFAULT 'available',
+                location TEXT DEFAULT 'Warehouse',
+                pressure TEXT,
+                last_inspection TEXT,
+                next_inspection TEXT,
                 notes TEXT,
-                rented_to VARCHAR(50),
-                customer_name VARCHAR(200),
-                customer_email VARCHAR(200),
-                customer_phone VARCHAR(50),
-                customer_no VARCHAR(50),
+                rented_to TEXT,
+                customer_name TEXT,
+                customer_email TEXT,
+                customer_phone TEXT,
+                customer_no TEXT,
                 date_borrowed DATETIME,
                 date_returned DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_custom_id (custom_id),
-                INDEX idx_status (status),
-                INDEX idx_customer_no (customer_no)
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
         # Create rental_history table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS rental_history (
-                id VARCHAR(50) PRIMARY KEY,
-                customer_no VARCHAR(50),
-                customer_name VARCHAR(200),
-                cylinder_custom_id VARCHAR(50),
-                cylinder_type VARCHAR(50),
-                cylinder_size VARCHAR(20),
+                id TEXT PRIMARY KEY,
+                customer_no TEXT,
+                customer_name TEXT,
+                cylinder_custom_id TEXT,
+                cylinder_type TEXT,
+                cylinder_size TEXT,
                 dispatch_date DATETIME,
                 return_date DATETIME,
-                rental_days INT DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_customer_no (customer_no),
-                INDEX idx_cylinder_id (cylinder_custom_id),
-                INDEX idx_dispatch_date (dispatch_date)
+                rental_days INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
+        # Create indexes
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_no ON customers(customer_no)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_name ON customers(customer_name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_custom_id ON cylinders(custom_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_status ON cylinders(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_cylinder_customer_no ON cylinders(customer_no)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rental_customer_no ON rental_history(customer_no)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rental_cylinder_id ON rental_history(cylinder_custom_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rental_dispatch_date ON rental_history(dispatch_date)')
+        
         connection.commit()
-        print("✓ MySQL database tables created successfully!")
+        print("✓ SQLite database tables created successfully!")
         return True
         
     except Exception as e:
-        print(f"Error initializing MySQL database: {e}")
+        print(f"Error initializing SQLite database: {e}")
         return False
     finally:
         connection.close()
@@ -449,5 +446,5 @@ def return_cylinder():
 
 if __name__ == '__main__':
     # Initialize database on startup
-    init_mysql_database()
+    init_sqlite_database()
     app.run(host='0.0.0.0', port=5000, debug=True)
