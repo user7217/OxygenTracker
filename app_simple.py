@@ -208,14 +208,21 @@ def customers():
     has_prev = page > 1
     has_next = page < total_pages
     
+    # Create pagination object to match template expectations
+    pagination = {
+        'total': total,
+        'per_page': per_page,
+        'page': page,
+        'has_next': has_next,
+        'has_prev': has_prev,
+        'next_num': page + 1,
+        'prev_num': page - 1
+    }
+    
     return render_template('customers.html',
                          customers=customers,
-                         page=page,
-                         total_pages=total_pages,
-                         has_prev=has_prev,
-                         has_next=has_next,
-                         search=search,
-                         total=total)
+                         pagination=pagination,
+                         search_query=search)
 
 @app.route('/cylinders')
 @login_required
@@ -260,6 +267,9 @@ def cylinders():
     count_params = params[:-2]  # Remove LIMIT and OFFSET
     total = conn.execute(count_query, count_params).fetchone()['total']
     
+    # Get customers for modal
+    customers = conn.execute('SELECT * FROM customers ORDER BY customer_name').fetchall()
+    
     conn.close()
     
     # Calculate pagination
@@ -267,15 +277,23 @@ def cylinders():
     has_prev = page > 1
     has_next = page < total_pages
     
+    # Create pagination object to match template expectations
+    pagination = {
+        'total': total,
+        'per_page': per_page,
+        'page': page,
+        'has_next': has_next,
+        'has_prev': has_prev,
+        'next_num': page + 1,
+        'prev_num': page - 1
+    }
+    
     return render_template('cylinders.html',
                          cylinders=cylinders,
-                         page=page,
-                         total_pages=total_pages,
-                         has_prev=has_prev,
-                         has_next=has_next,
-                         search=search,
+                         pagination=pagination,
+                         search_query=search,
                          status_filter=status_filter,
-                         total=total)
+                         customers=customers)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

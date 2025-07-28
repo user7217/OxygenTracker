@@ -204,31 +204,32 @@
                             {% for cylinder in cylinders %}
                             <tr>
                                 <td>
-                                    {% if cylinder.get('custom_id') %}
+                                    {% if cylinder.custom_id %}
                                     <strong>{{ cylinder.custom_id }}</strong>
+                                    {% elif cylinder.serial_number %}
+                                    <strong>{{ cylinder.serial_number }}</strong>
                                     {% else %}
-                                    <strong>{{ cylinder.display_serial }}</strong>
+                                    <strong>{{ cylinder.id }}</strong>
                                     {% endif %}
                                 </td>
-                                <td>{{ cylinder.get('type', 'N/A') }}</td>
-                                <td>{{ cylinder.get('size', 'N/A') }}</td>
+                                <td>{{ cylinder.type or 'N/A' }}</td>
+                                <td>{{ cylinder.size or 'N/A' }}</td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
+                                    {% if cylinder.status and cylinder.status.lower() == 'rented' and cylinder.customer_name %}
                                     <strong>{{ cylinder.customer_name }}</strong>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                        {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
+                                    <span class="badge {% if cylinder.status and cylinder.status.lower() == 'available' %}bg-success{% elif cylinder.status and cylinder.status.lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {% if cylinder.status and cylinder.status.lower() == 'rented' %}Dispatched{% else %}{{ (cylinder.status or 'Unknown').title() }}{% endif %}
                                     </span>
                                 </td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' %}
-                                        {% set dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '') %}
-                                        {% if dispatch_date %}
-                                        <small class="text-muted">{{ dispatch_date[:10] }}</small>
+                                    {% if cylinder.status and cylinder.status.lower() == 'rented' %}
+                                        {% if cylinder.date_borrowed %}
+                                        <small class="text-muted">{{ cylinder.date_borrowed[:10] }}</small>
                                         {% else %}
                                         <span class="text-muted">-</span>
                                         {% endif %}
@@ -237,11 +238,9 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
-                                    {% set rental_months = cylinder.get('rental_months', 0) %}
-                                    {% set rental_days = cylinder.get('rental_days', 0) %}
-                                    <span class="badge {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                        {{ rental_days }} days
+                                    {% if cylinder.status and cylinder.status.lower() == 'rented' and cylinder.customer_name %}
+                                    <span class="badge bg-warning text-dark">
+                                        Dispatched
                                     </span>
                                     {% else %}
                                     <span class="text-muted">-</span>
@@ -256,16 +255,16 @@
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% endif %}
-                                        {% if cylinder.get('status', '').lower() == 'available' %}
+                                        {% if cylinder.status and cylinder.status.lower() == 'available' %}
                                         <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" 
                                                 data-bs-target="#rentModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Dispatch">
+                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.serial_number or cylinder.id }}" title="Dispatch">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
-                                        {% elif cylinder.get('status', '').lower() == 'rented' %}
+                                        {% elif cylinder.status and cylinder.status.lower() == 'rented' %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
-                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Return">
+                                                data-cylinder-display="{{ cylinder.custom_id or cylinder.serial_number or cylinder.id }}" title="Return">
                                             <i class="bi bi-arrow-left-circle"></i>
                                         </button>
                                         {% endif %}
@@ -274,7 +273,7 @@
                                         </a>
                                         {% if session.role == 'admin' %}
                                         <form method="POST" action="{{ url_for('delete_cylinder', cylinder_id=cylinder.id) }}" class="d-inline" 
-                                              onsubmit="return confirm('Are you sure you want to delete cylinder {{ cylinder.display_serial }}? This action cannot be undone.')">
+                                              onsubmit="return confirm('Are you sure you want to delete this cylinder? This action cannot be undone.')">
                                             <button type="submit" class="btn btn-outline-danger" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
