@@ -2072,35 +2072,23 @@ def customer_active_dispatches(customer_id):
 @login_required
 def reports():
     """Data reports and export page"""
-    customer_model = Customer()
-    cylinder_model = Cylinder()
+    # Use PostgreSQL services for reports
+    with CustomerService() as customer_service:
+        customers, _ = customer_service.get_all(page=1, per_page=10000)
     
-    # Get current stats
-    customers, _ = customer_model.get_all()
-    cylinders, _ = cylinder_model.get_all()
+    with CylinderService() as cylinder_service:
+        cylinders, _ = cylinder_service.get_all(page=1, per_page=20000)
     
-    # Convert to dict format if needed for stats calculation
-    cylinders_dict = []
-    for cylinder in cylinders:
-        if isinstance(cylinder, dict):
-            cylinders_dict.append(cylinder)
-        else:
-            cylinders_dict.append({
-                'id': cylinder.id,
-                'status': cylinder.status or '',
-                'rented_to': cylinder.rented_to or ''
-            })
-    
+    # PostgreSQL services already return dictionaries
+    cylinders_dict = cylinders
     customers_dict = []
+    
     for customer in customers:
-        if isinstance(customer, dict):
-            customer_dict = customer
-        else:
-            customer_dict = {
-                'id': customer.id,
-                'customer_name': customer.customer_name or '',
-                'customer_no': customer.customer_no or ''
-            }
+        customer_dict = customer if isinstance(customer, dict) else {
+            'id': customer.id,
+            'customer_name': customer.customer_name or '',
+            'customer_no': customer.customer_no or ''
+        }
         
         # Add rental count for sorting customers
         rented_cylinders = [c for c in cylinders_dict if c.get('rented_to') == customer_dict['id']]
