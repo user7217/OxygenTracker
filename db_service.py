@@ -250,11 +250,51 @@ class CylinderService(DatabaseService):
         """Get cylinder by ID"""
         return self.db.query(Cylinder).filter(Cylinder.id == cylinder_id).first()
     
-    def get_by_customer(self, customer_id: str) -> List[Cylinder]:
-        """Get cylinders rented by customer"""
-        return self.db.query(Cylinder).filter(
+    def get_by_customer(self, customer_id: str) -> List[Dict]:
+        """Get cylinders rented by customer, returning dictionaries"""
+        cylinders = self.db.query(Cylinder).filter(
             and_(Cylinder.rented_to == customer_id, Cylinder.status == 'rented')
         ).all()
+        
+        # Convert to dictionaries for template compatibility
+        cylinders_dict = []
+        for cylinder in cylinders:
+            cylinder_dict = {
+                'id': cylinder.id,
+                'custom_id': cylinder.custom_id or '',
+                'serial_number': cylinder.serial_number or '',
+                'type': cylinder.type or 'Medical Oxygen',
+                'size': cylinder.size or '40L',
+                'status': cylinder.status or 'rented',
+                'location': cylinder.location or 'Warehouse',
+                'pressure': getattr(cylinder, 'pressure', ''),
+                'last_inspection': getattr(cylinder, 'last_inspection', ''),
+                'next_inspection': getattr(cylinder, 'next_inspection', ''),
+                'notes': getattr(cylinder, 'notes', ''),
+                'rented_to': cylinder.rented_to,
+                'customer_name': cylinder.customer_name or '',
+                'customer_no': cylinder.customer_no or '',
+                'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else '',
+                'date_returned': cylinder.date_returned.isoformat() if cylinder.date_returned else '',
+                'created_at': cylinder.created_at.isoformat() if cylinder.created_at else '',
+                'updated_at': cylinder.updated_at.isoformat() if cylinder.updated_at else ''
+            }
+            
+            # Calculate rental days for active cylinders
+            if cylinder.status == 'rented' and cylinder.date_borrowed:
+                rental_days = (datetime.utcnow() - cylinder.date_borrowed).days
+                cylinder_dict['rental_days'] = rental_days
+                cylinder_dict['rental_months'] = rental_days // 30
+            else:
+                cylinder_dict['rental_days'] = 0
+                cylinder_dict['rental_months'] = 0
+                
+            # Generate display ID
+            cylinder_dict['display_id'] = cylinder.custom_id or cylinder.serial_number or f"ID-{cylinder.id[:8]}"
+            
+            cylinders_dict.append(cylinder_dict)
+        
+        return cylinders_dict
     
     def create(self, cylinder_data: Dict) -> Cylinder:
         """Create new cylinder"""
@@ -403,6 +443,34 @@ class RentalHistoryService(DatabaseService):
         history = query.order_by(desc(RentalHistory.return_date)).offset(offset).limit(per_page).all()
         
         return history, total_count
+    
+    def get_customer_history(self, customer_id: str) -> Dict:
+        """Get customer's rental history split into active and past"""
+        # Get past rental history
+        past_rentals = self.db.query(RentalHistory).filter(
+            RentalHistory.customer_id == customer_id
+        ).order_by(desc(RentalHistory.return_date)).limit(50).all()
+        
+        # Convert to dictionaries
+        past_dict = []
+        for rental in past_rentals:
+            rental_dict = {
+                'id': rental.id,
+                'customer_name': rental.customer_name or '',
+                'customer_no': rental.customer_no or '',
+                'cylinder_custom_id': rental.cylinder_custom_id or '',
+                'cylinder_type': rental.cylinder_type or '',
+                'cylinder_size': rental.cylinder_size or '',
+                'dispatch_date': rental.dispatch_date.isoformat() if rental.dispatch_date else '',
+                'return_date': rental.return_date.isoformat() if rental.return_date else '',
+                'rental_days': rental.rental_days or 0
+            }
+            past_dict.append(rental_dict)
+        
+        return {
+            'active': [],  # Active rentals are handled by CylinderService
+            'past': past_dict
+        }
     
     def get_customer_history(self, customer_id: str) -> Dict[str, List]:
         """Get customer rental history (active and past)"""
