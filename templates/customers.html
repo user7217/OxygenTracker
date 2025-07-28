@@ -109,21 +109,18 @@
                                 <td style="word-wrap: break-word; border: none; background-color: white !important; padding: 0.75rem;">{{ customer.customer_state or '-' }}</td>
                                 <td style="word-wrap: break-word; border: none; background-color: white !important; padding: 0.75rem;">{{ customer.customer_phone or customer.phone or '-' }}</td>
                                 <td style="min-width: 200px; border: none; background-color: white !important; padding: 0.75rem;">
-                                    {% if customer.rented_cylinders %}
+                                    {% if customer.active_dispatches and customer.active_dispatches > 0 %}
                                         <div class="d-flex flex-column">
                                             <div class="d-flex align-items-center mb-1">
-                                                <span class="badge bg-warning text-dark me-2">{{ customer.rented_cylinders|length }}</span>
-                                                <a href="{{ url_for('customer_active_dispatches', customer_id=customer.id) }}" 
+                                                <span class="badge bg-warning text-dark me-2">{{ customer.active_dispatches }}</span>
+                                                <a href="{{ url_for('customer_details', customer_id=customer.id) }}" 
                                                    class="btn btn-outline-dark btn-sm" 
                                                    title="View Details">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                             </div>
                                             <small class="text-muted" style="font-size: 0.75rem;">
-                                                {% for cylinder in customer.rented_cylinders[:2] %}
-                                                    {{ cylinder.custom_id or cylinder.serial_number or 'Unknown' }}{% if not loop.last %}, {% endif %}
-                                                {% endfor %}
-                                                {% if customer.rented_cylinders|length > 2 %}...{% endif %}
+                                                Active cylinders dispatched
                                             </small>
                                         </div>
                                     {% else %}
