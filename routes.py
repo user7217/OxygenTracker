@@ -712,12 +712,20 @@ def customer_details(customer_id):
     
     # Debug logging to see what data we're getting
     print(f"DEBUG: Customer ID: {customer['id']}")
+    print(f"DEBUG: Customer No: {customer.get('customer_no', 'N/A')}")
+    print(f"DEBUG: Customer Name: {customer.get('customer_name', 'N/A')}")
     print(f"DEBUG: Active rentals count: {len(active_rentals_dict)}")
     print(f"DEBUG: Past transactions count: {len(past_transactions_dict)}")
     if active_rentals_dict:
         print(f"DEBUG: Sample active rental: {active_rentals_dict[0]}")
     if past_transactions_dict:
         print(f"DEBUG: Sample past transaction: {past_transactions_dict[0]}")
+    
+    # Additional debug: Check if this customer actually has cylinders in the database
+    from sqlalchemy import text
+    with CylinderService() as debug_service:
+        result = debug_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE rented_to = :customer_id AND status = 'rented'"), {'customer_id': customer['id']}).fetchone()
+        print(f"DEBUG: Direct SQL count for customer {customer['id']}: {result[0] if result else 0}")
     
     history_data = {
         'active': active_rentals_dict,

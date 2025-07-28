@@ -446,9 +446,20 @@ class RentalHistoryService(DatabaseService):
     
     def get_customer_history(self, customer_id: str) -> Dict:
         """Get customer's rental history split into active and past"""
-        # Get past rental history
+        # Get customer to find customer_no for matching
+        customer_service = CustomerService()
+        customer = customer_service.get_by_id(customer_id)
+        customer_service.close()
+        
+        if not customer:
+            return {'active': [], 'past': []}
+        
+        # Get past rental history using both customer_id and customer_no for broader matching
         past_rentals = self.db.query(RentalHistory).filter(
-            RentalHistory.customer_id == customer_id
+            or_(
+                RentalHistory.customer_id == customer_id,
+                RentalHistory.customer_no == customer.customer_no
+            )
         ).order_by(desc(RentalHistory.return_date)).limit(50).all()
         
         # Convert to dictionaries
