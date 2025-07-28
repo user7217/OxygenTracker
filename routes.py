@@ -646,12 +646,17 @@ def customers():
         # Convert results to dictionaries
         customers_paginated = []
         for row in result:
+            # Clean phone number - convert empty/0.0 values to None
+            phone = row.customer_phone
+            if phone in ['0.0', '0', '', None]:
+                phone = None
+                
             customer_dict = {
                 'id': row.id,
                 'customer_no': row.customer_no,
                 'customer_name': row.customer_name,
                 'customer_email': row.customer_email,
-                'customer_phone': row.customer_phone,
+                'customer_phone': phone,
                 'customer_address': row.customer_address,
                 'customer_city': row.customer_city,  
                 'customer_state': row.customer_state,
