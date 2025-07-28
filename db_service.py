@@ -200,24 +200,35 @@ class CylinderService(DatabaseService):
         for cylinder in cylinders:
             cylinder_dict = {
                 'id': cylinder.id,
-                'custom_id': cylinder.custom_id,
-                'serial_number': cylinder.serial_number,
-                'type': cylinder.type,
-                'size': cylinder.size,
-                'status': cylinder.status,
-                'location': cylinder.location,
-                'pressure': cylinder.pressure,
-                'last_inspection': cylinder.last_inspection.isoformat() if cylinder.last_inspection else '',
-                'next_inspection': cylinder.next_inspection.isoformat() if cylinder.next_inspection else '',
-                'notes': cylinder.notes,
+                'custom_id': cylinder.custom_id or '',
+                'serial_number': cylinder.serial_number or '',
+                'type': cylinder.type or 'Medical Oxygen',
+                'size': cylinder.size or '40L',
+                'status': cylinder.status or 'available',
+                'location': cylinder.location or 'Warehouse',
+                'pressure': getattr(cylinder, 'pressure', ''),  # Safe access with default
+                'last_inspection': getattr(cylinder, 'last_inspection', None),
+                'next_inspection': getattr(cylinder, 'next_inspection', None),
+                'notes': getattr(cylinder, 'notes', ''),
                 'rented_to': cylinder.rented_to,
-                'customer_name': cylinder.customer_name,
-                'customer_no': cylinder.customer_no,
+                'customer_name': cylinder.customer_name or '',
+                'customer_no': cylinder.customer_no or '',
                 'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else '',
                 'date_returned': cylinder.date_returned.isoformat() if cylinder.date_returned else '',
                 'created_at': cylinder.created_at.isoformat() if cylinder.created_at else '',
                 'updated_at': cylinder.updated_at.isoformat() if cylinder.updated_at else ''
             }
+            
+            # Format inspection dates safely
+            if cylinder_dict['last_inspection'] and hasattr(cylinder_dict['last_inspection'], 'isoformat'):
+                cylinder_dict['last_inspection'] = cylinder_dict['last_inspection'].isoformat()
+            elif not cylinder_dict['last_inspection']:
+                cylinder_dict['last_inspection'] = ''
+                
+            if cylinder_dict['next_inspection'] and hasattr(cylinder_dict['next_inspection'], 'isoformat'):
+                cylinder_dict['next_inspection'] = cylinder_dict['next_inspection'].isoformat()
+            elif not cylinder_dict['next_inspection']:
+                cylinder_dict['next_inspection'] = ''
             
             # Calculate rental days for rented cylinders
             if cylinder.status == 'rented' and cylinder.date_borrowed:
