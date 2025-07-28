@@ -1098,7 +1098,8 @@ def add_cylinder():
             existing_custom_id = existing.custom_id if hasattr(existing, 'custom_id') else existing.get('custom_id', '')
             if existing_custom_id == cylinder_data['custom_id']:
                 flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                customers, _ = customer_model.get_all()
+                with CustomerService() as customer_service:
+                    customers, _ = customer_service.get_all()
                 return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
         
         # Handle customer assignment for rented cylinders
@@ -1106,15 +1107,17 @@ def add_cylinder():
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
-                customers, _ = customer_model.get_all()
+                with CustomerService() as customer_service:
+                    customers, _ = customer_service.get_all()
                 return render_template('add_cylinder.html', customers=customers)
             
             # Verify customer exists
-            customer = customer_model.get_by_id(rented_to)
-            if not customer:
-                flash('Selected customer not found', 'error')
-                customers, _ = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers)
+            with CustomerService() as customer_service:
+                customer = customer_service.get_by_id(rented_to)
+                if not customer:
+                    flash('Selected customer not found', 'error')
+                    customers, _ = customer_service.get_all()
+                    return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
             cylinder_data['customer_name'] = customer.get('name', '')
@@ -1145,7 +1148,8 @@ def add_cylinder():
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and today's date
-    customers, _ = customer_model.get_all()
+    with CustomerService() as customer_service:
+        customers, _ = customer_service.get_all()
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)
