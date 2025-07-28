@@ -2382,8 +2382,8 @@ def export_customer_report():
         return redirect(url_for('reports'))
     
     # Get all cylinders dispatched to this customer
-    with CylinderService() as cylinder_service:
-        all_cylinders, _ = cylinder_service.get_all(page=1, per_page=1000)
+    all_with CylinderService() as cylinder_service:
+        cylinders, _ = cylinder_service.get_all(page=1, per_page=1000)
     customer_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer_id]
     
     # Add rental days and sort by descending rental days
