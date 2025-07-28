@@ -120,7 +120,9 @@
                                                 </a>
                                             </div>
                                             <small class="text-muted" style="font-size: 0.75rem;">
-                                                {{ customer.rented_cylinders[:2]|map(attribute='custom_id')|join(', ') }}
+                                                {% for cylinder in customer.rented_cylinders[:2] %}
+                                                    {{ cylinder.custom_id or cylinder.serial_number or 'Unknown' }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
                                                 {% if customer.rented_cylinders|length > 2 %}...{% endif %}
                                             </small>
                                         </div>

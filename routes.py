@@ -582,18 +582,49 @@ def customers():
     else:
         customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
-    # Get only rented cylinders for performance optimization (issue #7)
-    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=1000, filter_status='rented')
+    # Get rented cylinders using PostgreSQL service for better performance
+    from db_service import CylinderService
+    
+    with CylinderService() as cylinder_service:
+        all_cylinders, _ = cylinder_service.get_all(page=1, per_page=1000, filter_status='rented')
+    
     for customer in customers_list:
-        # Count cylinders currently rented to this customer (active dispatches)
-        rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
+        # Convert customer to dict if it's a SQLAlchemy object
+        if hasattr(customer, 'id'):
+            customer_dict = {
+                'id': customer.id,
+                'customer_no': customer.customer_no,
+                'customer_name': customer.customer_name,
+                'customer_email': customer.customer_email,
+                'customer_phone': customer.customer_phone,
+                'customer_address': customer.customer_address,
+                'customer_city': customer.customer_city,
+                'customer_state': customer.customer_state,
+                'created_at': customer.created_at.isoformat() if customer.created_at else None
+            }
+            # Update customers_list with dict version
+            customers_list[customers_list.index(customer)] = customer_dict
+            customer = customer_dict
         
-        # Add rental days calculation for each cylinder
-        for cylinder in rented_cylinders:
-            cylinder['rental_days'] = cylinder_model.get_rental_days(cylinder)
-            # Use existing serial number or show custom_id as fallback
-            if not cylinder.get('serial_number'):
-                cylinder['serial_number'] = cylinder.get('custom_id', 'Unknown')
+        # Count cylinders currently rented to this customer (active dispatches)
+        rented_cylinders = []
+        for c in all_cylinders:
+            if hasattr(c, 'rented_to'):  # SQLAlchemy object
+                if c.rented_to == customer.get('id') and c.status == 'rented':
+                    cylinder_dict = {
+                        'id': c.id,
+                        'custom_id': c.custom_id or '',
+                        'serial_number': c.serial_number or '',
+                        'type': c.type,
+                        'size': c.size,
+                        'status': c.status,
+                        'date_borrowed': c.date_borrowed.isoformat() if c.date_borrowed else '',
+                        'rental_days': (datetime.utcnow() - c.date_borrowed).days if c.date_borrowed else 0
+                    }
+                    rented_cylinders.append(cylinder_dict)
+            else:  # Dict object
+                if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented':
+                    rented_cylinders.append(c)
         
         customer['rented_cylinders'] = rented_cylinders
         customer['rental_count'] = len(rented_cylinders)

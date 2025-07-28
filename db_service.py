@@ -182,16 +182,18 @@ class CylinderService(DatabaseService):
         # Optimized sorting for performance
         offset = (page - 1) * per_page
         
-        # Use simpler sorting based on filter status
-        if filter_status == 'rented':
-            # For rented cylinders, sort by date_borrowed (oldest first)
-            cylinders = query.order_by(Cylinder.date_borrowed.asc().nulls_last()).offset(offset).limit(per_page).all()
-        elif filter_status == 'available':
-            # For available cylinders, sort by custom_id
-            cylinders = query.order_by(Cylinder.custom_id.asc().nulls_last()).offset(offset).limit(per_page).all()
-        else:
-            # For mixed results, use simple status-based sort
-            cylinders = query.order_by(Cylinder.status.desc(), Cylinder.custom_id.asc().nulls_last()).offset(offset).limit(per_page).all()
+        # Sort cylinders: rented first (by dispatch date descending - longest dispatch first)
+        cylinders = query.order_by(
+            case(
+                (Cylinder.status == 'rented', 0),  # Rented cylinders first
+                (Cylinder.status == 'available', 1),  # Available cylinders second
+                else_=2  # Others last (maintenance, etc.)
+            ),
+            # For rented cylinders: sort by date_borrowed ascending (oldest dispatch = longest rental first)
+            Cylinder.date_borrowed.asc().nulls_last(),
+            # For available cylinders: sort by custom_id
+            Cylinder.custom_id.asc().nulls_last()
+        ).offset(offset).limit(per_page).all()
         
         return cylinders, total_count
     
