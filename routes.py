@@ -44,8 +44,8 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
-from app_sqlite import app
-from sqlite_models import Customer, Cylinder, RentalHistory
+from app import app
+from models_postgres import Customer, Cylinder
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -181,74 +181,9 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Import database and models from app_sqlite
-from app_sqlite import db
-from sqlite_models import Customer, Cylinder, RentalHistory
-
-# Create simple model wrappers using direct SQLAlchemy queries
-class CustomerModel:
-    def get_all(self, search_query=None, page=1, per_page=25):
-        """Get all customers with optional search and pagination"""
-        try:
-            query = Customer.query
-            if search_query:
-                query = query.filter(
-                    (Customer.customer_name.like(f'%{search_query}%')) |
-                    (Customer.customer_no.like(f'%{search_query}%')) |
-                    (Customer.customer_phone.like(f'%{search_query}%'))
-                )
-            total = query.count()
-            customers = query.all()
-            return [c.to_dict() for c in customers], total
-        except Exception as e:
-            print(f"Error in CustomerModel.get_all: {e}")
-            return [], 0
-    
-    def get_by_id(self, customer_id):
-        """Get customer by ID"""
-        try:
-            customer = Customer.query.get(customer_id)
-            return customer.to_dict() if customer else None
-        except Exception as e:
-            print(f"Error in CustomerModel.get_by_id: {e}")
-            return None
-
-class CylinderModel:
-    def get_all(self, search_query=None, page=1, per_page=25, filter_status=None, **kwargs):
-        """Get all cylinders with optional search and pagination"""
-        try:
-            query = Cylinder.query
-            if filter_status:
-                query = query.filter(Cylinder.status == filter_status)
-            if search_query:
-                query = query.filter(
-                    (Cylinder.custom_id.like(f'%{search_query}%')) |
-                    (Cylinder.serial_number.like(f'%{search_query}%'))
-                )
-            total = query.count()
-            cylinders = query.all()
-            return [c.to_dict() for c in cylinders], total
-        except Exception as e:
-            print(f"Error in CylinderModel.get_all: {e}")
-            return [], 0
-    
-    def add_cylinder(self, cylinder_data):
-        """Add a new cylinder"""
-        try:
-            new_cylinder = Cylinder(
-                id=f"CYL-{os.urandom(4).hex().upper()}",
-                **cylinder_data
-            )
-            db.session.add(new_cylinder)
-            db.session.commit()
-            return new_cylinder.id
-        except Exception as e:
-            print(f"Error in CylinderModel.add_cylinder: {e}")
-            return None
-
-# Initialize models
-customer_model = CustomerModel()
-cylinder_model = CylinderModel()
+# Initialize data models for business logic operations
+customer_model = Customer()
+cylinder_model = Cylinder()
 
 # ============================================================================
 # AUTHENTICATION ROUTES
@@ -642,14 +577,13 @@ def customers():
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    # Get ALL customers first for proper sorting by active dispatches
     if search_query:
-        customers_list, total_customers = customer_model.get_all(search_query, page=1, per_page=10000)
+        customers_list, total_customers = customer_model.get_all(search_query, page, per_page)
     else:
-        customers_list, total_customers = customer_model.get_all(page=1, per_page=10000)
+        customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
     
     # Get only rented cylinders for performance optimization (issue #7)
-    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=10000, filter_status='rented')
+    all_cylinders, _ = cylinder_model.get_all(page=1, per_page=1000, filter_status='rented')
     for customer in customers_list:
         # Count cylinders currently rented to this customer (active dispatches)
         rented_cylinders = [c for c in all_cylinders if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented']
@@ -668,10 +602,8 @@ def customers():
     # Sort customers by active dispatches in descending order (issue #1)
     customers_list.sort(key=lambda x: x.get('active_dispatches', 0), reverse=True)
     
-    # Manual pagination after sorting
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    customers_paginated = customers_list[start_index:end_index]
+    # Pagination (already handled by PostgreSQL)
+    customers_paginated = customers_list
     
     # Calculate pagination info
     total_pages = (total_customers + per_page - 1) // per_page
@@ -1123,7 +1055,7 @@ def add_cylinder():
             if not value:
                 field_display = 'ID' if field == 'custom_id' else field.replace('_', ' ').title()
                 flash(f'{field_display} is required', 'error')
-                customers, _ = customer_model.get_all()
+                customers = customer_model.get_all()
                 return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             cylinder_data[field] = value
         
@@ -1149,20 +1081,18 @@ def add_cylinder():
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
                 customers, _ = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
+                return render_template('add_cylinder.html', customers=customers)
             
             # Verify customer exists
             customer = customer_model.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
                 customers, _ = customer_model.get_all()
-                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
+                return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
-            cylinder_data['customer_name'] = customer.get('customer_name') or customer.get('name', '')
-            cylinder_data['customer_email'] = customer.get('customer_email') or customer.get('email', '')
-            cylinder_data['customer_phone'] = customer.get('customer_phone') or customer.get('phone', '')
-            cylinder_data['customer_no'] = customer.get('customer_no', '')
+            cylinder_data['customer_name'] = customer.get('name', '')
+            cylinder_data['customer_email'] = customer.get('email', '')
             
             # Handle rental date from form or use current date
             rental_date = request.form.get('rental_date', '').strip()
@@ -1182,15 +1112,14 @@ def add_cylinder():
                 cylinder_data['rental_date'] = datetime.now().isoformat()
         
         try:
-            new_cylinder_id = cylinder_model.add_cylinder(cylinder_data)
-            flash(f'Cylinder added successfully with ID: {new_cylinder_id}', 'success')
+            new_cylinder = cylinder_model.add(cylinder_data)
+            flash(f'Cylinder added successfully with ID: {new_cylinder["id"]}', 'success')
             return redirect(url_for('cylinders'))
         except Exception as e:
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and today's date
-    customers, total_customers = customer_model.get_all(per_page=1000)  # Get more customers for dropdown
-    
+    customers, _ = customer_model.get_all()
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)
@@ -1213,7 +1142,7 @@ def edit_cylinder(cylinder_id):
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
-                customers, _ = customer_model.get_all(per_page=1000)
+                customers = customer_model.get_all()
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             cylinder_data[field] = value
         
@@ -1232,7 +1161,7 @@ def edit_cylinder(cylinder_id):
                 existing_id = existing.id if hasattr(existing, 'id') else existing.get('id', '')
                 if existing_custom_id == cylinder_data['custom_id'] and existing_id != cylinder_id:
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                    customers, _ = customer_model.get_all(per_page=1000)
+                    customers, _ = customer_model.get_all()
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -1240,14 +1169,14 @@ def edit_cylinder(cylinder_id):
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
-                customers, _ = customer_model.get_all(per_page=1000)
+                customers = customer_model.get_all()
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             # Verify customer exists
             customer = customer_model.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
-                customers, _ = customer_model.get_all(per_page=1000)
+                customers = customer_model.get_all()
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             cylinder_data['rented_to'] = rented_to
@@ -1319,7 +1248,7 @@ def edit_cylinder(cylinder_id):
             flash(f'Error updating cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and add display ID
-    customers, _ = customer_model.get_all(per_page=1000)
+    customers = customer_model.get_all()
     cylinder['display_serial'] = cylinder_model.get_display_id(cylinder)
     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 

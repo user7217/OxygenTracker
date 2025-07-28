@@ -1,206 +1,264 @@
 #!/usr/bin/env python3
 """
-Import data from JSON files to PostgreSQL database for PythonAnywhere deployment
+JSON to PostgreSQL Import Utility
+Imports existing JSON data files into PostgreSQL database
 """
 import os
 import json
 import sys
-from datetime import datetime, timezone
-from dotenv import load_dotenv
+from datetime import datetime
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Set up environment for database connection
+os.environ.setdefault('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/oxygen_tracker')
+os.environ.setdefault('SESSION_SECRET', 'dev-secret-key')
 
-# Add the current directory to Python path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-def import_all_data():
-    """Import all data from JSON files to PostgreSQL"""
+def load_json_file(file_path):
+    """Load data from JSON file"""
     try:
-        # Import after setting up the path
-        from app import app
-        from models import db, Customer, Cylinder, RentalHistory
-        
-        with app.app_context():
-            print("Starting data import...")
+        if not Path(file_path).exists():
+            print(f"File not found: {file_path}")
+            return None
             
-            # Create tables if they don't exist
-            db.create_all()
-            print("✓ Database tables ready")
-            
-            # Import customers
-            customers_imported = import_customers()
-            print(f"✓ Imported {customers_imported} customers")
-            
-            # Import cylinders
-            cylinders_imported = import_cylinders()
-            print(f"✓ Imported {cylinders_imported} cylinders")
-            
-            # Import rental history
-            history_imported = import_rental_history()
-            print(f"✓ Imported {history_imported} rental history records")
-            
-            print("\n🎉 Data import completed successfully!")
-            print(f"Total: {customers_imported} customers, {cylinders_imported} cylinders, {history_imported} rental records")
-            
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            print(f"Loaded {len(data)} records from {file_path}")
+            return data
     except Exception as e:
-        print(f"❌ Error during import: {str(e)}")
-        sys.exit(1)
+        print(f"Error loading {file_path}: {e}")
+        return None
 
-def import_customers():
-    """Import customers from JSON file"""
-    from models import db, Customer
-    
-    json_file = os.path.join('data', 'customers.json')
-    if not os.path.exists(json_file):
-        print(f"⚠️  No customers.json found at {json_file}")
+def import_customers(json_data):
+    """Import customers from JSON to PostgreSQL"""
+    if not json_data:
         return 0
-    
-    count = 0
-    with open(json_file, 'r', encoding='utf-8') as f:
-        customers_data = json.load(f)
         
-        for customer_data in customers_data:
+    from models_postgres import Customer
+    customer_model = Customer()
+    imported = 0
+    
+    print("\nImporting customers...")
+    for customer_data in json_data:
+        try:
+            # Map JSON fields to new PostgreSQL structure
+            mapped_data = {
+                'customer_no': customer_data.get('customer_no') or customer_data.get('id', ''),
+                'customer_name': customer_data.get('customer_name') or customer_data.get('name', ''),
+                'customer_email': customer_data.get('customer_email') or customer_data.get('email', ''),
+                'customer_phone': customer_data.get('customer_phone') or customer_data.get('phone', ''),
+                'customer_address': customer_data.get('customer_address') or customer_data.get('address', ''),
+                'customer_city': customer_data.get('customer_city', ''),
+                'customer_state': customer_data.get('customer_state', ''),
+                'customer_apgst': customer_data.get('customer_apgst', ''),
+                'customer_cst': customer_data.get('customer_cst', ''),
+            }
+            
             # Check if customer already exists
-            existing = Customer.query.filter_by(id=customer_data.get('id')).first()
+            existing = customer_model.get_by_customer_no(mapped_data['customer_no'])
             if existing:
+                print(f"  Skipping duplicate customer: {mapped_data['customer_name']}")
                 continue
                 
-            customer = Customer(
-                id=customer_data.get('id'),
-                customer_no=customer_data.get('customer_no', ''),
-                customer_name=customer_data.get('customer_name', ''),
-                customer_email=customer_data.get('customer_email', ''),
-                customer_phone=customer_data.get('customer_phone', ''),
-                customer_address=customer_data.get('customer_address', ''),
-                customer_city=customer_data.get('customer_city', ''),
-                customer_state=customer_data.get('customer_state', ''),
-                customer_apgst=customer_data.get('customer_apgst', ''),
-                customer_cst=customer_data.get('customer_cst', ''),
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            db.session.add(customer)
-            count += 1
+            # Create customer
+            customer = customer_model.create(mapped_data)
+            if customer:
+                imported += 1
+                print(f"  ✓ Imported: {mapped_data['customer_name']}")
+            else:
+                print(f"  ✗ Failed to import: {mapped_data['customer_name']}")
+                
+        except Exception as e:
+            print(f"  ✗ Error importing customer {customer_data.get('name', 'Unknown')}: {e}")
     
-    db.session.commit()
-    return count
+    return imported
 
-def import_cylinders():
-    """Import cylinders from JSON file"""
-    from models import db, Cylinder
-    
-    json_file = os.path.join('data', 'cylinders.json')
-    if not os.path.exists(json_file):
-        print(f"⚠️  No cylinders.json found at {json_file}")
+def import_cylinders(json_data):
+    """Import cylinders from JSON to PostgreSQL"""
+    if not json_data:
         return 0
-    
-    count = 0
-    with open(json_file, 'r', encoding='utf-8') as f:
-        cylinders_data = json.load(f)
         
-        for cylinder_data in cylinders_data:
+    from models_postgres import Cylinder, Customer
+    cylinder_model = Cylinder()
+    customer_model = Customer()
+    imported = 0
+    
+    print("\nImporting cylinders...")
+    for cylinder_data in json_data:
+        try:
+            # Map JSON fields to PostgreSQL structure
+            mapped_data = {
+                'custom_id': cylinder_data.get('custom_id') or cylinder_data.get('id', ''),
+                'serial_number': cylinder_data.get('serial_number', ''),
+                'type': cylinder_data.get('type', 'Medical Oxygen'),
+                'size': cylinder_data.get('size', '40L'),
+                'status': cylinder_data.get('status', 'available').lower(),
+                'location': cylinder_data.get('location', 'Warehouse'),
+                'date_borrowed': cylinder_data.get('date_borrowed'),
+                'date_returned': cylinder_data.get('date_returned'),
+                'customer_name': cylinder_data.get('customer_name', ''),
+                'customer_phone': cylinder_data.get('customer_phone', ''),
+                'customer_address': cylinder_data.get('customer_address', ''),
+                'customer_city': cylinder_data.get('customer_city', ''),
+                'customer_state': cylinder_data.get('customer_state', ''),
+            }
+            
+            # Handle rented_to field - link to customer if exists
+            rented_to = cylinder_data.get('rented_to')
+            if rented_to:
+                # Try to find customer by ID or customer_no
+                customer = customer_model.get_by_id(rented_to) or customer_model.get_by_customer_no(rented_to)
+                if customer:
+                    mapped_data['rented_to'] = customer.get('id')
+                else:
+                    mapped_data['rented_to'] = None
+            else:
+                mapped_data['rented_to'] = None
+            
             # Check if cylinder already exists
-            existing = Cylinder.query.filter_by(id=cylinder_data.get('id')).first()
+            existing = cylinder_model.get_by_custom_id(mapped_data['custom_id'])
             if existing:
+                print(f"  Skipping duplicate cylinder: {mapped_data['custom_id']}")
                 continue
                 
-            # Parse dates
-            date_borrowed = None
-            date_returned = None
-            
-            if cylinder_data.get('date_borrowed'):
-                try:
-                    date_borrowed = datetime.fromisoformat(cylinder_data['date_borrowed'].replace('Z', '+00:00'))
-                except:
-                    pass
-                    
-            if cylinder_data.get('date_returned'):
-                try:
-                    date_returned = datetime.fromisoformat(cylinder_data['date_returned'].replace('Z', '+00:00'))
-                except:
-                    pass
-            
-            cylinder = Cylinder(
-                id=cylinder_data.get('id'),
-                custom_id=cylinder_data.get('custom_id', ''),
-                serial_number=cylinder_data.get('serial_number', ''),
-                type=cylinder_data.get('type', 'Medical Oxygen'),
-                size=cylinder_data.get('size', '40L'),
-                status=cylinder_data.get('status', 'available'),
-                location=cylinder_data.get('location', 'Warehouse'),
-                pressure=cylinder_data.get('pressure'),
-                last_inspection=cylinder_data.get('last_inspection'),
-                next_inspection=cylinder_data.get('next_inspection'),
-                notes=cylinder_data.get('notes', ''),
-                rented_to=cylinder_data.get('rented_to'),
-                customer_name=cylinder_data.get('customer_name', ''),
-                customer_email=cylinder_data.get('customer_email', ''),
-                customer_phone=cylinder_data.get('customer_phone', ''),
-                customer_no=cylinder_data.get('customer_no', ''),
-                date_borrowed=date_borrowed,
-                date_returned=date_returned,
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            db.session.add(cylinder)
-            count += 1
+            # Create cylinder
+            cylinder = cylinder_model.create(mapped_data)
+            if cylinder:
+                imported += 1
+                status_display = f"({mapped_data['status']})"
+                print(f"  ✓ Imported: {mapped_data['custom_id']} {status_display}")
+            else:
+                print(f"  ✗ Failed to import: {mapped_data['custom_id']}")
+                
+        except Exception as e:
+            print(f"  ✗ Error importing cylinder {cylinder_data.get('custom_id', 'Unknown')}: {e}")
     
-    db.session.commit()
-    return count
+    return imported
 
-def import_rental_history():
-    """Import rental history from JSON file"""
-    from models import db, RentalHistory
-    
-    json_file = os.path.join('data', 'rental_history.json')
-    if not os.path.exists(json_file):
-        print(f"⚠️  No rental_history.json found at {json_file}")
+def import_rental_history(json_data):
+    """Import rental history from JSON to PostgreSQL"""
+    if not json_data:
         return 0
-    
-    count = 0
-    with open(json_file, 'r', encoding='utf-8') as f:
-        history_data = json.load(f)
         
-        for record in history_data:
-            # Check if record already exists
-            existing = RentalHistory.query.filter_by(id=record.get('id')).first()
-            if existing:
-                continue
+    try:
+        from models_rental_history import RentalHistory
+        rental_model = RentalHistory()
+        imported = 0
+        
+        print("\nImporting rental history...")
+        for rental_data in json_data:
+            try:
+                # Map JSON fields to PostgreSQL structure
+                mapped_data = {
+                    'customer_no': rental_data.get('customer_no', ''),
+                    'customer_name': rental_data.get('customer_name', ''),
+                    'cylinder_no': rental_data.get('cylinder_no', ''),
+                    'cylinder_id': rental_data.get('cylinder_id', ''),
+                    'date_borrowed': rental_data.get('date_borrowed'),
+                    'date_returned': rental_data.get('date_returned'),
+                    'rental_days': rental_data.get('rental_days', 0),
+                    'cylinder_type': rental_data.get('cylinder_type', 'Medical Oxygen'),
+                    'cylinder_size': rental_data.get('cylinder_size', '40L'),
+                }
                 
-            # Parse dates
-            dispatch_date = None
-            return_date = None
-            
-            if record.get('dispatch_date'):
-                try:
-                    dispatch_date = datetime.fromisoformat(record['dispatch_date'].replace('Z', '+00:00'))
-                except:
-                    pass
+                # Create rental history record
+                rental = rental_model.create(mapped_data)
+                if rental:
+                    imported += 1
+                    print(f"  ✓ Imported rental: {mapped_data['customer_name']} - {mapped_data['cylinder_id']}")
+                else:
+                    print(f"  ✗ Failed to import rental: {mapped_data['customer_name']} - {mapped_data['cylinder_id']}")
                     
-            if record.get('return_date'):
-                try:
-                    return_date = datetime.fromisoformat(record['return_date'].replace('Z', '+00:00'))
-                except:
-                    pass
-            
-            rental_record = RentalHistory(
-                id=record.get('id'),
-                customer_no=record.get('customer_no', ''),
-                customer_name=record.get('customer_name', ''),
-                cylinder_custom_id=record.get('cylinder_custom_id', ''),
-                cylinder_type=record.get('cylinder_type', ''),
-                cylinder_size=record.get('cylinder_size', ''),
-                dispatch_date=dispatch_date,
-                return_date=return_date,
-                rental_days=record.get('rental_days', 0),
-                created_at=datetime.now(timezone.utc)
-            )
-            db.session.add(rental_record)
-            count += 1
+            except Exception as e:
+                print(f"  ✗ Error importing rental {rental_data.get('customer_name', 'Unknown')}: {e}")
+        
+        return imported
+    except ImportError:
+        print("Rental history model not available, skipping...")
+        return 0
+
+def main():
+    """Main import function"""
+    print("="*60)
+    print("JSON to PostgreSQL Import Utility")
+    print("="*60)
     
-    db.session.commit()
-    return count
+    # Check if data directory exists
+    data_dir = Path('data')
+    if not data_dir.exists():
+        print("Error: 'data' directory not found!")
+        print("Please ensure your JSON files are in a 'data' directory")
+        sys.exit(1)
+    
+    # Define JSON files to import
+    json_files = {
+        'customers': 'data/customers.json',
+        'cylinders': 'data/cylinders.json',
+        'rental_history': 'data/rental_history.json',
+        'rental_transactions': 'data/rental_transactions.json'
+    }
+    
+    # Check which files exist
+    available_files = {}
+    for name, path in json_files.items():
+        if Path(path).exists():
+            available_files[name] = path
+            print(f"Found: {path}")
+        else:
+            print(f"Not found: {path}")
+    
+    if not available_files:
+        print("\nNo JSON files found to import!")
+        print("Expected files in 'data' directory:")
+        for name, path in json_files.items():
+            print(f"  - {path}")
+        sys.exit(1)
+    
+    print(f"\nFound {len(available_files)} JSON file(s) to import")
+    
+    # Confirm import
+    response = input("\nProceed with import? (y/N): ").strip().lower()
+    if response != 'y':
+        print("Import cancelled.")
+        sys.exit(0)
+    
+    # Test database connection
+    try:
+        from models_postgres import Customer
+        customer_model = Customer()
+        print("✓ Database connection successful")
+    except Exception as e:
+        print(f"✗ Database connection failed: {e}")
+        print("Please ensure PostgreSQL is running and DATABASE_URL is correct")
+        sys.exit(1)
+    
+    # Import data
+    total_imported = 0
+    
+    # Import customers first (other tables may reference them)
+    if 'customers' in available_files:
+        customers_data = load_json_file(available_files['customers'])
+        total_imported += import_customers(customers_data)
+    
+    # Import cylinders
+    if 'cylinders' in available_files:
+        cylinders_data = load_json_file(available_files['cylinders'])
+        total_imported += import_cylinders(cylinders_data)
+    
+    # Import rental history
+    for history_file in ['rental_history', 'rental_transactions']:
+        if history_file in available_files:
+            history_data = load_json_file(available_files[history_file])
+            total_imported += import_rental_history(history_data)
+    
+    print("\n" + "="*60)
+    print(f"Import Complete! Total records imported: {total_imported}")
+    print("="*60)
+    
+    if total_imported > 0:
+        print("\nYou can now run the application with:")
+        print("python run_local.py")
+        print("\nOr start the server directly:")
+        print("python main.py")
 
 if __name__ == '__main__':
-    import_all_data()
+    main()

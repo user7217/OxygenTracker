@@ -13,9 +13,9 @@
         </div>
         {% if session.role == 'admin' %}
         <div class="col-auto">
-            <button class="btn btn-primary" disabled>
-                <i class="bi bi-plus-lg me-2"></i>Add Customer (Coming Soon)
-            </button>
+            <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-2"></i>Add Customer
+            </a>
         </div>
         {% endif %}
     </div>
@@ -251,9 +251,9 @@
                     {% endif %}
                 </p>
                 {% if not search_query %}
-                <button class="btn btn-primary" disabled>
-                    <i class="bi bi-plus-lg me-2"></i>Add Customer (Coming Soon)
-                </button>
+                <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Add Your First Customer
+                </a>
                 {% endif %}
             </div>
         </div>
