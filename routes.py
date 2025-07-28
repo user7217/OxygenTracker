@@ -334,18 +334,42 @@ def index():
     with CylinderService() as cylinder_service:
         cylinders, total_cylinders = cylinder_service.get_all(page=1, per_page=2000)  # Get cylinders for status calculation
     
-    # Calculate cylinder status distribution
-    available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
-    rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
-    maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
-    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
-    
-    # Find top customer (most rentals)
+    # Calculate cylinder status distribution (handle SQLAlchemy objects)
+    available_cylinders = 0
+    rented_cylinders = 0
+    maintenance_cylinders = 0
     customer_rentals = {}
+    
     for cylinder in cylinders:
-        if cylinder.get('rented_to'):
-            customer_id = cylinder['rented_to']
-            customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+        # Handle both SQLAlchemy objects and dictionaries
+        if hasattr(cylinder, 'status'):  # SQLAlchemy object
+            status = cylinder.status.lower() if cylinder.status else ''
+            if status == 'available':
+                available_cylinders += 1
+            elif status == 'rented':
+                rented_cylinders += 1
+            elif status == 'maintenance':
+                maintenance_cylinders += 1
+            
+            # Count customer rentals
+            if cylinder.rented_to:
+                customer_id = cylinder.rented_to
+                customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+        else:  # Dictionary object
+            status = cylinder.get('status', '').lower()
+            if status == 'available':
+                available_cylinders += 1
+            elif status == 'rented':
+                rented_cylinders += 1
+            elif status == 'maintenance':
+                maintenance_cylinders += 1
+            
+            # Count customer rentals
+            if cylinder.get('rented_to'):
+                customer_id = cylinder['rented_to']
+                customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+    
+    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
     
     top_customer_count = max(customer_rentals.values()) if customer_rentals else 0
     
