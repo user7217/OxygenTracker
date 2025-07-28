@@ -45,7 +45,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from app import app
-from models_postgres import Customer, Cylinder
+from db_service import CustomerService, CylinderService
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -181,9 +181,7 @@ def admin_or_user_can_edit(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize data models for business logic operations
-customer_model = Customer()
-cylinder_model = Cylinder()
+# Using PostgreSQL services instead of model instances
 
 # ============================================================================
 # AUTHENTICATION ROUTES
@@ -331,8 +329,10 @@ def index():
         Dashboard template with comprehensive system statistics
     """
     # Get actual total counts from PostgreSQL without pagination limits
-    customers_data, total_customers = customer_model.get_all(page=1, per_page=1)
-    cylinders, total_cylinders = cylinder_model.get_all(page=1, per_page=10000)  # Get all cylinders for status calculation
+    with CustomerService() as customer_service:
+        customers_data, total_customers = customer_service.get_all(page=1, per_page=1)
+    with CylinderService() as cylinder_service:
+        cylinders, total_cylinders = cylinder_service.get_all(page=1, per_page=2000)  # Get cylinders for status calculation
     
     # Calculate cylinder status distribution
     available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
@@ -570,21 +570,18 @@ def test_email():
 @login_required
 def customers():
     """Display all customers with search functionality and pagination"""
-    customer_model = Customer()
-    cylinder_model = Cylinder()
-
     search_query = request.args.get('search', '')
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    if search_query:
-        customers_list, total_customers = customer_model.get_all(search_query, page, per_page)
-    else:
-        customers_list, total_customers = customer_model.get_all(page=page, per_page=per_page)
+    # Use PostgreSQL services consistently
+    with CustomerService() as customer_service:
+        if search_query:
+            customers_list, total_customers = customer_service.get_all(search_query, page, per_page)
+        else:
+            customers_list, total_customers = customer_service.get_all(page=page, per_page=per_page)
     
-    # Get rented cylinders using PostgreSQL service for better performance
-    from db_service import CylinderService
-    
+    # Get rented cylinders using PostgreSQL service
     with CylinderService() as cylinder_service:
         all_cylinders, _ = cylinder_service.get_all(page=1, per_page=1000, filter_status='rented')
     
@@ -663,15 +660,31 @@ def customers():
 @login_required
 def customer_details(customer_id):
     """Display detailed information for a specific customer with rental history tabs"""
-    customer_model = Customer()
+    with CustomerService() as customer_service:
+        customer_obj = customer_service.get_by_id(customer_id)
     
-    customer = customer_model.get_by_id(customer_id)
-    if not customer:
+    if not customer_obj:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
+    # Convert customer to dict if it's a SQLAlchemy object
+    if hasattr(customer_obj, 'id'):
+        customer = {
+            'id': customer_obj.id,
+            'customer_no': customer_obj.customer_no,
+            'customer_name': customer_obj.customer_name,
+            'customer_email': customer_obj.customer_email,
+            'customer_phone': customer_obj.customer_phone,
+            'customer_address': customer_obj.customer_address,
+            'customer_city': customer_obj.customer_city,
+            'customer_state': customer_obj.customer_state,
+            'created_at': customer_obj.created_at.isoformat() if customer_obj.created_at else None
+        }
+    else:
+        customer = customer_obj
+    
     # Get rental history (active and past) from PostgreSQL
-    from db_service import CylinderService, RentalHistoryService
+    from db_service import RentalHistoryService
     
     with CylinderService() as cylinder_service:
         active_rentals = cylinder_service.get_by_customer(customer['id'])
