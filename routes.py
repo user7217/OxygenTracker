@@ -587,66 +587,82 @@ def customers():
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    # Use PostgreSQL services consistently
+    # Use a single optimized SQL query to get customers with their active dispatch counts
+    from sqlalchemy import text
     with CustomerService() as customer_service:
+        # Build the SQL query with proper search filtering
         if search_query:
-            customers_list, total_customers = customer_service.get_all(search_query, page, per_page)
+            sql_query = """
+            SELECT c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                   c.customer_address, c.customer_city, c.customer_state, c.created_at,
+                   COUNT(cyl.id) as active_dispatches
+            FROM customers c 
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            WHERE LOWER(c.customer_name) LIKE LOWER(:search) 
+               OR LOWER(c.customer_no) LIKE LOWER(:search)
+               OR LOWER(c.customer_phone) LIKE LOWER(:search)
+            GROUP BY c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                     c.customer_address, c.customer_city, c.customer_state, c.created_at
+            ORDER BY active_dispatches DESC
+            LIMIT :limit OFFSET :offset
+            """
+            search_param = f'%{search_query}%'
+            result = customer_service.db.execute(
+                text(sql_query), 
+                {'search': search_param, 'limit': per_page, 'offset': (page - 1) * per_page}
+            )
+            
+            # Count total for pagination
+            count_query = """
+            SELECT COUNT(DISTINCT c.id)
+            FROM customers c
+            WHERE LOWER(c.customer_name) LIKE LOWER(:search) 
+               OR LOWER(c.customer_no) LIKE LOWER(:search)
+               OR LOWER(c.customer_phone) LIKE LOWER(:search)
+            """
+            total_result = customer_service.db.execute(text(count_query), {'search': search_param})
+            total_customers = total_result.scalar()
         else:
-            customers_list, total_customers = customer_service.get_all(page=page, per_page=per_page)
-    
-    # Get rented cylinders using PostgreSQL service
-    with CylinderService() as cylinder_service:
-        all_cylinders, _ = cylinder_service.get_all(page=1, per_page=1000, filter_status='rented')
-    
-    for customer in customers_list:
-        # Convert customer to dict if it's a SQLAlchemy object
-        if hasattr(customer, 'id'):
+            sql_query = """
+            SELECT c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                   c.customer_address, c.customer_city, c.customer_state, c.created_at,
+                   COUNT(cyl.id) as active_dispatches
+            FROM customers c 
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            GROUP BY c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                     c.customer_address, c.customer_city, c.customer_state, c.created_at
+            ORDER BY active_dispatches DESC
+            LIMIT :limit OFFSET :offset
+            """
+            result = customer_service.db.execute(
+                text(sql_query), 
+                {'limit': per_page, 'offset': (page - 1) * per_page}
+            )
+            
+            # Count total for pagination
+            count_result = customer_service.db.execute(text("SELECT COUNT(*) FROM customers"))
+            total_customers = count_result.scalar()
+        
+        # Convert results to dictionaries
+        customers_paginated = []
+        for row in result:
             customer_dict = {
-                'id': customer.id,
-                'customer_no': customer.customer_no,
-                'customer_name': customer.customer_name,
-                'customer_email': customer.customer_email,
-                'customer_phone': customer.customer_phone,
-                'customer_address': customer.customer_address,
-                'customer_city': customer.customer_city,
-                'customer_state': customer.customer_state,
-                'created_at': customer.created_at.isoformat() if customer.created_at else None
+                'id': row.id,
+                'customer_no': row.customer_no,
+                'customer_name': row.customer_name,
+                'customer_email': row.customer_email,
+                'customer_phone': row.customer_phone,
+                'customer_address': row.customer_address,
+                'customer_city': row.customer_city,  
+                'customer_state': row.customer_state,
+                'created_at': row.created_at.isoformat() if row.created_at else None,
+                'active_dispatches': row.active_dispatches,
+                'rental_count': row.active_dispatches,
+                'rented_cylinders': []  # We'll populate this only when needed
             }
-            # Update customers_list with dict version
-            customers_list[customers_list.index(customer)] = customer_dict
-            customer = customer_dict
-        
-        # Count cylinders currently rented to this customer (active dispatches)
-        rented_cylinders = []
-        for c in all_cylinders:
-            if hasattr(c, 'rented_to'):  # SQLAlchemy object
-                if c.rented_to == customer.get('id') and c.status == 'rented':
-                    cylinder_dict = {
-                        'id': c.id,
-                        'custom_id': c.custom_id or '',
-                        'serial_number': c.serial_number or '',
-                        'type': c.type,
-                        'size': c.size,
-                        'status': c.status,
-                        'date_borrowed': c.date_borrowed.isoformat() if c.date_borrowed else '',
-                        'rental_days': (datetime.utcnow() - c.date_borrowed).days if c.date_borrowed else 0
-                    }
-                    rented_cylinders.append(cylinder_dict)
-            else:  # Dict object
-                if c.get('rented_to') == customer.get('id') and c.get('status', '').lower() == 'rented':
-                    rented_cylinders.append(c)
-        
-        customer['rented_cylinders'] = rented_cylinders
-        customer['rental_count'] = len(rented_cylinders)
-        customer['active_dispatches'] = len(rented_cylinders)  # Clear field name for active dispatches
+            customers_paginated.append(customer_dict)
     
-    # Sort customers by active dispatches in descending order (issue #1)
-    customers_list.sort(key=lambda x: x.get('active_dispatches', 0), reverse=True)
-    
-    # Pagination (already handled by PostgreSQL)
-    customers_paginated = customers_list
-    
-    # Calculate pagination info
+    # Calculate pagination info 
     total_pages = (total_customers + per_page - 1) // per_page
     has_prev = page > 1
     has_next = page < total_pages
