@@ -799,6 +799,49 @@ def customer_details(customer_id):
                          long_term_count=long_term_count,
                          pagination=pagination_info)
 
+@app.route('/customer/<customer_id>/monthly_history')
+@login_required
+def customer_monthly_history(customer_id):
+    """Display customer's monthly activity history"""
+    from datetime import datetime
+    
+    with CustomerService() as customer_service:
+        customer_obj = customer_service.get_by_id(customer_id)
+    
+    if not customer_obj:
+        flash('Customer not found', 'error')
+        return redirect(url_for('customers'))
+    
+    # Convert customer to dict
+    if hasattr(customer_obj, 'id'):
+        customer = {
+            'id': customer_obj.id,
+            'customer_no': customer_obj.customer_no,
+            'customer_name': customer_obj.customer_name,
+            'customer_email': customer_obj.customer_email,
+            'customer_phone': customer_obj.customer_phone,
+            'customer_address': customer_obj.customer_address,
+            'customer_city': customer_obj.customer_city,
+            'customer_state': customer_obj.customer_state
+        }
+    else:
+        customer = customer_obj
+    
+    # Get year parameter
+    year = request.args.get('year', type=int)
+    if not year:
+        year = datetime.now().year
+    
+    # Get monthly history data
+    with RentalHistoryService() as history_service:
+        history_data = history_service.get_customer_monthly_history(customer['id'], year)
+    
+    return render_template('customer_monthly_history.html',
+                          customer=customer,
+                          monthly_data=history_data['monthly_data'],
+                          available_years=history_data['available_years'],
+                          selected_year=year)
+
 @app.route('/customers/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit
 def add_customer():

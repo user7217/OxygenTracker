@@ -461,6 +461,148 @@ class RentalHistoryService(DatabaseService):
                 RentalHistory.customer_no == customer.customer_no
             )
         ).order_by(desc(RentalHistory.return_date)).limit(50).all()
+    
+    def get_customer_monthly_history(self, customer_id: str, year: int = None) -> Dict:
+        """Get customer's rental history organized by month"""
+        from datetime import datetime
+        from collections import defaultdict
+        import calendar
+        
+        # Get customer to find customer_no for matching
+        customer_service = CustomerService()
+        customer = customer_service.get_by_id(customer_id)
+        customer_service.close()
+        
+        if not customer:
+            return {'monthly_data': [], 'available_years': []}
+        
+        # Get all rental history for this customer
+        all_history = self.db.query(RentalHistory).filter(
+            or_(
+                RentalHistory.customer_id == customer_id,
+                RentalHistory.customer_no == customer.customer_no
+            )
+        ).order_by(desc(RentalHistory.rental_date)).all()
+        
+        # Also get current active rentals
+        cylinder_service = CylinderService()
+        active_cylinders = cylinder_service.get_by_customer(customer_id)
+        cylinder_service.close()
+        
+        # Organize by year and month
+        monthly_data = defaultdict(lambda: {
+            'dispatches': 0,
+            'returns': 0,
+            'transactions': [],
+            'top_cylinders': [],
+            'total_transactions': 0
+        })
+        
+        available_years = set()
+        
+        # Process rental history
+        for rental in all_history:
+            if rental.rental_date:
+                rental_year = rental.rental_date.year
+                rental_month = rental.rental_date.month
+                available_years.add(rental_year)
+                
+                if year is None or rental_year == year:
+                    month_key = f"{rental_year}-{rental_month:02d}"
+                    monthly_data[month_key]['dispatches'] += 1
+                    monthly_data[month_key]['total_transactions'] += 1
+                    
+                    transaction_data = {
+                        'date': rental.rental_date,
+                        'cylinder_id': rental.cylinder_id,
+                        'cylinder_no': rental.cylinder_no,
+                        'cylinder_type': rental.cylinder_type,
+                        'rental_date': rental.rental_date,
+                        'return_date': rental.return_date
+                    }
+                    monthly_data[month_key]['transactions'].append(transaction_data)
+                    
+                    if rental.return_date:
+                        return_year = rental.return_date.year
+                        return_month = rental.return_date.month
+                        return_month_key = f"{return_year}-{return_month:02d}"
+                        
+                        if year is None or return_year == year:
+                            monthly_data[return_month_key]['returns'] += 1
+                            if return_month_key != month_key:
+                                monthly_data[return_month_key]['total_transactions'] += 1
+                                monthly_data[return_month_key]['transactions'].append({
+                                    'date': rental.return_date,
+                                    'cylinder_id': rental.cylinder_id,
+                                    'cylinder_no': rental.cylinder_no,
+                                    'cylinder_type': rental.cylinder_type,
+                                    'rental_date': rental.rental_date,
+                                    'return_date': rental.return_date
+                                })
+        
+        # Process active cylinders (count as dispatches for their rental month)
+        for cylinder in active_cylinders:
+            if cylinder.get('date_borrowed'):
+                try:
+                    if isinstance(cylinder['date_borrowed'], str):
+                        rental_date = datetime.fromisoformat(cylinder['date_borrowed'].replace('Z', '+00:00'))
+                    else:
+                        rental_date = cylinder['date_borrowed']
+                    
+                    rental_year = rental_date.year
+                    rental_month = rental_date.month
+                    available_years.add(rental_year)
+                    
+                    if year is None or rental_year == year:
+                        month_key = f"{rental_year}-{rental_month:02d}"
+                        monthly_data[month_key]['dispatches'] += 1
+                        monthly_data[month_key]['total_transactions'] += 1
+                        
+                        monthly_data[month_key]['transactions'].append({
+                            'date': rental_date,
+                            'cylinder_id': cylinder.get('display_id', cylinder.get('id')),
+                            'cylinder_no': cylinder.get('custom_id'),
+                            'cylinder_type': cylinder.get('type', 'O2'),
+                            'rental_date': rental_date,
+                            'return_date': None
+                        })
+                except:
+                    pass  # Skip invalid date formats
+        
+        # Convert to sorted list with month names
+        result_data = []
+        for month_key in sorted(monthly_data.keys(), reverse=True):
+            year_month = month_key.split('-')
+            month_year = int(year_month[0])
+            month_num = int(year_month[1])
+            
+            month_info = monthly_data[month_key]
+            month_info.update({
+                'year': month_year,
+                'month': month_num,
+                'month_name': calendar.month_name[month_num]
+            })
+            
+            # Sort transactions by date
+            month_info['transactions'].sort(key=lambda x: x['date'] or datetime.min, reverse=True)
+            
+            # Get top cylinders by frequency
+            cylinder_counts = defaultdict(int)
+            for trans in month_info['transactions']:
+                cyl_id = trans['cylinder_id'] or trans['cylinder_no'] or 'Unknown'
+                cylinder_counts[cyl_id] += 1
+            
+            month_info['top_cylinders'] = [
+                {'display_id': cyl_id, 'count': count} 
+                for cyl_id, count in sorted(cylinder_counts.items(), key=lambda x: x[1], reverse=True)
+            ]
+            
+            result_data.append(month_info)
+        
+        return {
+            'monthly_data': result_data,
+            'available_years': sorted(available_years, reverse=True)
+        }
         
         # Convert to dictionaries
         past_dict = []
