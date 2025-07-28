@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import json
+import uuid
 from functools import wraps
 
 app = Flask(__name__)
@@ -247,13 +248,13 @@ def customers():
     try:
         cursor = connection.cursor()
         
-        # Build query with search
+        # Build query with search (SQLite uses ? placeholders)
         if search:
             query = '''
                 SELECT * FROM customers 
-                WHERE customer_name LIKE %s OR customer_no LIKE %s OR customer_phone LIKE %s
+                WHERE customer_name LIKE ? OR customer_no LIKE ? OR customer_phone LIKE ?
                 ORDER BY customer_name
-                LIMIT %s OFFSET %s
+                LIMIT ? OFFSET ?
             '''
             search_term = f'%{search}%'
             cursor.execute(query, (search_term, search_term, search_term, per_page, offset))
@@ -261,13 +262,13 @@ def customers():
             
             count_query = '''
                 SELECT COUNT(*) as total FROM customers 
-                WHERE customer_name LIKE %s OR customer_no LIKE %s OR customer_phone LIKE %s
+                WHERE customer_name LIKE ? OR customer_no LIKE ? OR customer_phone LIKE ?
             '''
             cursor.execute(count_query, (search_term, search_term, search_term))
             result = cursor.fetchone()
             total = result[0] if result else 0
         else:
-            query = 'SELECT * FROM customers ORDER BY customer_name LIMIT %s OFFSET %s'
+            query = 'SELECT * FROM customers ORDER BY customer_name LIMIT ? OFFSET ?'
             cursor.execute(query, (per_page, offset))
             customers_list = cursor.fetchall()
             
@@ -317,12 +318,12 @@ def cylinders():
         params = []
         
         if search:
-            conditions.append("(custom_id LIKE %s OR serial_number LIKE %s OR type LIKE %s OR location LIKE %s)")
+            conditions.append("(custom_id LIKE ? OR serial_number LIKE ? OR type LIKE ? OR location LIKE ?)")
             search_term = f'%{search}%'
             params.extend([search_term, search_term, search_term, search_term])
         
         if status_filter:
-            conditions.append("status = %s")
+            conditions.append("status = ?")
             params.append(status_filter)
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
@@ -331,16 +332,16 @@ def cylinders():
             SELECT * FROM cylinders 
             {where_clause}
             ORDER BY status DESC, date_borrowed DESC
-            LIMIT %s OFFSET %s
+            LIMIT ? OFFSET ?
         '''
         params.extend([per_page, offset])
-        cursor.execute(query, tuple(params))
+        cursor.execute(query, params)
         cylinders_list = cursor.fetchall()
         
         # Get total count for pagination
         count_query = f'SELECT COUNT(*) as total FROM cylinders {where_clause}'
         count_params = params[:-2]  # Remove limit and offset
-        cursor.execute(count_query, tuple(count_params))
+        cursor.execute(count_query, count_params)
         result = cursor.fetchone()
         total = result[0] if result else 0
         
@@ -391,16 +392,97 @@ def cylinder_details(cylinder_id):
 @app.route('/customers/add', methods=['GET', 'POST'])
 @login_required
 def add_customer():
-    """Add customer page - placeholder"""
-    flash('Add customer feature not yet implemented', 'info')
-    return redirect(url_for('customers'))
+    """Add customer"""
+    if request.method == 'POST':
+        # Get form data
+        customer_no = request.form.get('customer_no')
+        customer_name = request.form.get('customer_name')
+        customer_email = request.form.get('customer_email', '')
+        customer_phone = request.form.get('customer_phone', '')
+        customer_address = request.form.get('customer_address', '')
+        customer_city = request.form.get('customer_city', '')
+        customer_state = request.form.get('customer_state', '')
+        customer_apgst = request.form.get('customer_apgst', '')
+        customer_cst = request.form.get('customer_cst', '')
+        
+        if not customer_name:
+            flash('Customer name is required', 'error')
+            return render_template('add_customer.html')
+        
+        connection = get_db_connection()
+        if not connection:
+            flash('Database connection error', 'error')
+            return render_template('add_customer.html')
+        
+        try:
+            cursor = connection.cursor()
+            customer_id = str(uuid.uuid4())
+            
+            cursor.execute('''
+                INSERT INTO customers (id, customer_no, customer_name, customer_email, customer_phone,
+                                     customer_address, customer_city, customer_state, customer_apgst, customer_cst)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (customer_id, customer_no, customer_name, customer_email, customer_phone,
+                  customer_address, customer_city, customer_state, customer_apgst, customer_cst))
+            
+            connection.commit()
+            flash(f'Customer {customer_name} added successfully!', 'success')
+            return redirect(url_for('customers'))
+            
+        except Exception as e:
+            print(f"Error adding customer: {e}")
+            flash('Error adding customer', 'error')
+            return render_template('add_customer.html')
+        finally:
+            connection.close()
+    
+    return render_template('add_customer.html')
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @login_required
 def add_cylinder():
-    """Add cylinder page - placeholder"""
-    flash('Add cylinder feature not yet implemented', 'info')
-    return redirect(url_for('cylinders'))
+    """Add cylinder"""
+    if request.method == 'POST':
+        # Get form data
+        custom_id = request.form.get('custom_id')
+        serial_number = request.form.get('serial_number', '')
+        cylinder_type = request.form.get('type', 'Medical Oxygen')
+        size = request.form.get('size', '40L')
+        status = request.form.get('status', 'available')
+        location = request.form.get('location', 'Warehouse')
+        pressure = request.form.get('pressure', '')
+        notes = request.form.get('notes', '')
+        
+        if not custom_id:
+            flash('Custom ID is required', 'error')
+            return render_template('add_cylinder.html')
+        
+        connection = get_db_connection()
+        if not connection:
+            flash('Database connection error', 'error')
+            return render_template('add_cylinder.html')
+        
+        try:
+            cursor = connection.cursor()
+            cylinder_id = str(uuid.uuid4())
+            
+            cursor.execute('''
+                INSERT INTO cylinders (id, custom_id, serial_number, type, size, status, location, pressure, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (cylinder_id, custom_id, serial_number, cylinder_type, size, status, location, pressure, notes))
+            
+            connection.commit()
+            flash(f'Cylinder {custom_id} added successfully!', 'success')
+            return redirect(url_for('cylinders'))
+            
+        except Exception as e:
+            print(f"Error adding cylinder: {e}")
+            flash('Error adding cylinder', 'error')
+            return render_template('add_cylinder.html')
+        finally:
+            connection.close()
+    
+    return render_template('add_cylinder.html')
 
 @app.route('/customers/<customer_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -433,16 +515,370 @@ def delete_cylinder(cylinder_id):
 @app.route('/rent_cylinder', methods=['POST'])
 @login_required
 def rent_cylinder():
-    """Rent cylinder - placeholder"""
-    flash('Rent cylinder feature not yet implemented', 'info')
+    """Rent cylinder to customer"""
+    cylinder_id = request.form.get('cylinder_id')
+    customer_no = request.form.get('customer_no')
+    
+    if not cylinder_id or not customer_no:
+        flash('Cylinder ID and Customer are required', 'error')
+        return redirect(url_for('cylinders'))
+    
+    connection = get_db_connection()
+    if not connection:
+        flash('Database connection error', 'error')
+        return redirect(url_for('cylinders'))
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Get customer details
+        cursor.execute('SELECT * FROM customers WHERE customer_no = ?', (customer_no,))
+        customer = cursor.fetchone()
+        if not customer:
+            flash('Customer not found', 'error')
+            return redirect(url_for('cylinders'))
+        
+        # Update cylinder status
+        cursor.execute('''
+            UPDATE cylinders 
+            SET status = 'rented', 
+                location = 'Customer Site',
+                rented_to = ?,
+                customer_name = ?,
+                customer_email = ?,
+                customer_phone = ?,
+                customer_no = ?,
+                date_borrowed = datetime('now')
+            WHERE id = ?
+        ''', (customer_no, customer['customer_name'], customer['customer_email'], 
+              customer['customer_phone'], customer_no, cylinder_id))
+        
+        connection.commit()
+        flash('Cylinder rented successfully!', 'success')
+        
+    except Exception as e:
+        print(f"Error renting cylinder: {e}")
+        flash('Error renting cylinder', 'error')
+    finally:
+        connection.close()
+    
     return redirect(url_for('cylinders'))
 
 @app.route('/return_cylinder', methods=['POST'])
 @login_required
 def return_cylinder():
-    """Return cylinder - placeholder"""
-    flash('Return cylinder feature not yet implemented', 'info')
+    """Return cylinder from customer"""
+    cylinder_id = request.form.get('cylinder_id')
+    
+    if not cylinder_id:
+        flash('Cylinder ID is required', 'error')
+        return redirect(url_for('cylinders'))
+    
+    connection = get_db_connection()
+    if not connection:
+        flash('Database connection error', 'error')
+        return redirect(url_for('cylinders'))
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Get cylinder details for rental history
+        cursor.execute('SELECT * FROM cylinders WHERE id = ?', (cylinder_id,))
+        cylinder = cursor.fetchone()
+        if not cylinder:
+            flash('Cylinder not found', 'error')
+            return redirect(url_for('cylinders'))
+        
+        # Add to rental history if it was rented
+        if cylinder['status'] == 'rented' and cylinder['date_borrowed']:
+            history_id = str(uuid.uuid4())
+            dispatch_date = datetime.fromisoformat(cylinder['date_borrowed'])
+            return_date = datetime.now()
+            rental_days = (return_date - dispatch_date).days
+            
+            cursor.execute('''
+                INSERT INTO rental_history (id, customer_no, customer_name, cylinder_custom_id,
+                                          cylinder_type, cylinder_size, dispatch_date, return_date, rental_days)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (history_id, cylinder['customer_no'], cylinder['customer_name'], 
+                  cylinder['custom_id'], cylinder['type'], cylinder['size'],
+                  dispatch_date, return_date, rental_days))
+        
+        # Update cylinder status back to available
+        cursor.execute('''
+            UPDATE cylinders 
+            SET status = 'available',
+                location = 'Warehouse',
+                rented_to = NULL,
+                customer_name = NULL,
+                customer_email = NULL,
+                customer_phone = NULL,
+                customer_no = NULL,
+                date_borrowed = NULL,
+                date_returned = datetime('now')
+            WHERE id = ?
+        ''', (cylinder_id,))
+        
+        connection.commit()
+        flash('Cylinder returned successfully!', 'success')
+        
+    except Exception as e:
+        print(f"Error returning cylinder: {e}")
+        flash('Error returning cylinder', 'error')
+    finally:
+        connection.close()
+    
     return redirect(url_for('cylinders'))
+
+# Data Import routes
+@app.route('/import')
+@login_required
+def import_data():
+    """Data import page"""
+    return render_template('import_data.html')
+
+@app.route('/import/access', methods=['GET', 'POST'])
+@login_required
+def import_access():
+    """Import from Access database"""
+    if request.method == 'POST':
+        if 'access_file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(url_for('import_access'))
+        
+        file = request.files['access_file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(url_for('import_access'))
+        
+        if not file.filename.lower().endswith(('.mdb', '.accdb')):
+            flash('Please upload a valid Access database file (.mdb or .accdb)', 'error')
+            return redirect(url_for('import_access'))
+        
+        # Save the uploaded file
+        import os
+        upload_folder = 'uploads'
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        
+        filepath = os.path.join(upload_folder, file.filename)
+        file.save(filepath)
+        
+        # Try to import the data
+        try:
+            from access_connector import AccessConnector
+            connector = AccessConnector(filepath)
+            tables = connector.get_tables()
+            
+            if not tables:
+                flash('No tables found in the Access database', 'error')
+                return redirect(url_for('import_access'))
+            
+            # Store file path in session for mapping page
+            session['access_file_path'] = filepath
+            session['access_tables'] = tables
+            
+            return render_template('import_mapping.html', tables=tables, filepath=filepath)
+            
+        except Exception as e:
+            flash(f'Error reading Access database: {str(e)}', 'error')
+            return redirect(url_for('import_access'))
+    
+    return render_template('import_access.html')
+
+@app.route('/import/process', methods=['POST'])
+@login_required
+def process_import():
+    """Process the import with field mapping"""
+    if 'access_file_path' not in session:
+        flash('No Access file found in session', 'error')
+        return redirect(url_for('import_access'))
+    
+    filepath = session['access_file_path']
+    table_name = request.form.get('table_name')
+    import_type = request.form.get('import_type')  # customers or cylinders
+    
+    if not table_name or not import_type:
+        flash('Table name and import type are required', 'error')
+        return redirect(url_for('import_access'))
+    
+    try:
+        from access_connector import AccessConnector
+        connector = AccessConnector(filepath)
+        data = connector.get_table_data(table_name)
+        
+        if not data:
+            flash('No data found in the selected table', 'error')
+            return redirect(url_for('import_access'))
+        
+        # Get field mappings from form
+        field_mappings = {}
+        for key in request.form:
+            if key.startswith('mapping_'):
+                source_field = key.replace('mapping_', '')
+                target_field = request.form[key]
+                if target_field:
+                    field_mappings[source_field] = target_field
+        
+        # Import the data
+        imported_count = 0
+        connection = get_db_connection()
+        if not connection:
+            flash('Database connection error', 'error')
+            return redirect(url_for('import_access'))
+        
+        try:
+            cursor = connection.cursor()
+            
+            for row in data:
+                try:
+                    if import_type == 'customers':
+                        imported_count += import_customer_row(cursor, row, field_mappings)
+                    elif import_type == 'cylinders':
+                        imported_count += import_cylinder_row(cursor, row, field_mappings)
+                except Exception as e:
+                    print(f"Error importing row: {e}")
+                    continue
+            
+            connection.commit()
+            flash(f'Successfully imported {imported_count} {import_type}!', 'success')
+            
+        except Exception as e:
+            connection.rollback()
+            flash(f'Error during import: {str(e)}', 'error')
+        finally:
+            connection.close()
+            
+        # Clean up session
+        session.pop('access_file_path', None)
+        session.pop('access_tables', None)
+        
+        return redirect(url_for('customers' if import_type == 'customers' else 'cylinders'))
+        
+    except Exception as e:
+        flash(f'Error processing import: {str(e)}', 'error')
+        return redirect(url_for('import_access'))
+
+def import_customer_row(cursor, row, field_mappings):
+    """Import a single customer row"""
+    try:
+        customer_data = {}
+        for source_field, target_field in field_mappings.items():
+            if source_field in row and row[source_field] is not None:
+                customer_data[target_field] = str(row[source_field]).strip()
+        
+        if 'customer_name' not in customer_data or not customer_data['customer_name']:
+            return 0  # Skip rows without customer name
+        
+        customer_id = str(uuid.uuid4())
+        
+        cursor.execute('''
+            INSERT OR IGNORE INTO customers (id, customer_no, customer_name, customer_email, customer_phone,
+                                   customer_address, customer_city, customer_state, customer_apgst, customer_cst)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            customer_id,
+            customer_data.get('customer_no', ''),
+            customer_data.get('customer_name', ''),
+            customer_data.get('customer_email', ''),
+            customer_data.get('customer_phone', ''),
+            customer_data.get('customer_address', ''),
+            customer_data.get('customer_city', ''),
+            customer_data.get('customer_state', ''),
+            customer_data.get('customer_apgst', ''),
+            customer_data.get('customer_cst', '')
+        ))
+        
+        return 1
+    except Exception as e:
+        print(f"Error importing customer row: {e}")
+        return 0
+
+def import_cylinder_row(cursor, row, field_mappings):
+    """Import a single cylinder row"""
+    try:
+        cylinder_data = {}
+        for source_field, target_field in field_mappings.items():
+            if source_field in row and row[source_field] is not None:
+                cylinder_data[target_field] = str(row[source_field]).strip()
+        
+        if 'custom_id' not in cylinder_data or not cylinder_data['custom_id']:
+            return 0  # Skip rows without custom_id
+        
+        cylinder_id = str(uuid.uuid4())
+        
+        cursor.execute('''
+            INSERT OR IGNORE INTO cylinders (id, custom_id, serial_number, type, size, status, location,
+                                   pressure, notes, rented_to, customer_name, date_borrowed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            cylinder_id,
+            cylinder_data.get('custom_id', ''),
+            cylinder_data.get('serial_number', ''),
+            cylinder_data.get('type', 'Medical Oxygen'),
+            cylinder_data.get('size', '40L'),
+            cylinder_data.get('status', 'available'),
+            cylinder_data.get('location', 'Warehouse'),
+            cylinder_data.get('pressure', ''),
+            cylinder_data.get('notes', ''),
+            cylinder_data.get('rented_to', ''),
+            cylinder_data.get('customer_name', ''),
+            cylinder_data.get('date_borrowed', None)
+        ))
+        
+        return 1
+    except Exception as e:
+        print(f"Error importing cylinder row: {e}")
+        return 0
+
+# Rental History and Reports routes
+@app.route('/rental_history')
+@login_required
+def rental_history():
+    """Rental history page"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 25, type=int)
+    offset = (page - 1) * per_page
+    
+    connection = get_db_connection()
+    if not connection:
+        flash('Database connection error', 'error')
+        return render_template('rental_history.html', history=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False})
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Get rental history with pagination
+        cursor.execute('''
+            SELECT * FROM rental_history 
+            ORDER BY return_date DESC, dispatch_date DESC
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
+        history_list = cursor.fetchall()
+        
+        # Get total count
+        cursor.execute('SELECT COUNT(*) as total FROM rental_history')
+        result = cursor.fetchone()
+        total = result[0] if result else 0
+        
+        # Create pagination info
+        pagination = {
+            'total': total,
+            'per_page': per_page,
+            'page': page,
+            'has_next': offset + per_page < total,
+            'has_prev': page > 1,
+            'next_num': page + 1,
+            'prev_num': page - 1
+        }
+        
+        return render_template('rental_history.html', history=history_list, pagination=pagination)
+        
+    except Exception as e:
+        print(f"Error getting rental history: {e}")
+        return render_template('rental_history.html', history=[], pagination={'total': 0, 'per_page': per_page, 'page': page, 'has_next': False, 'has_prev': False})
+    finally:
+        connection.close()
 
 if __name__ == '__main__':
     # Initialize database on startup

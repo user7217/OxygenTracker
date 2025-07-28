@@ -38,7 +38,7 @@ def create_sample_data():
             cursor.execute('''
                 INSERT INTO customers (id, customer_no, customer_name, customer_email, customer_phone,
                                      customer_address, customer_city, customer_state, customer_apgst, customer_cst)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (customer_id, customer_no, name, email, phone, address, city, state, apgst, cst))
         
         # Sample cylinders
@@ -72,7 +72,7 @@ def create_sample_data():
             cursor.execute('''
                 INSERT INTO cylinders (id, custom_id, serial_number, type, size, status, location,
                                      rented_to, customer_name, date_borrowed)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (cylinder_id, custom_id, serial_number, cylinder_type, size, status, location,
                   rented_to, customer_name, date_borrowed))
         
@@ -95,7 +95,7 @@ def create_sample_data():
             cursor.execute('''
                 INSERT INTO rental_history (id, customer_no, customer_name, cylinder_custom_id,
                                           cylinder_type, cylinder_size, dispatch_date, return_date, rental_days)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (history_id, customer_no, customer_name, cylinder_custom_id,
                   cylinder_type, cylinder_size, dispatch_date, return_date, rental_days))
         
