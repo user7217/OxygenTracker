@@ -32,26 +32,19 @@ class CustomerService(DatabaseService):
     """Customer database operations"""
     
     def get_all(self, search_query: str = None, page: int = 1, per_page: int = 25) -> Tuple[List[Customer], int]:
-        """Get all customers with optional search and pagination"""
+        """Fast customer retrieval with minimal database load"""
         query = self.db.query(Customer)
         
         if search_query:
-            search_filter = or_(
-                Customer.customer_name.ilike(f'%{search_query}%'),
-                Customer.customer_no.ilike(f'%{search_query}%'),
-                Customer.customer_phone.ilike(f'%{search_query}%'),
-                Customer.customer_email.ilike(f'%{search_query}%'),
-                Customer.customer_city.ilike(f'%{search_query}%')
-            )
+            # Simplified search for better performance
+            search_filter = Customer.customer_name.ilike(f'%{search_query}%')
             query = query.filter(search_filter)
         
+        # Fast count without complex operations
         total_count = query.count()
         
-        # Apply pagination with optimized sorting
+        # Simple pagination with name ordering
         offset = (page - 1) * per_page
-        
-        # Simple ordering by customer name for better performance
-        # Join with cylinders only when needed for specific queries
         customers = query.order_by(Customer.customer_name).offset(offset).limit(per_page).all()
         
         return customers, total_count
