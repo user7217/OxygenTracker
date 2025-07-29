@@ -1,18 +1,5 @@
 # Local Development Setup Guide
 
-## Database Requirements
-
-**IMPORTANT: This application now requires PostgreSQL database only.**
-
-SQLite support has been completely removed to ensure data consistency and avoid compatibility issues.
-
-### Local Development Setup
-1. Install PostgreSQL locally or use a cloud database
-2. Set DATABASE_URL environment variable in .env file
-3. Example: `DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker`
-
-
-
 This guide helps you set up the Oxygen Cylinder Tracker for local development with automatic database creation and data importing.
 
 ## Quick Setup
@@ -52,7 +39,7 @@ python setup_local.py
 ✅ **Installs dependencies** (using uv if available, otherwise pip)  
 ✅ **Creates directories** (data, backups, templates, static, logs)  
 ✅ **Sets up environment** (.env file with secure secrets)  
-✅ **Creates PostgreSQL database** with all required tables  
+✅ **Creates SQLite database** with all required tables  
 ✅ **Imports JSON data** from data/ directory automatically  
 ✅ **Creates admin user** (admin/admin123)  
 ✅ **Generates config files** for local development  
@@ -113,8 +100,8 @@ The setup automatically imports data from these JSON files in the `data/` direct
 ## Database Configuration
 
 ### SQLite (Default - Local Development)
-- Database file: `PostgreSQL database`
-- Connection: `postgresql://PostgreSQL database`
+- Database file: `oxygen_tracker.db`
+- Connection: `sqlite:///oxygen_tracker.db`
 - Automatic table creation
 - No additional setup required
 
@@ -132,7 +119,7 @@ The setup creates a `.env` file with:
 FLASK_SECRET_KEY=<randomly-generated>
 SESSION_SECRET=<randomly-generated>
 FLASK_ENV=development
-DATABASE_URL=postgresql://PostgreSQL database
+DATABASE_URL=sqlite:///oxygen_tracker.db
 ```
 
 ## Default Admin User
@@ -152,7 +139,7 @@ oxygen-tracker/
 ├── templates/               # HTML templates
 ├── static/                  # CSS, JS, images
 ├── logs/                    # Application logs
-├── PostgreSQL database        # PostgreSQL database
+├── oxygen_tracker.db        # SQLite database
 ├── users.json              # User authentication file
 ├── .env                    # Environment variables
 ├── config.py               # Local configuration
@@ -196,7 +183,7 @@ pip install -r pyproject.toml
 ### Database Issues
 ```bash
 # Remove and recreate database
-rm PostgreSQL database
+rm oxygen_tracker.db
 python setup_local.py
 ```
 
@@ -218,7 +205,7 @@ netstat -ano | findstr :5000   # Windows
 ### Custom Database Location
 Edit `.env`:
 ```
-DATABASE_URL=postgresql://path/to/custom.db
+DATABASE_URL=sqlite:///path/to/custom.db
 ```
 
 ### Custom Port
@@ -251,15 +238,15 @@ To migrate data from a production PostgreSQL database:
 
 ## Performance Notes
 
-- PostgreSQL is required for all environments and small deployments
+- SQLite is suitable for development and small deployments
 - For production, use PostgreSQL for better performance
-- Database performance scales well with data - monitor size
+- Database file grows with data - monitor size
 - Regular backups are created automatically
 
 ## Security Notes
 
 - Default secrets are randomly generated
-- Database credentials should not be committed to version control
+- SQLite file should not be committed to version control
 - Change admin password immediately
 - Use environment variables for sensitive configuration
 

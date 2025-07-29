@@ -1,18 +1,5 @@
 # Local Development Setup Guide
 
-## Database Requirements
-
-**IMPORTANT: This application now requires PostgreSQL database only.**
-
-SQLite support has been completely removed to ensure data consistency and avoid compatibility issues.
-
-### Local Development Setup
-1. Install PostgreSQL locally or use a cloud database
-2. Set DATABASE_URL environment variable in .env file
-3. Example: `DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker`
-
-
-
 ## Prerequisites
 
 1. **Python 3.8+** installed on your system
