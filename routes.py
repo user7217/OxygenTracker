@@ -1160,13 +1160,13 @@ def add_cylinder():
         # Validate custom_id uniqueness (now required)
         with CylinderService() as cylinder_service:
             existing_cylinders, _ = cylinder_service.get_all(page=1, per_page=1000)
-        for existing in existing_cylinders:
-            existing_custom_id = existing.custom_id if hasattr(existing, 'custom_id') else existing.get('custom_id', '')
-            if existing_custom_id == cylinder_data['custom_id']:
-                flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all()
-                return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
+            for existing in existing_cylinders:
+                existing_custom_id = existing.custom_id if hasattr(existing, 'custom_id') else existing.get('custom_id', '')
+                if existing_custom_id == cylinder_data['custom_id']:
+                    flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
+                    with CustomerService() as customer_service:
+                        customers, _ = customer_service.get_all()
+                    return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
         
         # Handle customer assignment for rented cylinders
         rented_to = request.form.get('rented_to', '').strip()
@@ -1207,7 +1207,8 @@ def add_cylinder():
                 cylinder_data['rental_date'] = datetime.now().isoformat()
         
         try:
-            new_cylinder = cylinder_service.create(cylinder_data)
+            with CylinderService() as cylinder_service:
+                new_cylinder = cylinder_service.create(cylinder_data)
             flash(f'Cylinder added successfully with ID: {new_cylinder["id"]}', 'success')
             return redirect(url_for('cylinders'))
         except Exception as e:
@@ -1667,13 +1668,27 @@ def rent_cylinder(cylinder_id):
     # Get cylinder for display
     with CylinderService() as cylinder_service:
         cylinder = cylinder_service.get_by_id(cylinder_id)
-        display_id = cylinder.get('custom_id') or cylinder.get('serial_number') or cylinder.get('id', 'Unknown') if cylinder else 'Unknown'
+        if cylinder:
+            if hasattr(cylinder, 'custom_id'):
+                display_id = cylinder.custom_id or cylinder.serial_number or cylinder.id
+            else:
+                display_id = cylinder.get('custom_id') or cylinder.get('serial_number') or cylinder.get('id', 'Unknown')
+        else:
+            display_id = 'Unknown'
         
         # Rent the cylinder with optional rental date
         success = cylinder_service.rent_cylinder(cylinder_id, customer_id, rental_date_iso)
     
+    # Get customer name for flash message
+    if hasattr(customer, 'customer_name'):
+        customer_name = customer.customer_name or 'customer'
+    elif isinstance(customer, dict):
+        customer_name = customer.get('customer_name') or customer.get('name', 'customer')
+    else:
+        customer_name = 'customer'
+    
     if success:
-        flash(f'Cylinder {display_id} rented to {customer.get("customer_name") or customer.get("name", "customer")} successfully', 'success')
+        flash(f'Cylinder {display_id} rented to {customer_name} successfully', 'success')
     else:
         flash(f'Error renting cylinder {display_id}', 'error')
     
