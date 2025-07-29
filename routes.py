@@ -1915,13 +1915,13 @@ def bulk_rental_management():
             # Convert SQLAlchemy object to dict
             customer_dict = {
                 'id': customer.id,
-                'customer_no': customer.customer_no or '',
-                'customer_name': customer.customer_name or '',
-                'customer_email': customer.customer_email or '',
-                'customer_phone': customer.customer_phone or '',
-                'customer_address': customer.customer_address or '',
-                'customer_city': customer.customer_city or '',
-                'customer_state': customer.customer_state or ''
+                'customer_no': getattr(customer, 'customer_no', '') or '',
+                'customer_name': getattr(customer, 'customer_name', '') or '',
+                'customer_email': getattr(customer, 'customer_email', '') or '',
+                'customer_phone': getattr(customer, 'customer_phone', '') or '',
+                'customer_address': getattr(customer, 'customer_address', '') or '',
+                'customer_city': getattr(customer, 'customer_city', '') or '',
+                'customer_state': getattr(customer, 'customer_state', '') or ''
             }
             customers_dict.append(customer_dict)
     
@@ -1932,19 +1932,20 @@ def bulk_rental_management():
             cylinder_dict = cylinder
         else:
             # Convert SQLAlchemy object to dict
+            from datetime import datetime
             cylinder_dict = {
                 'id': cylinder.id,
-                'custom_id': cylinder.custom_id or '',
-                'serial_number': cylinder.serial_number or '',
-                'display_id': cylinder.custom_id or cylinder.serial_number or f"ID-{cylinder.id[:8]}",
-                'type': cylinder.type or '',
-                'size': cylinder.size or '',
-                'status': cylinder.status or '',
-                'location': cylinder.location or '',
-                'rented_to': cylinder.rented_to or '',
-                'customer_name': cylinder.customer_name or '',
-                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if cylinder.date_borrowed else 0,
-                'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else ''
+                'custom_id': getattr(cylinder, 'custom_id', '') or '',
+                'serial_number': getattr(cylinder, 'serial_number', '') or '',
+                'display_id': getattr(cylinder, 'custom_id', '') or getattr(cylinder, 'serial_number', '') or f"ID-{cylinder.id[:8]}",
+                'type': getattr(cylinder, 'type', '') or '',
+                'size': getattr(cylinder, 'size', '') or '',
+                'status': getattr(cylinder, 'status', '') or '',
+                'location': getattr(cylinder, 'location', '') or '',
+                'rented_to': getattr(cylinder, 'rented_to', '') or '',
+                'customer_name': getattr(cylinder, 'customer_name', '') or '',
+                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if getattr(cylinder, 'date_borrowed', None) else 0,
+                'date_borrowed': cylinder.date_borrowed.isoformat() if getattr(cylinder, 'date_borrowed', None) else ''
             }
         
         # Add customer name for rented cylinders
@@ -1952,7 +1953,13 @@ def bulk_rental_management():
             with CustomerService() as customer_service:
                 customer = customer_service.get_by_id(cylinder_dict['rented_to'])
             if customer:
-                cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+                # Handle both dict and SQLAlchemy object
+                if hasattr(customer, 'customer_name'):
+                    cylinder_dict['customer_name'] = customer.customer_name or 'Unknown Customer'
+                elif isinstance(customer, dict):
+                    cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+                else:
+                    cylinder_dict['customer_name'] = 'Unknown Customer'
         
         cylinders_dict.append(cylinder_dict)
     
@@ -2049,7 +2056,13 @@ def process_bulk_rental():
                 skipped += 1
     
     # Create summary message
-    customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+    if hasattr(customer, 'customer_name'):
+        customer_name = customer.customer_name or 'Unknown Customer'
+    elif isinstance(customer, dict):
+        customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+    else:
+        customer_name = 'Unknown Customer'
+        
     if action == 'rent':
         if processed > 0:
             flash(f'Successfully dispatched {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer_name}', 'success')
