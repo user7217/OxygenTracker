@@ -12,6 +12,22 @@ class DatabaseService:
     def __init__(self):
         self.db = get_db_session()
     
+    def _ensure_connection(self):
+        """Ensure database connection is alive, reconnect if needed"""
+        try:
+            # Test the connection with a simple query
+            from sqlalchemy import text
+            self.db.execute(text("SELECT 1"))
+        except Exception as e:
+            print(f"Database connection lost, reconnecting: {e}")
+            try:
+                self.db.close()
+            except:
+                pass
+            # Import here to avoid circular imports
+            from db_models import get_db_session
+            self.db = get_db_session()
+    
     def close(self):
         """Close database connection"""
         if self.db:
@@ -33,6 +49,7 @@ class CustomerService(DatabaseService):
     
     def get_all(self, search_query: str = None, page: int = 1, per_page: int = 25) -> Tuple[List[Customer], int]:
         """Get all customers with optional search and pagination"""
+        self._ensure_connection()
         query = self.db.query(Customer)
         
         if search_query:
@@ -58,6 +75,7 @@ class CustomerService(DatabaseService):
     
     def get_by_id(self, customer_id: str) -> Optional[Customer]:
         """Get customer by ID"""
+        self._ensure_connection()
         return self.db.query(Customer).filter(Customer.id == customer_id).first()
     
     def get_by_customer_no(self, customer_no: str) -> Optional[Customer]:
@@ -381,6 +399,7 @@ class CylinderService(DatabaseService):
     
     def return_cylinder(self, cylinder_id: str, return_date: str = None) -> bool:
         """Return cylinder from rental"""
+        self._ensure_connection()
         cylinder = self.get_by_id(cylinder_id)
         if not cylinder or cylinder.status != 'rented':
             return False
@@ -435,6 +454,8 @@ class RentalHistoryService(DatabaseService):
     
     def get_all(self, page: int = 1, per_page: int = 1000) -> Tuple[List[RentalHistory], int]:
         """Get all rental history with pagination"""
+        self._ensure_connection()
+        
         query = self.db.query(RentalHistory)
         total_count = query.count()
         
@@ -655,6 +676,8 @@ class RentalHistoryService(DatabaseService):
     
     def add_return_record(self, cylinder: Cylinder, return_date: str = None):
         """Add return record to history"""
+        self._ensure_connection()
+        
         if not return_date:
             return_date_dt = datetime.utcnow()
         else:

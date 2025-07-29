@@ -23,12 +23,12 @@ def load_environment():
 # Load environment before database setup
 load_environment()
 
-# Database configuration with fallback for local development
+# Database configuration - MUST use PostgreSQL
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
-    # Fallback to SQLite for local development
-    DATABASE_URL = 'sqlite:///oxygen_tracker.db'
-    print("Warning: Using SQLite fallback database for local development")
+    raise ValueError("DATABASE_URL environment variable is required. PostgreSQL database must be configured.")
+
+print(f"Using database: {DATABASE_URL.split('@')[0] + '@****' if '@' in DATABASE_URL else DATABASE_URL}")
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
