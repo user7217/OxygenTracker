@@ -1949,7 +1949,8 @@ def bulk_rental_management():
         
         # Add customer name for rented cylinders
         if cylinder_dict.get('rented_to'):
-            customer = customer_model.get_by_id(cylinder_dict['rented_to'])
+            with CustomerService() as customer_service:
+                customer = customer_service.get_by_id(cylinder_dict['rented_to'])
             if customer:
                 cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
         
@@ -1970,7 +1971,8 @@ def process_bulk_rental():
         flash('Please select a customer', 'error')
         return redirect(url_for('bulk_rental_management'))
     
-    customer = customer_model.get_by_id(customer_id)
+    with CustomerService() as customer_service:
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('bulk_rental_management'))
@@ -2018,7 +2020,8 @@ def process_bulk_rental():
             # Rent the cylinder with custom date
             # Convert date from YYYY-MM-DD to datetime ISO format
             rental_datetime = f"{date}T00:00:00"
-            success = cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_datetime)
+            with CylinderService() as cylinder_service:
+                success = cylinder_service.rent_cylinder(cylinder_id, customer_id, rental_datetime)
             if success:
                 processed += 1
                 success_cylinders.append(cylinder_id)
@@ -2036,7 +2039,8 @@ def process_bulk_rental():
             # Return the cylinder with custom date
             # Convert date from YYYY-MM-DD to datetime ISO format  
             return_datetime = f"{date}T00:00:00"
-            success = cylinder_model.return_cylinder(cylinder_id, return_datetime)
+            with CylinderService() as cylinder_service:
+                success = cylinder_service.return_cylinder(cylinder_id, return_datetime)
             if success:
                 processed += 1
                 success_cylinders.append(cylinder_id)
@@ -2069,11 +2073,9 @@ def process_bulk_rental():
 @login_required
 def customer_active_dispatches(customer_id):
     """View active dispatches for a specific customer with pagination"""
-    customer_model = Customer()
-    cylinder_model = Cylinder()
-    
     # Get customer details
-    customer = customer_model.get_by_id(customer_id)
+    with CustomerService() as customer_service:
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
