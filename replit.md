@@ -20,13 +20,14 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - **Middleware**: ProxyFix for handling reverse proxy headers
 
 ### Data Storage Solutions
-- **Primary Storage**: PostgreSQL database for all operational data
+- **Primary Storage**: PostgreSQL database ONLY (no SQLite fallback)
 - **Database Tables**:
   - `customers`: Customer information with new field structure
   - `cylinders`: Cylinder inventory data with rental tracking
   - `rental_history`: Completed rental transactions
 - **Authentication**: JSON file (`users.json`) for user authentication only
 - **File Structure**: SQLAlchemy models with service layer architecture
+- **Environment**: Requires DATABASE_URL environment variable for PostgreSQL connection
 
 ## Key Components
 
@@ -116,6 +117,7 @@ The Oxygen Cylinder Tracker is a web-based application built with Flask for mana
 - Import functionality requires temporary file storage
 
 ## Changelog
+- July 29, 2025: Eliminated SQLite fallback system to enforce PostgreSQL-only usage. Removed all SQLite references from local development scripts and database initialization. Updated connection handling with automatic reconnection and proper error management. This resolves database compatibility issues where mixed SQLite/PostgreSQL usage caused missing columns and connection errors. System now requires DATABASE_URL environment variable and will not start without proper PostgreSQL configuration.
 - July 29, 2025: Completed comprehensive PostgreSQL migration fixes for bulk operations and cylinder dispatch functionality. Resolved all remaining JSON model references to use PostgreSQL services with proper SQLAlchemy object handling. Fixed bulk cylinder management routes, individual cylinder dispatch from cylinders page, customer bulk operations, and data type conversion issues. Updated object attribute access to safely handle both SQLAlchemy objects and dictionary formats using hasattr() checks and getattr() methods. All bulk management features now fully operational with PostgreSQL backend.
 - July 28, 2025: Fixed cylinder counting accuracy and template compatibility issues. Updated dashboard to show correct cylinder counts (~2,091 available, ~4,683 rented, ~6,774 total) using direct SQL queries with case-insensitive status matching. Fixed SQLAlchemy object to dictionary conversion for template rendering. Enhanced customer table sorting by active dispatches in descending order. Resolved customer details page to properly display active dispatches and rental history data.
 - July 24, 2025: Created comprehensive Fly.io deployment automation for Windows and Linux. Added complete deployment scripts (deploy_to_fly.ps1, deploy_to_fly.bat) with PostgreSQL database setup, environment configuration, and data migration utilities. Includes production Dockerfile, health checks, security configurations, and detailed deployment guides. Scripts handle app creation, database attachment, secret generation, and provide step-by-step data import instructions. Full production deployment automation with Windows PowerShell and batch file support.

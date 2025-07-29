@@ -26,19 +26,19 @@ def load_environment():
 
 def check_database():
     """Check if database exists and is accessible"""
-    db_url = os.environ.get('DATABASE_URL', 'sqlite:///oxygen_tracker.db')
+    db_url = os.environ.get('DATABASE_URL')
     
-    if db_url.startswith('sqlite:///'):
-        db_file = db_url.replace('sqlite:///', '')
-        if not os.path.exists(db_file):
-            print(f"⚠ Database file not found: {db_file}")
-            print("  Run setup_local.py first to create the database")
-            return False
-        else:
-            print(f"✓ Database found: {db_file}")
-    else:
-        print(f"✓ Using database: {db_url}")
+    if not db_url:
+        print("⚠ DATABASE_URL environment variable not set")
+        print("  PostgreSQL database is required for this application")
+        return False
     
+    if db_url.startswith('sqlite:'):
+        print("⚠ SQLite databases are not supported")
+        print("  This application requires PostgreSQL")
+        return False
+    
+    print(f"✓ Using PostgreSQL database: {db_url.split('@')[0] + '@****' if '@' in db_url else db_url}")
     return True
 
 def check_users_file():

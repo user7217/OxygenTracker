@@ -10,15 +10,16 @@ from pathlib import Path
 def setup_environment():
     """Set up environment variables for local development"""
     
-    # Default environment variables for local development
+    # NOTE: This application requires PostgreSQL
+    # For Replit deployment, DATABASE_URL is provided automatically
+    # For local development, set up PostgreSQL locally or use cloud database
+    print("IMPORTANT: This application requires PostgreSQL database")
+    print("Set DATABASE_URL environment variable with your PostgreSQL connection string")
+    print("SQLite is no longer supported due to compatibility issues")
+    
+    # Default environment variables for local development with PostgreSQL
     default_env = {
-        'DATABASE_URL': 'postgresql://postgres:password@localhost:5432/oxygen_tracker',
         'SESSION_SECRET': 'dev-secret-key-change-in-production',
-        'PGHOST': 'localhost',
-        'PGPORT': '5432',
-        'PGDATABASE': 'oxygen_tracker',
-        'PGUSER': 'postgres',
-        'PGPASSWORD': 'password',
         'FLASK_ENV': 'development',
         'FLASK_DEBUG': '1'
     }
