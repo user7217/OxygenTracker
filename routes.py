@@ -1605,11 +1605,13 @@ def global_search():
     
     if query:
         # Search customers
-        customer_results = customer_model.search(query)
+        with CustomerService() as customer_service:
+            customer_results = customer_service.search(query)
         results['customers'] = customer_results
         
         # Search cylinders
-        cylinder_results = cylinder_model.search(query)
+        with CylinderService() as cylinder_service:
+            cylinder_results = cylinder_service.search(query)
         results['cylinders'] = cylinder_results
         
         results['total_results'] = len(customer_results) + len(cylinder_results)
@@ -1644,7 +1646,8 @@ def rent_cylinder(cylinder_id):
         return redirect(url_for('cylinders'))
     
     # Verify customer exists
-    customer = customer_model.get_by_id(customer_id)
+    with CustomerService() as customer_service:
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
@@ -1664,10 +1667,12 @@ def rent_cylinder(cylinder_id):
     # Get cylinder for display
     with CylinderService() as cylinder_service:
         cylinder = cylinder_service.get_by_id(cylinder_id)
-    display_id = cylinder_model.get_display_id(cylinder) if cylinder else 'Unknown'
+        display_id = cylinder.get('custom_id') or cylinder.get('serial_number') or cylinder.get('id', 'Unknown') if cylinder else 'Unknown'
+        
+        # Rent the cylinder with optional rental date
+        success = cylinder_service.rent_cylinder(cylinder_id, customer_id, rental_date_iso)
     
-    # Rent the cylinder with optional rental date
-    if cylinder_model.rent_cylinder(cylinder_id, customer_id, rental_date_iso):
+    if success:
         flash(f'Cylinder {display_id} rented to {customer.get("customer_name") or customer.get("name", "customer")} successfully', 'success')
     else:
         flash(f'Error renting cylinder {display_id}', 'error')
@@ -1679,7 +1684,10 @@ def rent_cylinder(cylinder_id):
 def return_cylinder(cylinder_id):
     """Return a cylinder from rental"""
     return_date = request.form.get('return_date')
-    if cylinder_model.return_cylinder(cylinder_id, return_date):
+    with CylinderService() as cylinder_service:
+        success = cylinder_service.return_cylinder(cylinder_id, return_date)
+    
+    if success:
         flash('Cylinder returned successfully', 'success')
     else:
         flash('Error returning cylinder', 'error')
@@ -1690,9 +1698,13 @@ def return_cylinder(cylinder_id):
 @user_or_admin_required
 def return_cylinder_custom(cylinder_id, customer_id):
     """Return cylinder with custom date from customer details page"""
+    from datetime import datetime
     return_date = request.form.get('return_date', datetime.now().strftime('%Y-%m-%d'))
     
-    if cylinder_model.return_cylinder(cylinder_id, return_date):
+    with CylinderService() as cylinder_service:
+        success = cylinder_service.return_cylinder(cylinder_id, return_date)
+    
+    if success:
         flash(f'Cylinder returned successfully on {return_date}', 'success')
     else:
         flash('Failed to return cylinder', 'error')
@@ -1703,14 +1715,17 @@ def return_cylinder_custom(cylinder_id, customer_id):
 @user_or_admin_required
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
-    customer = customer_model.get_by_id(customer_id)
+    with CustomerService() as customer_service:
+        customer = customer_service.get_by_id(customer_id)
+    
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
     if request.method == 'GET':
         # Get current rentals for this customer
-        current_rentals = cylinder_model.get_by_customer(customer_id)
+        with CylinderService() as cylinder_service:
+            current_rentals = cylinder_service.get_by_customer(customer_id)
         return render_template('bulk_cylinder_management.html', 
                              customer=customer, 
                              current_rentals=current_rentals)
@@ -1743,7 +1758,8 @@ def bulk_cylinder_management(customer_id):
     errors = []
     
     for cylinder_id in cylinder_ids:
-        cylinder = cylinder_model.find_by_any_identifier(cylinder_id)
+        with CylinderService() as cylinder_service:
+            cylinder = cylinder_service.find_by_any_identifier(cylinder_id)
         
         if not cylinder:
             errors.append(f'"{cylinder_id}": Not found in database')
@@ -1764,7 +1780,8 @@ def bulk_cylinder_management(customer_id):
             # Rent the cylinder with custom date
             # Convert date from YYYY-MM-DD to datetime ISO format
             rental_datetime = f"{date}T00:00:00"
-            success = cylinder_model.rent_cylinder(actual_cylinder_id, customer_id, rental_datetime)
+            with CylinderService() as cylinder_service:
+                success = cylinder_service.rent_cylinder(actual_cylinder_id, customer_id, rental_datetime)
             if success:
                 processed += 1
             else:
@@ -1781,7 +1798,8 @@ def bulk_cylinder_management(customer_id):
             # Return the cylinder with custom date
             # Convert date from YYYY-MM-DD to datetime ISO format
             return_datetime = f"{date}T00:00:00"
-            success = cylinder_model.return_cylinder(actual_cylinder_id, return_datetime)
+            with CylinderService() as cylinder_service:
+                success = cylinder_service.return_cylinder(actual_cylinder_id, return_datetime)
             if success:
                 processed += 1
             else:
@@ -1793,7 +1811,7 @@ def bulk_cylinder_management(customer_id):
     if action == 'rent':
         flash(f'Successfully dispatched {processed} cylinders to {customer_name}', 'success')
     else:
-        flash(f'Successfully returned {processed} cylinders from {customer["name"]}', 'success')
+        flash(f'Successfully returned {processed} cylinders from {customer_name}', 'success')
     
     if skipped > 0:
         flash(f'{skipped} cylinders were skipped due to errors', 'warning')
@@ -1811,11 +1829,23 @@ def bulk_cylinder_management(customer_id):
 @login_required
 def get_customer_rentals(customer_id):
     """API endpoint to get current rentals for a customer"""
-    rentals = cylinder_model.get_by_customer(customer_id)
+    with CylinderService() as cylinder_service:
+        rentals = cylinder_service.get_by_customer(customer_id)
     
     # Add rental days calculation
     for rental in rentals:
-        rental['rental_days'] = cylinder_model.get_rental_days(rental)
+        if 'date_borrowed' in rental and rental['date_borrowed']:
+            from datetime import datetime
+            try:
+                if isinstance(rental['date_borrowed'], str):
+                    borrowed_date = datetime.fromisoformat(rental['date_borrowed'].replace('Z', '+00:00'))
+                else:
+                    borrowed_date = rental['date_borrowed']
+                rental['rental_days'] = (datetime.now().replace(tzinfo=borrowed_date.tzinfo) - borrowed_date).days
+            except:
+                rental['rental_days'] = 0
+        else:
+            rental['rental_days'] = 0
     
     return jsonify({'rentals': rentals})
 
@@ -1830,8 +1860,10 @@ def archive_data():
             months_old = 6
         
         # Archive both cylinder and customer data
-        cylinder_result = cylinder_model.archive_old_data(months_old)
-        customer_result = customer_model.archive_old_data(months_old)
+        with CylinderService() as cylinder_service:
+            cylinder_result = cylinder_service.archive_old_data(months_old)
+        with CustomerService() as customer_service:
+            customer_result = customer_service.archive_old_data(months_old)
         
         # Combine results
         total_archived = cylinder_result.get('archived_count', 0) + customer_result.get('archived_count', 0)
@@ -1869,8 +1901,10 @@ def archive_data():
 @login_required
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
-    customers, _ = customer_model.get_all(page=1, per_page=500)  # Get all customers
-    cylinders, _ = cylinder_model.get_all()
+    with CustomerService() as customer_service:
+        customers, _ = customer_service.get_all(page=1, per_page=500)  # Get all customers
+    with CylinderService() as cylinder_service:
+        cylinders, _ = cylinder_service.get_all()
     
     # Convert customers to dict format if needed
     customers_dict = []
