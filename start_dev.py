@@ -33,9 +33,9 @@ def check_database():
         print("  PostgreSQL database is required for this application")
         return False
     
-    if db_url.startswith('sqlite:'):
-        print("⚠ SQLite databases are not supported")
-        print("  This application requires PostgreSQL")
+    if not db_url.startswith('postgresql://'):
+        print("⚠ Only PostgreSQL databases are supported")
+        print("  Please set DATABASE_URL to a PostgreSQL connection string")
         return False
     
     print(f"✓ Using PostgreSQL database: {db_url.split('@')[0] + '@****' if '@' in db_url else db_url}")

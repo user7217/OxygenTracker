@@ -15,7 +15,7 @@ def setup_environment():
     # For local development, set up PostgreSQL locally or use cloud database
     print("IMPORTANT: This application requires PostgreSQL database")
     print("Set DATABASE_URL environment variable with your PostgreSQL connection string")
-    print("SQLite is no longer supported due to compatibility issues")
+    print("PostgreSQL is required for data consistency and reliability")
     
     # Default environment variables for local development with PostgreSQL
     default_env = {

@@ -128,8 +128,8 @@ def check_postgresql_setup():
         print_warning("Example: DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker")
         return False
     
-    if database_url.startswith('sqlite:'):
-        print_error("SQLite databases are no longer supported")
+    if not database_url.startswith('postgresql://'):
+        print_error("Only PostgreSQL databases are supported")
         print_warning("This application requires PostgreSQL for data consistency")
         print_warning("Please update DATABASE_URL to use PostgreSQL")
         return False

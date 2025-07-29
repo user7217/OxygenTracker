@@ -330,7 +330,6 @@ def index():
     """
     # Get actual total counts from PostgreSQL database directly
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
         customers_data, total_customers = customer_service.get_all(page=1, per_page=1)
     
     with CylinderService() as cylinder_service:
@@ -374,9 +373,7 @@ def index():
     days_active = 1
     try:
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            # Get the oldest customer creation date from database
             oldest_customer = customer_service.db.execute(
                 text("SELECT MIN(created_at) FROM customers WHERE created_at IS NOT NULL")
             ).scalar()
@@ -446,9 +443,7 @@ def metrics():
     days_active = 1
     try:
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            # Get the oldest customer creation date from database
             oldest_customer = customer_service.db.execute(
                 text("SELECT MIN(created_at) FROM customers WHERE created_at IS NOT NULL")
             ).scalar()
@@ -525,9 +520,7 @@ def send_admin_stats():
     days_active = 1
     try:
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            # Get the oldest customer creation date from database
             oldest_customer = customer_service.db.execute(
                 text("SELECT MIN(created_at) FROM customers WHERE created_at IS NOT NULL")
             ).scalar()
@@ -595,9 +588,7 @@ def customers():
     # Use a single optimized SQL query to get customers with their active dispatch counts
     from sqlalchemy import text
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        # Build the SQL query with proper search filtering
         if search_query:
             sql_query = """
             SELECT c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
@@ -712,9 +703,7 @@ def customers():
 def customer_details(customer_id):
     """Display detailed information for a specific customer with rental history tabs"""
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer_obj = customer_service.get_by_id(customer_id)
     
     if not customer_obj:
         flash('Customer not found', 'error')
@@ -835,9 +824,7 @@ def customer_monthly_history(customer_id):
     from datetime import datetime
     
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer_obj = customer_service.get_by_id(customer_id)
     
     if not customer_obj:
         flash('Customer not found', 'error')
@@ -1124,9 +1111,7 @@ def cylinders():
     
     # Get all customers for the filter dropdown using PostgreSQL service
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers, _ = customer_service.get_all(page=1, per_page=1000)
 
     return render_template('cylinders.html', 
                          cylinders=paginated_cylinders, 
@@ -1181,8 +1166,6 @@ def add_cylinder():
                 flash(f'{field_display} is required', 'error')
                 with CustomerService() as customer_service:
                     customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
             cylinder_data[field] = value
         
@@ -1201,9 +1184,7 @@ def add_cylinder():
                 if existing_custom_id == cylinder_data['custom_id']:
                     flash(f'ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
                     with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
-                    with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
+                        customers, _ = customer_service.get_all()
                     return render_template('add_cylinder.html', customers=customers, today_date=datetime.now().strftime('%Y-%m-%d'))
         
         # Handle customer assignment for rented cylinders
@@ -1212,16 +1193,12 @@ def add_cylinder():
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+                    customers, _ = customer_service.get_all()
                 return render_template('add_cylinder.html', customers=customers)
             
             # Verify customer exists
             with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
-            with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
+                customer = customer_service.get_by_id(rented_to)
                 if not customer:
                     flash('Selected customer not found', 'error')
                     customers, _ = customer_service.get_all()
@@ -1283,9 +1260,7 @@ def edit_cylinder(cylinder_id):
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             cylinder_data[field] = value
         
@@ -1306,9 +1281,7 @@ def edit_cylinder(cylinder_id):
                 if existing_custom_id == cylinder_data['custom_id'] and existing_id != cylinder_id:
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
                     with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
-                    with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
+                        customers, _ = customer_service.get_all()
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -1317,9 +1290,7 @@ def edit_cylinder(cylinder_id):
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             # Verify customer exists
@@ -1327,9 +1298,7 @@ def edit_cylinder(cylinder_id):
             if not customer:
                 flash('Selected customer not found', 'error')
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             cylinder_data['rented_to'] = rented_to
@@ -1661,9 +1630,7 @@ def global_search():
     if query:
         # Search customers
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            customer_results = customer_service.search(query)
         results['customers'] = customer_results
         
         # Search cylinders
@@ -1704,9 +1671,7 @@ def rent_cylinder(cylinder_id):
     
     # Verify customer exists
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
@@ -1789,9 +1754,7 @@ def return_cylinder_custom(cylinder_id, customer_id):
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     
     if not customer:
         flash('Customer not found', 'error')
@@ -1938,9 +1901,7 @@ def archive_data():
         with CylinderService() as cylinder_service:
             cylinder_result = cylinder_service.archive_old_data(months_old)
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            customer_result = customer_service.archive_old_data(months_old)
         
         # Combine results
         total_archived = cylinder_result.get('archived_count', 0) + customer_result.get('archived_count', 0)
@@ -2028,9 +1989,7 @@ def bulk_rental_management():
         # Add customer name for rented cylinders
         if cylinder_dict.get('rented_to'):
             with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
-            with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
+                customer = customer_service.get_by_id(cylinder_dict['rented_to'])
             if customer:
                 # Handle both dict and SQLAlchemy object
                 if hasattr(customer, 'customer_name'):
@@ -2058,9 +2017,7 @@ def process_bulk_rental():
         return redirect(url_for('bulk_rental_management'))
     
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('bulk_rental_management'))
@@ -2169,9 +2126,7 @@ def customer_active_dispatches(customer_id):
     """View active dispatches for a specific customer with pagination"""
     # Get customer details
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
@@ -2617,9 +2572,7 @@ def export_customer_report():
     try:
         # Get customer details
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            customer = customer_service.get_by_id(customer_id)
         if not customer:
             flash('Customer not found', 'error')
             return redirect(url_for('reports'))
@@ -2968,9 +2921,7 @@ def reset_data_confirm():
             try:
                 # Reset customer data
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+                    # Clear all customers - this requires implementing a clear_all method or similar
                     pass  # TODO: Implement PostgreSQL data reset functionality
                 
                 # Reset cylinder data  
