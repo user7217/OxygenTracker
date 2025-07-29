@@ -651,6 +651,16 @@ def customers():
             if phone in ['0.0', '0', '', None]:
                 phone = None
                 
+            # Handle created_at properly - it might be a string or datetime object
+            created_at_str = None
+            if row.created_at:
+                if hasattr(row.created_at, 'isoformat'):
+                    # It's a datetime object
+                    created_at_str = row.created_at.isoformat()
+                else:
+                    # It's already a string
+                    created_at_str = str(row.created_at)
+                    
             customer_dict = {
                 'id': row.id,
                 'customer_no': row.customer_no,
@@ -660,7 +670,7 @@ def customers():
                 'customer_address': row.customer_address,
                 'customer_city': row.customer_city,  
                 'customer_state': row.customer_state,
-                'created_at': row.created_at.isoformat() if row.created_at else None,
+                'created_at': created_at_str,
                 'active_dispatches': row.active_dispatches,
                 'rental_count': row.active_dispatches,
                 'rented_cylinders': []  # We'll populate this only when needed
@@ -703,6 +713,16 @@ def customer_details(customer_id):
     
     # Convert customer to dict if it's a SQLAlchemy object
     if hasattr(customer_obj, 'id'):
+        # Handle created_at properly - it might be a string or datetime object
+        created_at_str = None
+        if customer_obj.created_at:
+            if hasattr(customer_obj.created_at, 'isoformat'):
+                # It's a datetime object
+                created_at_str = customer_obj.created_at.isoformat()
+            else:
+                # It's already a string
+                created_at_str = str(customer_obj.created_at)
+                
         customer = {
             'id': customer_obj.id,
             'customer_no': customer_obj.customer_no,
@@ -712,7 +732,7 @@ def customer_details(customer_id):
             'customer_address': customer_obj.customer_address,
             'customer_city': customer_obj.customer_city,
             'customer_state': customer_obj.customer_state,
-            'created_at': customer_obj.created_at.isoformat() if customer_obj.created_at else None
+            'created_at': created_at_str
         }
     else:
         customer = customer_obj
