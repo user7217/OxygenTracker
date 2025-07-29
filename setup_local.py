@@ -8,7 +8,7 @@ import os
 import sys
 import json
 import subprocess
-import sqlite3
+
 from pathlib import Path
 from datetime import datetime
 import uuid
@@ -94,299 +94,93 @@ def setup_environment():
         session_secret = secrets.token_hex(32)
         
         env_content = f"""# Environment variables for local development
+# IMPORTANT: This application requires PostgreSQL database
+# Set DATABASE_URL to your PostgreSQL connection string
+# Example: DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker
+
 FLASK_SECRET_KEY={flask_secret}
 SESSION_SECRET={session_secret}
 FLASK_ENV=development
-DATABASE_URL=sqlite:///oxygen_tracker.db
 DEBUG=True
+
+# PostgreSQL connection required - uncomment and configure:
+# DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker
 """
         
         with open(env_file, 'w') as f:
             f.write(env_content)
         
         print_status("Environment file created with secure secrets")
+        print_warning("You must set DATABASE_URL to a PostgreSQL connection string")
     else:
         print_status("Environment file already exists")
 
-def create_sqlite_database():
-    """Create SQLite database for local development"""
-    db_path = "oxygen_tracker.db"
+def check_postgresql_setup():
+    """Check PostgreSQL database setup and configuration"""
+    print_status("Checking PostgreSQL database configuration...")
     
-    if os.path.exists(db_path):
-        backup_path = f"oxygen_tracker_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-        shutil.copy2(db_path, backup_path)
-        print_status(f"Existing database backed up to: {backup_path}")
+    # Check if DATABASE_URL is set
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print_error("DATABASE_URL environment variable not set")
+        print_warning("This application requires PostgreSQL database")
+        print_warning("Please set DATABASE_URL in your .env file")
+        print_warning("Example: DATABASE_URL=postgresql://username:password@localhost:5432/oxygen_tracker")
+        return False
     
-    print_status("Creating SQLite database tables...")
+    if database_url.startswith('sqlite:'):
+        print_error("SQLite databases are no longer supported")
+        print_warning("This application requires PostgreSQL for data consistency")
+        print_warning("Please update DATABASE_URL to use PostgreSQL")
+        return False
     
-    # Create database schema
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    print_status(f"PostgreSQL database configured: {database_url.split('@')[0] + '@****' if '@' in database_url else database_url}")
     
-    # Create customers table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers (
-            id TEXT PRIMARY KEY,
-            customer_no TEXT UNIQUE,
-            customer_name TEXT NOT NULL,
-            customer_email TEXT,
-            customer_phone TEXT,
-            customer_address TEXT,
-            customer_city TEXT,
-            customer_state TEXT,
-            customer_apgst TEXT,
-            customer_cst TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # Test database connection
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        
+        result = urlparse(database_url)
+        conn = psycopg2.connect(
+            database=result.path[1:],
+            user=result.username,
+            password=result.password,
+            host=result.hostname,
+            port=result.port
         )
-    """)
-    
-    # Create cylinders table with performance indexes
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS cylinders (
-            id TEXT PRIMARY KEY,
-            custom_id TEXT UNIQUE,
-            serial_number TEXT,
-            type TEXT DEFAULT 'Medical Oxygen',
-            size TEXT DEFAULT '40L',
-            status TEXT DEFAULT 'available',
-            location TEXT DEFAULT 'Warehouse',
-            rented_to TEXT,
-            customer_name TEXT,
-            customer_email TEXT,
-            customer_phone TEXT,
-            customer_no TEXT,
-            customer_city TEXT,
-            customer_state TEXT,
-            date_borrowed TIMESTAMP,
-            rental_date TIMESTAMP,
-            date_returned TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (rented_to) REFERENCES customers (id)
-        )
-    """)
-    
-    # Create performance indexes
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_status ON cylinders (status)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_rented_to ON cylinders (rented_to)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_custom_id ON cylinders (custom_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cylinders_date_borrowed ON cylinders (date_borrowed)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers (customer_name)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_no ON customers (customer_no)")
-    
-    # Create rental_history table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS rental_history (
-            id TEXT PRIMARY KEY,
-            cylinder_id TEXT,
-            customer_id TEXT,
-            customer_name TEXT,
-            customer_no TEXT,
-            cylinder_custom_id TEXT,
-            rental_date TIMESTAMP,
-            return_date TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (cylinder_id) REFERENCES cylinders (id),
-            FOREIGN KEY (customer_id) REFERENCES customers (id)
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
-    
-    print_status("SQLite database created successfully")
+        conn.close()
+        print_status("Database connection test successful")
+        return True
+    except ImportError:
+        print_warning("psycopg2 not installed - database connection cannot be tested")
+        print_warning("Install with: pip install psycopg2-binary")
+        return True  # Continue setup, will be tested at runtime
+    except Exception as e:
+        print_error(f"Database connection failed: {e}")
+        print_warning("Please verify your PostgreSQL database is running and accessible")
+        return False
 
-def import_json_data():
-    """Import data from JSON files in data directory"""
+
+def check_data_migration():
+    """Check if data migration is needed from JSON files"""
     data_dir = Path("data")
     
     if not data_dir.exists():
-        print_warning("No data directory found, skipping data import")
+        print_status("No data directory found - fresh installation")
         return
     
     json_files = list(data_dir.glob("*.json"))
     if not json_files:
-        print_warning("No JSON files found in data directory")
+        print_status("No JSON files found for migration")
         return
     
-    print_status(f"Found {len(json_files)} JSON files to import")
-    
-    conn = sqlite3.connect("oxygen_tracker.db")
-    cursor = conn.cursor()
-    
-    # Import customers
-    customers_file = data_dir / "customers.json"
-    if customers_file.exists():
-        print_status("Importing customers...")
-        with open(customers_file, 'r', encoding='utf-8') as f:
-            customers_data = json.load(f)
-        
-        imported_count = 0
-        for customer_data in customers_data:
-            try:
-                # Check if customer already exists
-                cursor.execute("SELECT id FROM customers WHERE customer_no = ?", 
-                             (customer_data.get('customer_no'),))
-                if cursor.fetchone():
-                    continue
-                
-                customer_id = customer_data.get('id', str(uuid.uuid4()))
-                cursor.execute("""
-                    INSERT INTO customers (
-                        id, customer_no, customer_name, customer_email, customer_phone,
-                        customer_address, customer_city, customer_state, customer_apgst, customer_cst
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    customer_id,
-                    customer_data.get('customer_no', ''),
-                    customer_data.get('customer_name', customer_data.get('name', '')),
-                    customer_data.get('customer_email', customer_data.get('email', '')),
-                    customer_data.get('customer_phone', customer_data.get('phone', '')),
-                    customer_data.get('customer_address', customer_data.get('address', '')),
-                    customer_data.get('customer_city', customer_data.get('city', '')),
-                    customer_data.get('customer_state', customer_data.get('state', '')),
-                    customer_data.get('customer_apgst', ''),
-                    customer_data.get('customer_cst', '')
-                ))
-                imported_count += 1
-            except Exception as e:
-                print_warning(f"Error importing customer {customer_data.get('customer_name', 'Unknown')}: {e}")
-        
-        conn.commit()
-        print_status(f"Imported {imported_count} customers")
-    
-    # Import cylinders
-    cylinders_file = data_dir / "cylinders.json"
-    if cylinders_file.exists():
-        print_status("Importing cylinders...")
-        with open(cylinders_file, 'r', encoding='utf-8') as f:
-            cylinders_data = json.load(f)
-        
-        imported_count = 0
-        for cylinder_data in cylinders_data:
-            try:
-                # Check if cylinder already exists
-                cursor.execute("SELECT id FROM cylinders WHERE custom_id = ?", 
-                             (cylinder_data.get('custom_id'),))
-                if cursor.fetchone():
-                    continue
-                
-                cylinder_id = cylinder_data.get('id', str(uuid.uuid4()))
-                
-                # Parse dates
-                date_borrowed = None
-                rental_date = None
-                date_returned = None
-                
-                if cylinder_data.get('date_borrowed'):
-                    try:
-                        date_borrowed = cylinder_data['date_borrowed'].replace('Z', '+00:00')
-                    except:
-                        pass
-                
-                if cylinder_data.get('rental_date'):
-                    try:
-                        rental_date = cylinder_data['rental_date'].replace('Z', '+00:00')
-                    except:
-                        pass
-                
-                if cylinder_data.get('date_returned'):
-                    try:
-                        date_returned = cylinder_data['date_returned'].replace('Z', '+00:00')
-                    except:
-                        pass
-                
-                cursor.execute("""
-                    INSERT INTO cylinders (
-                        id, custom_id, serial_number, type, size, status, location,
-                        rented_to, customer_name, customer_email, customer_phone,
-                        customer_no, customer_city, customer_state,
-                        date_borrowed, rental_date, date_returned
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    cylinder_id,
-                    cylinder_data.get('custom_id', ''),
-                    cylinder_data.get('serial_number', ''),
-                    cylinder_data.get('type', 'Medical Oxygen'),
-                    cylinder_data.get('size', '40L'),
-                    cylinder_data.get('status', 'available'),
-                    cylinder_data.get('location', 'Warehouse'),
-                    cylinder_data.get('rented_to'),
-                    cylinder_data.get('customer_name', ''),
-                    cylinder_data.get('customer_email', ''),
-                    cylinder_data.get('customer_phone', ''),
-                    cylinder_data.get('customer_no', ''),
-                    cylinder_data.get('customer_city', ''),
-                    cylinder_data.get('customer_state', ''),
-                    date_borrowed,
-                    rental_date,
-                    date_returned
-                ))
-                imported_count += 1
-            except Exception as e:
-                print_warning(f"Error importing cylinder {cylinder_data.get('custom_id', 'Unknown')}: {e}")
-        
-        conn.commit()
-        print_status(f"Imported {imported_count} cylinders")
-    
-    # Import rental history
-    rental_file = data_dir / "rental_history.json"
-    if rental_file.exists():
-        print_status("Importing rental history...")
-        with open(rental_file, 'r', encoding='utf-8') as f:
-            rental_data = json.load(f)
-        
-        imported_count = 0
-        for record in rental_data:
-            try:
-                # Check if record already exists
-                cursor.execute("""
-                    SELECT id FROM rental_history 
-                    WHERE cylinder_id = ? AND customer_id = ? AND rental_date = ?
-                """, (record.get('cylinder_id'), record.get('customer_id'), 
-                     record.get('rental_date', '').replace('Z', '+00:00')))
-                if cursor.fetchone():
-                    continue
-                
-                rental_date = None
-                return_date = None
-                
-                if record.get('rental_date'):
-                    try:
-                        rental_date = record['rental_date'].replace('Z', '+00:00')
-                    except:
-                        pass
-                
-                if record.get('return_date'):
-                    try:
-                        return_date = record['return_date'].replace('Z', '+00:00')
-                    except:
-                        pass
-                
-                cursor.execute("""
-                    INSERT INTO rental_history (
-                        id, cylinder_id, customer_id, customer_name, customer_no,
-                        cylinder_custom_id, rental_date, return_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    str(uuid.uuid4()),
-                    record.get('cylinder_id'),
-                    record.get('customer_id'),
-                    record.get('customer_name', ''),
-                    record.get('customer_no', ''),
-                    record.get('cylinder_custom_id', ''),
-                    rental_date,
-                    return_date
-                ))
-                imported_count += 1
-            except Exception as e:
-                print_warning(f"Error importing rental record: {e}")
-        
-        conn.commit()
-        print_status(f"Imported {imported_count} rental history records")
-    
-    conn.close()
+    print_status(f"Found {len(json_files)} JSON files available for migration")
+    print_warning("To migrate existing JSON data to PostgreSQL:")
+    print_warning("1. Ensure your PostgreSQL database is running")
+    print_warning("2. Use the web application's Import Data feature")
+    print_warning("3. Or use the import_from_json.py script")
+    print_warning("4. JSON files will be automatically imported to PostgreSQL")
 
 def create_admin_user():
     """Create default admin user in users.json"""
@@ -430,8 +224,8 @@ class Config:
     SESSION_PERMANENT = False
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
     
-    # Database config (SQLite for local development)
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'sqlite:///oxygen_tracker.db'
+    # Database config (PostgreSQL required)
+    DATABASE_URL = os.environ.get('DATABASE_URL')
     
     # Development settings
     DEBUG = True
@@ -456,6 +250,7 @@ class Config:
 def main():
     """Main setup function"""
     print("🚀 Starting local development setup for Oxygen Cylinder Tracker...")
+    print("⚠ IMPORTANT: This application now requires PostgreSQL database")
     print()
     
     # Check Python version
@@ -473,11 +268,25 @@ def main():
         print_error("Failed to install dependencies")
         sys.exit(1)
     
-    # Create database
-    create_sqlite_database()
+    # Load environment variables
+    from pathlib import Path
+    env_file = Path(".env")
+    if env_file.exists():
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
     
-    # Import data
-    import_json_data()
+    # Check PostgreSQL setup
+    if not check_postgresql_setup():
+        print_error("PostgreSQL database setup failed")
+        print_warning("Please configure DATABASE_URL in your .env file")
+        sys.exit(1)
+    
+    # Check for data migration needs
+    check_data_migration()
     
     # Create admin user
     create_admin_user()
@@ -489,12 +298,14 @@ def main():
     print_status("🎉 Local setup completed successfully!")
     print()
     print("Next steps:")
-    print("1. Start the development server: python main.py")
-    print("2. Open your browser to: http://localhost:5000")
-    print("3. Login with admin/admin123")
-    print("4. Change the admin password immediately")
+    print("1. Ensure PostgreSQL database is running and accessible")
+    print("2. Start the development server: python main.py")
+    print("3. Open your browser to: http://localhost:5000")
+    print("4. Login with admin/admin123")
+    print("5. Change the admin password immediately")
+    print("6. Use Import Data feature to migrate any existing JSON data")
     print()
-    print("Development database: oxygen_tracker.db")
+    print("Database: PostgreSQL (see DATABASE_URL in .env)")
     print("Environment config: .env")
     print("Users file: users.json")
     print()
