@@ -328,18 +328,66 @@ def index():
     Returns:
         Dashboard template with comprehensive system statistics
     """
-    # Use cached values for fast dashboard loading
-    total_customers = 249
-    total_cylinders = 6774
-    available_cylinders = 2091
-    rented_cylinders = 4683
-    maintenance_cylinders = 0
-    utilization_rate = 69
-    top_customer_count = 468
-    avg_rental_days = 21
-    efficiency_score = 7
-    days_active = 60
-    growth_rate = 15
+    # Get actual total counts from PostgreSQL database directly
+    with CustomerService() as customer_service:
+        customers_data, total_customers = customer_service.get_all(page=1, per_page=1)
+    
+    with CylinderService() as cylinder_service:
+        # Get counts directly from database using SQL for accuracy
+        from sqlalchemy import text
+        
+        # Get total cylinder count
+        result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders")).scalar()
+        total_cylinders = result or 0
+        
+        # Get count by status (case-insensitive)
+        available_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'available'")).scalar()
+        available_cylinders = available_result or 0
+        
+        rented_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'rented'")).scalar()
+        rented_cylinders = rented_result or 0
+        
+        maintenance_result = cylinder_service.db.execute(text("SELECT COUNT(*) FROM cylinders WHERE LOWER(status) = 'maintenance'")).scalar()
+        maintenance_cylinders = maintenance_result or 0
+        
+        # Get customer rental counts for top customer calculation
+        customer_rentals = {}
+        rental_results = cylinder_service.db.execute(text("SELECT rented_to, COUNT(*) as count FROM cylinders WHERE status = 'rented' AND rented_to IS NOT NULL GROUP BY rented_to")).fetchall()
+        for row in rental_results:
+            customer_rentals[row[0]] = row[1]
+    
+    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
+    
+    top_customer_count = max(customer_rentals.values()) if customer_rentals else 0
+    
+    # Calculate average rental days (mock data)
+    import random
+    avg_rental_days = random.randint(7, 30)
+    
+    # Calculate efficiency score (based on utilization and availability)
+    efficiency_score = min(10, round((utilization_rate + (available_cylinders / total_cylinders * 100 if total_cylinders > 0 else 0)) / 20))
+    
+    # Days since first customer/cylinder
+    from datetime import datetime
+    import json
+    import os
+    
+    days_active = 1
+    try:
+        if os.path.exists('data/customers.json'):
+            with open('data/customers.json', 'r') as f:
+                customer_data = json.load(f)
+                if customer_data:
+                    oldest_date = min([c.get('created_at', datetime.now().isoformat()) for c in customer_data])
+                    if oldest_date:
+                        from datetime import datetime
+                        oldest = datetime.fromisoformat(oldest_date.replace('Z', '+00:00').split('.')[0])
+                        days_active = (datetime.now() - oldest).days + 1
+    except:
+        pass
+    
+    # Growth rate (mock calculation)
+    growth_rate = random.randint(5, 25)
     
     stats = {
         'total_customers': total_customers,
@@ -360,15 +408,28 @@ def index():
 @app.route('/metrics')
 @login_required
 def metrics():
-    """Fast metrics page with cached data"""
-    # Use cached metrics for better performance
-    total_customers = 249
-    available_cylinders = 2091
-    rented_cylinders = 4683
-    maintenance_cylinders = 0
-    total_cylinders = 6774
-    utilization_rate = 69
-    top_customer_count = 468
+    """Metrics and analytics page"""
+    customers = customer_model.get_all()
+    with CylinderService() as cylinder_service:
+        cylinders, _ = cylinder_service.get_all(page=1, per_page=1000)
+    
+    # Get cylinder status counts
+    available_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'available'])
+    rented_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'rented'])
+    maintenance_cylinders = len([c for c in cylinders if c.get('status', '').lower() == 'maintenance'])
+    
+    # Calculate fun metrics
+    total_cylinders = len(cylinders)
+    utilization_rate = round((rented_cylinders / total_cylinders * 100) if total_cylinders > 0 else 0)
+    
+    # Find top customer (most rentals)
+    customer_rentals = {}
+    for cylinder in cylinders:
+        if cylinder.get('rented_to'):
+            customer_id = cylinder['rented_to']
+            customer_rentals[customer_id] = customer_rentals.get(customer_id, 0) + 1
+    
+    top_customer_count = max(customer_rentals.values()) if customer_rentals else 0
     
     # Calculate average rental days (mock data)
     import random
@@ -521,39 +582,90 @@ def test_email():
 @app.route('/customers')
 @login_required
 def customers():
-    """Display all customers with search functionality and pagination - OPTIMIZED"""
+    """Display all customers with search functionality and pagination"""
     search_query = request.args.get('search', '')
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 25))
     
-    # Simplified approach - get customers without complex joins for better performance
+    # Use a single optimized SQL query to get customers with their active dispatch counts
+    from sqlalchemy import text
     with CustomerService() as customer_service:
-        customers_paginated, total_customers = customer_service.get_all(search_query, page, per_page)
+        # Build the SQL query with proper search filtering
+        if search_query:
+            sql_query = """
+            SELECT c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                   c.customer_address, c.customer_city, c.customer_state, c.created_at,
+                   COUNT(cyl.id) as active_dispatches
+            FROM customers c 
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            WHERE LOWER(c.customer_name) LIKE LOWER(:search) 
+               OR LOWER(c.customer_no) LIKE LOWER(:search)
+               OR LOWER(c.customer_phone) LIKE LOWER(:search)
+            GROUP BY c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                     c.customer_address, c.customer_city, c.customer_state, c.created_at
+            ORDER BY active_dispatches DESC
+            LIMIT :limit OFFSET :offset
+            """
+            search_param = f'%{search_query}%'
+            result = customer_service.db.execute(
+                text(sql_query), 
+                {'search': search_param, 'limit': per_page, 'offset': (page - 1) * per_page}
+            )
+            
+            # Count total for pagination
+            count_query = """
+            SELECT COUNT(DISTINCT c.id)
+            FROM customers c
+            WHERE LOWER(c.customer_name) LIKE LOWER(:search) 
+               OR LOWER(c.customer_no) LIKE LOWER(:search)
+               OR LOWER(c.customer_phone) LIKE LOWER(:search)
+            """
+            total_result = customer_service.db.execute(text(count_query), {'search': search_param})
+            total_customers = total_result.scalar()
+        else:
+            sql_query = """
+            SELECT c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                   c.customer_address, c.customer_city, c.customer_state, c.created_at,
+                   COUNT(cyl.id) as active_dispatches
+            FROM customers c 
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            GROUP BY c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
+                     c.customer_address, c.customer_city, c.customer_state, c.created_at
+            ORDER BY active_dispatches DESC
+            LIMIT :limit OFFSET :offset
+            """
+            result = customer_service.db.execute(
+                text(sql_query), 
+                {'limit': per_page, 'offset': (page - 1) * per_page}
+            )
+            
+            # Count total for pagination
+            count_result = customer_service.db.execute(text("SELECT COUNT(*) FROM customers"))
+            total_customers = count_result.scalar()
         
-        # Convert to dictionaries for template
-        customers_list = []
-        for customer in customers_paginated:
+        # Convert results to dictionaries
+        customers_paginated = []
+        for row in result:
             # Clean phone number - convert empty/0.0 values to None
-            phone = getattr(customer, 'customer_phone', '')
+            phone = row.customer_phone
             if phone in ['0.0', '0', '', None]:
                 phone = None
                 
             customer_dict = {
-                'id': customer.id,
-                'customer_no': getattr(customer, 'customer_no', ''),
-                'customer_name': getattr(customer, 'customer_name', ''),
-                'customer_email': getattr(customer, 'customer_email', ''),
+                'id': row.id,
+                'customer_no': row.customer_no,
+                'customer_name': row.customer_name,
+                'customer_email': row.customer_email,
                 'customer_phone': phone,
-                'customer_address': getattr(customer, 'customer_address', ''),
-                'customer_city': getattr(customer, 'customer_city', ''),  
-                'customer_state': getattr(customer, 'customer_state', ''),
-                'created_at': customer.created_at.isoformat() if customer.created_at else None,
-                'active_dispatches': 0,  # Calculate only when needed
-                'rental_count': 0,
-                'rented_cylinders': []
+                'customer_address': row.customer_address,
+                'customer_city': row.customer_city,  
+                'customer_state': row.customer_state,
+                'created_at': row.created_at.isoformat() if row.created_at else None,
+                'active_dispatches': row.active_dispatches,
+                'rental_count': row.active_dispatches,
+                'rented_cylinders': []  # We'll populate this only when needed
             }
-            customers_list.append(customer_dict)
-        customers_paginated = customers_list
+            customers_paginated.append(customer_dict)
     
     # Calculate pagination info 
     total_pages = (total_customers + per_page - 1) // per_page
@@ -1788,34 +1900,70 @@ def archive_data():
 @app.route('/bulk_rental_management')
 @login_required
 def bulk_rental_management():
-    """Fast bulk cylinder management with simplified data loading"""
-    # Get minimal customer data for dropdown
+    """Dedicated page for bulk cylinder rental management"""
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=100)  # Limit to reduce load time
-    
-    # Get limited cylinder data for display
+        customers, _ = customer_service.get_all(page=1, per_page=500)  # Get all customers
     with CylinderService() as cylinder_service:
-        cylinders, _ = cylinder_service.get_all(page=1, per_page=200)  # Limit to first 200 for performance
+        cylinders, _ = cylinder_service.get_all()
     
-    # Simple conversion without complex joins
-    customers_list = []
+    # Convert customers to dict format if needed
+    customers_dict = []
     for customer in customers:
-        customers_list.append({
-            'id': customer.id,
-            'customer_name': getattr(customer, 'customer_name', '') or 'Unknown',
-            'customer_phone': getattr(customer, 'customer_phone', '') or ''
-        })
+        if isinstance(customer, dict):
+            customers_dict.append(customer)
+        else:
+            # Convert SQLAlchemy object to dict
+            customer_dict = {
+                'id': customer.id,
+                'customer_no': getattr(customer, 'customer_no', '') or '',
+                'customer_name': getattr(customer, 'customer_name', '') or '',
+                'customer_email': getattr(customer, 'customer_email', '') or '',
+                'customer_phone': getattr(customer, 'customer_phone', '') or '',
+                'customer_address': getattr(customer, 'customer_address', '') or '',
+                'customer_city': getattr(customer, 'customer_city', '') or '',
+                'customer_state': getattr(customer, 'customer_state', '') or ''
+            }
+            customers_dict.append(customer_dict)
     
-    cylinders_list = []
+    # Convert cylinders to dict format if needed and add customer names
+    cylinders_dict = []
     for cylinder in cylinders:
-        cylinders_list.append({
-            'id': cylinder.id,
-            'display_id': getattr(cylinder, 'custom_id', '') or getattr(cylinder, 'serial_number', '') or f"ID-{cylinder.id[:8]}",
-            'status': getattr(cylinder, 'status', '') or 'available',
-            'type': getattr(cylinder, 'type', '') or 'Medical Oxygen'
-        })
+        if isinstance(cylinder, dict):
+            cylinder_dict = cylinder
+        else:
+            # Convert SQLAlchemy object to dict
+            from datetime import datetime
+            cylinder_dict = {
+                'id': cylinder.id,
+                'custom_id': getattr(cylinder, 'custom_id', '') or '',
+                'serial_number': getattr(cylinder, 'serial_number', '') or '',
+                'display_id': getattr(cylinder, 'custom_id', '') or getattr(cylinder, 'serial_number', '') or f"ID-{cylinder.id[:8]}",
+                'type': getattr(cylinder, 'type', '') or '',
+                'size': getattr(cylinder, 'size', '') or '',
+                'status': getattr(cylinder, 'status', '') or '',
+                'location': getattr(cylinder, 'location', '') or '',
+                'rented_to': getattr(cylinder, 'rented_to', '') or '',
+                'customer_name': getattr(cylinder, 'customer_name', '') or '',
+                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if getattr(cylinder, 'date_borrowed', None) else 0,
+                'date_borrowed': cylinder.date_borrowed.isoformat() if getattr(cylinder, 'date_borrowed', None) else ''
+            }
+        
+        # Add customer name for rented cylinders
+        if cylinder_dict.get('rented_to'):
+            with CustomerService() as customer_service:
+                customer = customer_service.get_by_id(cylinder_dict['rented_to'])
+            if customer:
+                # Handle both dict and SQLAlchemy object
+                if hasattr(customer, 'customer_name'):
+                    cylinder_dict['customer_name'] = customer.customer_name or 'Unknown Customer'
+                elif isinstance(customer, dict):
+                    cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
+                else:
+                    cylinder_dict['customer_name'] = 'Unknown Customer'
+        
+        cylinders_dict.append(cylinder_dict)
     
-    return render_template('bulk_rental_management.html', customers=customers_list, cylinders=cylinders_list)
+    return render_template('bulk_rental_management.html', customers=customers_dict, cylinders=cylinders_dict)
 
 @app.route('/bulk_rental_management/process', methods=['POST'])
 @login_required
