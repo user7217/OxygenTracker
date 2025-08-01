@@ -1148,24 +1148,27 @@ def cylinders():
     }
     
     # Get all customers for the filter dropdown using PostgreSQL service
+    # Convert to dictionaries while session is still active
+    customers = []
     with CustomerService() as customer_service:
         customers_list, _ = customer_service.get_all(page=1, per_page=10000)
-    
-    # Convert customers to dictionaries to avoid detached instance errors
-    customers = []
-    for customer in customers_list:
-        if hasattr(customer, 'id'):
-            customers.append({
-                'id': customer.id,
-                'customer_name': customer.customer_name,
-                'customer_no': customer.customer_no,
-                'customer_phone': customer.customer_phone,
-                'customer_email': customer.customer_email or '',
-                'customer_city': customer.customer_city,
-                'customer_state': customer.customer_state
-            })
-        else:
-            customers.append(customer)
+        
+        # Convert customers to dictionaries while session is active
+        for customer in customers_list:
+            try:
+                # Try to access as SQLAlchemy object first
+                customers.append({
+                    'id': customer.id,
+                    'customer_name': customer.customer_name,
+                    'customer_no': customer.customer_no,
+                    'customer_phone': customer.customer_phone,
+                    'customer_email': customer.customer_email or '',
+                    'customer_city': customer.customer_city,
+                    'customer_state': customer.customer_state
+                })
+            except (AttributeError, Exception):
+                # If it's already a dictionary or any other issue, use as-is
+                customers.append(customer)
 
     return render_template('cylinders.html', 
                          cylinders=paginated_cylinders, 
