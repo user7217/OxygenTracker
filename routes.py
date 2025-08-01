@@ -897,10 +897,19 @@ def add_customer():
         customer_data['customer_apgst'] = request.form.get('customer_apgst', '').strip()
         customer_data['customer_cst'] = request.form.get('customer_cst', '').strip()
         
+        # Add optional email field
+        customer_data['customer_email'] = request.form.get('customer_email', '').strip()
+        
         try:
-            new_customer = customer_model.add(customer_data)
-            flash(f'Customer {new_customer["customer_name"]} added successfully with ID: {new_customer["id"]}', 'success')
-            return redirect(url_for('customers'))
+            with CustomerService() as customer_service:
+                new_customer = customer_service.create(customer_data)
+            if new_customer:
+                customer_name = customer_data.get('customer_name', 'Unknown')
+                customer_id = new_customer.id if hasattr(new_customer, 'id') else 'N/A'
+                flash(f'Customer {customer_name} added successfully with ID: {customer_id}', 'success')
+                return redirect(url_for('customers'))
+            else:
+                flash('Error adding customer', 'error')
         except Exception as e:
             flash(f'Error adding customer: {str(e)}', 'error')
     
@@ -910,15 +919,34 @@ def add_customer():
 @admin_or_user_can_edit
 def edit_customer(customer_id):
     """Edit existing customer"""
-    customer = customer_model.get_by_id(customer_id)
+    with CustomerService() as customer_service:
+        customer = customer_service.get_by_id(customer_id)
+    
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('customers'))
     
+    # Convert customer to dictionary if it's a SQLAlchemy object
+    if hasattr(customer, 'id'):
+        customer_dict = {
+            'id': customer.id,
+            'customer_no': customer.customer_no,
+            'customer_name': customer.customer_name,
+            'customer_email': customer.customer_email or '',
+            'customer_phone': customer.customer_phone,
+            'customer_address': customer.customer_address,
+            'customer_city': customer.customer_city,
+            'customer_state': customer.customer_state,
+            'customer_apgst': getattr(customer, 'customer_apgst', '') or '',
+            'customer_cst': getattr(customer, 'customer_cst', '') or ''
+        }
+    else:
+        customer_dict = customer
+    
     if request.method == 'POST':
         # Validate required fields for new customer structure
         # Required: customer_no, customer_name, customer_address, customer_city, customer_state, customer_phone
-        # Optional: customer_apgst, customer_cst
+        # Optional: customer_apgst, customer_cst, customer_email
         required_fields = ['customer_no', 'customer_name', 'customer_address', 'customer_city', 'customer_state', 'customer_phone']
         customer_data = {}
         
@@ -928,31 +956,35 @@ def edit_customer(customer_id):
                 # Create user-friendly field names for error messages
                 display_name = field.replace('customer_', '').replace('_', ' ').title()
                 flash(f'{display_name} is required', 'error')
-                return render_template('edit_customer.html', customer=customer)
+                return render_template('edit_customer.html', customer=customer_dict)
             customer_data[field] = value
         
         # Add optional fields
+        customer_data['customer_email'] = request.form.get('customer_email', '').strip()
         customer_data['customer_apgst'] = request.form.get('customer_apgst', '').strip()
         customer_data['customer_cst'] = request.form.get('customer_cst', '').strip()
         
         try:
-            updated_customer = customer_model.update(customer_id, customer_data)
+            with CustomerService() as customer_service:
+                updated_customer = customer_service.update(customer_id, customer_data)
             if updated_customer:
-                flash(f'Customer {updated_customer["customer_name"]} updated successfully', 'success')
+                flash(f'Customer {customer_data["customer_name"]} updated successfully', 'success')
                 return redirect(url_for('customers'))
             else:
                 flash('Error updating customer', 'error')
         except Exception as e:
             flash(f'Error updating customer: {str(e)}', 'error')
     
-    return render_template('edit_customer.html', customer=customer)
+    return render_template('edit_customer.html', customer=customer_dict)
 
 @app.route('/customers/delete/<customer_id>', methods=['POST'])
 @admin_or_user_can_edit
 def delete_customer(customer_id):
     """Delete customer"""
     try:
-        if customer_model.delete(customer_id):
+        with CustomerService() as customer_service:
+            deleted = customer_service.delete(customer_id)
+        if deleted:
             flash('Customer deleted successfully', 'success')
         else:
             flash('Customer not found', 'error')
@@ -1158,10 +1190,15 @@ def cylinder_details(cylinder_id):
     
     # Get customer info if cylinder is rented
     if cylinder.get('rented_to'):
-        customer = customer_model.get_by_id(cylinder['rented_to'])
+        with CustomerService() as customer_service:
+            customer = customer_service.get_by_id(cylinder['rented_to'])
         if customer:
-            cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
-            cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', 'N/A')
+            if hasattr(customer, 'customer_name'):
+                cylinder['customer_name'] = customer.customer_name
+                cylinder['customer_phone'] = customer.customer_phone
+            else:
+                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
+                cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', 'N/A')
     
     return render_template('cylinder_details.html', cylinder=cylinder)
 
@@ -1323,11 +1360,10 @@ def edit_cylinder(cylinder_id):
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             # Verify customer exists
-            customer = customer_model.get_by_id(rented_to)
+            with CustomerService() as customer_service:
+                customer = customer_service.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
                 with CustomerService() as customer_service:
                     customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
