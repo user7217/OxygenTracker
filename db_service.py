@@ -378,6 +378,28 @@ class CylinderService(DatabaseService):
         self.db.commit()
         return cylinder
     
+    def create_exact(self, cylinder_data: Dict) -> Cylinder:
+        """Create cylinder with exact JSON data structure preservation"""
+        # Use the exact data structure from your JSON
+        cylinder = Cylinder()
+        
+        # Map all fields exactly as they come from JSON
+        for field, value in cylinder_data.items():
+            if hasattr(cylinder, field):
+                setattr(cylinder, field, value)
+        
+        # Ensure required fields have values
+        if not cylinder.id:
+            cylinder.id = str(uuid.uuid4())
+        if not cylinder.status:
+            cylinder.status = 'Available'
+        if not cylinder.location:
+            cylinder.location = 'Warehouse'
+            
+        self.db.add(cylinder)
+        self.db.commit()
+        return cylinder
+    
     def update(self, cylinder_id: str, cylinder_data: Dict) -> bool:
         """Update cylinder"""
         cylinder = self.get_by_id(cylinder_id)

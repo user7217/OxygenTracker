@@ -298,30 +298,43 @@ class JSONImporter:
         }
     
     def _import_cylinders(self, cylinders: List[Dict]) -> Dict[str, Any]:
-        """Import cylinder records"""
+        """Import cylinder records with exact JSON structure preservation"""
         imported_count = 0
         errors = []
         
         with CylinderService() as cylinder_service:
             for cylinder_data in cylinders:
                 try:
-                    # Set defaults for missing fields
+                    # Preserve all fields from your JSON format exactly as they are
+                    # Don't remove ANY fields - import them as-is
+                    
+                    # Set defaults only for truly missing required fields
                     cylinder_data.setdefault('status', 'Available')
                     cylinder_data.setdefault('location', 'Warehouse')
                     
-                    # Remove system fields that shouldn't be imported
-                    system_fields = ['id', 'created_at', 'updated_at', 'customer_name', 'customer_email']
-                    for field in system_fields:
-                        cylinder_data.pop(field, None)
+                    # Handle empty strings vs None for customer fields
+                    for field in ['customer_name', 'customer_email', 'customer_phone', 
+                                 'customer_address', 'customer_city', 'customer_state',
+                                 'date_returned', 'rental_date', 'date_borrowed']:
+                        if field in cylinder_data:
+                            value = cylinder_data[field]
+                            # Keep empty strings as empty strings, not None
+                            if value is None:
+                                cylinder_data[field] = ""
                     
-                    # Generate serial number if missing
-                    if not cylinder_data.get('serial_number') and not cylinder_data.get('custom_id'):
-                        cylinder_data['serial_number'] = f"SN-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
+                    # Use the exact ID from your JSON (CYL-* format)
+                    if 'id' in cylinder_data and cylinder_data['id']:
+                        # Your JSON already has the correct ID format
+                        pass  
+                    else:
+                        # Only generate if absolutely no ID provided
+                        if not cylinder_data.get('custom_id'):
+                            cylinder_data['custom_id'] = f"CYL-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
                     
-                    cylinder_service.create(cylinder_data)
+                    cylinder_service.create_exact(cylinder_data)
                     imported_count += 1
                 except Exception as e:
-                    errors.append(f"Cylinder '{cylinder_data.get('custom_id', cylinder_data.get('serial_number', 'Unknown'))}': {str(e)}")
+                    errors.append(f"Cylinder '{cylinder_data.get('id', cylinder_data.get('custom_id', 'Unknown'))}': {str(e)}")
         
         return {
             'success': len(errors) == 0,
