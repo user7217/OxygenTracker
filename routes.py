@@ -713,23 +713,19 @@ def customer_details(customer_id):
     """Display detailed information for a specific customer with rental history tabs"""
     with CustomerService() as customer_service:
         customer_obj = customer_service.get_by_id(customer_id)
-    
-    if not customer_obj:
-        flash('Customer not found', 'error')
-        return redirect(url_for('customers'))
-    
-    # Convert customer to dict if it's a SQLAlchemy object
-    if hasattr(customer_obj, 'id'):
-        # Handle created_at properly - it might be a string or datetime object
+        
+        if not customer_obj:
+            flash('Customer not found', 'error')
+            return redirect(url_for('customers'))
+        
+        # Convert customer to dict within the session to avoid detached instance errors
         created_at_str = None
         if customer_obj.created_at:
             if hasattr(customer_obj.created_at, 'isoformat'):
-                # It's a datetime object
                 created_at_str = customer_obj.created_at.isoformat()
             else:
-                # It's already a string
                 created_at_str = str(customer_obj.created_at)
-                
+                    
         customer = {
             'id': customer_obj.id,
             'customer_no': customer_obj.customer_no,
@@ -741,8 +737,6 @@ def customer_details(customer_id):
             'customer_state': customer_obj.customer_state,
             'created_at': created_at_str
         }
-    else:
-        customer = customer_obj
     
     # Get rental history (active and past) from PostgreSQL
     from db_service import RentalHistoryService
