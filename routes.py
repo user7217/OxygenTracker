@@ -1149,9 +1149,23 @@ def cylinders():
     
     # Get all customers for the filter dropdown using PostgreSQL service
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+    
+    # Convert customers to dictionaries to avoid detached instance errors
+    customers = []
+    for customer in customers_list:
+        if hasattr(customer, 'id'):
+            customers.append({
+                'id': customer.id,
+                'customer_name': customer.customer_name,
+                'customer_no': customer.customer_no,
+                'customer_phone': customer.customer_phone,
+                'customer_email': customer.customer_email or '',
+                'customer_city': customer.customer_city,
+                'customer_state': customer.customer_state
+            })
+        else:
+            customers.append(customer)
 
     return render_template('cylinders.html', 
                          cylinders=paginated_cylinders, 
@@ -1190,19 +1204,24 @@ def cylinder_details(cylinder_id):
         'rented_to': cylinder_obj.rented_to,
         'customer_name': cylinder_obj.customer_name or '',
         'customer_no': cylinder_obj.customer_no or '',
-        'date_borrowed': cylinder_obj.date_borrowed.isoformat() if cylinder_obj.date_borrowed else '',
-        'date_returned': cylinder_obj.date_returned.isoformat() if cylinder_obj.date_returned else '',
-        'created_at': cylinder_obj.created_at.isoformat() if cylinder_obj.created_at else '',
-        'updated_at': cylinder_obj.updated_at.isoformat() if cylinder_obj.updated_at else ''
+        'customer_email': getattr(cylinder_obj, 'customer_email', ''),
+        'customer_phone': getattr(cylinder_obj, 'customer_phone', ''),
+        'customer_city': getattr(cylinder_obj, 'customer_city', ''),
+        'customer_state': getattr(cylinder_obj, 'customer_state', ''),
+        'date_borrowed': cylinder_obj.date_borrowed,
+        'rental_date': cylinder_obj.rental_date,
+        'date_returned': cylinder_obj.date_returned,
+        'created_at': cylinder_obj.created_at,
+        'updated_at': cylinder_obj.updated_at
     }
     
     # Add display ID (custom_id if available, otherwise generated serial)
-    cylinder['display_serial'] = cylinder['custom_id'] or cylinder['serial_number'] or f"ID-{cylinder['id'][:8]}"
+    cylinder['display_id'] = cylinder['custom_id'] or cylinder['serial_number'] or f"ID-{cylinder['id'][:8]}"
     
     # Add rental days calculation
-    if cylinder['date_borrowed']:
+    if cylinder['rental_date']:
         try:
-            rental_days = (datetime.utcnow() - datetime.fromisoformat(cylinder['date_borrowed'])).days
+            rental_days = (datetime.utcnow() - cylinder['rental_date']).days
             cylinder['rental_days'] = rental_days
             cylinder['rental_months'] = rental_days // 30
         except:
@@ -1212,19 +1231,15 @@ def cylinder_details(cylinder_id):
         cylinder['rental_days'] = 0
         cylinder['rental_months'] = 0
     
-    # Get customer info if cylinder is rented
-    if cylinder['rented_to']:
-        with CustomerService() as customer_service:
-            customer = customer_service.get_by_id(cylinder['rented_to'])
-        if customer:
-            if hasattr(customer, 'customer_name'):
-                cylinder['customer_name'] = customer.customer_name
-                cylinder['customer_phone'] = customer.customer_phone
-            else:
-                cylinder['customer_name'] = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
-                cylinder['customer_phone'] = customer.get('customer_phone') or customer.get('phone', 'N/A')
+    # Get rental history for this cylinder
+    rental_history = []
+    try:
+        with RentalHistoryService() as history_service:
+            rental_history = history_service.get_by_cylinder(cylinder['id'])
+    except Exception as e:
+        print(f"Error getting rental history: {e}")
     
-    return render_template('cylinder_details.html', cylinder=cylinder)
+    return render_template('cylinder_details.html', cylinder=cylinder, rental_history=rental_history)
 
 @app.route('/cylinders/add', methods=['GET', 'POST'])
 @admin_or_user_can_edit

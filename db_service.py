@@ -515,6 +515,16 @@ class RentalHistoryService(DatabaseService):
         
         return history, total_count
     
+    def get_by_cylinder(self, cylinder_id: str) -> List[RentalHistory]:
+        """Get rental history for a specific cylinder"""
+        self._ensure_connection()
+        
+        history = self.db.query(RentalHistory).filter(
+            RentalHistory.cylinder_id == cylinder_id
+        ).order_by(desc(RentalHistory.rental_date)).limit(10).all()
+        
+        return history
+    
     def get_customer_history(self, customer_id: str) -> Dict:
         """Get customer's rental history split into active and past"""
         # Get customer to find customer_no for matching

@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Cylinder Details - {{ cylinder.display_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Cylinder Details
+                    </h1>
+                    <p class="text-muted mb-0">{{ cylinder.display_id }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('edit_cylinder', cylinder_id=cylinder.id) }}" class="btn btn-primary me-2">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Cylinder
+                    </a>
+                    <a href="{{ url_for('cylinders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Cylinders
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Cylinder Information Card -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-cylinder me-2"></i>Cylinder Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Custom ID:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.custom_id or 'Not set' }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Serial Number:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.serial_number or 'Not set' }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Type:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.type }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Size:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.size }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Status:</strong></div>
+                                <div class="col-sm-8">
+                                    {% if cylinder.status == 'available' %}
+                                        <span class="badge bg-success fs-6">Available</span>
+                                    {% elif cylinder.status == 'rented' %}
+                                        <span class="badge bg-warning fs-6">Rented</span>
+                                    {% elif cylinder.status == 'maintenance' %}
+                                        <span class="badge bg-danger fs-6">Maintenance</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6">{{ cylinder.status }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Location:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.location or 'Not specified' }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Created:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.created_at.strftime('%B %d, %Y at %I:%M %p') if cylinder.created_at else 'Unknown' }}</div>
+                            </div>
+                            {% if cylinder.updated_at %}
+                            <div class="row mb-3">
+                                <div class="col-sm-4"><strong>Last Updated:</strong></div>
+                                <div class="col-sm-8">{{ cylinder.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rental Information Card -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person-circle me-2"></i>Rental Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if cylinder.status == 'rented' and cylinder.rented_to %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Customer:</strong></div>
+                                    <div class="col-sm-8">
+                                        <a href="{{ url_for('customer_details', customer_id=cylinder.rented_to) }}" class="text-decoration-none">
+                                            {{ cylinder.customer_name or 'Unknown Customer' }}
+                                        </a>
+                                    </div>
+                                </div>
+                                {% if cylinder.customer_no %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Customer No:</strong></div>
+                                    <div class="col-sm-8">{{ cylinder.customer_no }}</div>
+                                </div>
+                                {% endif %}
+                                {% if cylinder.customer_phone %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Phone:</strong></div>
+                                    <div class="col-sm-8">{{ cylinder.customer_phone }}</div>
+                                </div>
+                                {% endif %}
+                                {% if cylinder.customer_email %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Email:</strong></div>
+                                    <div class="col-sm-8">{{ cylinder.customer_email }}</div>
+                                </div>
+                                {% endif %}
+                                {% if cylinder.customer_city %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>City:</strong></div>
+                                    <div class="col-sm-8">{{ cylinder.customer_city }}</div>
+                                </div>
+                                {% endif %}
+                                {% if cylinder.rental_date %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Rental Date:</strong></div>
+                                    <div class="col-sm-8">{{ cylinder.rental_date.strftime('%B %d, %Y') }}</div>
+                                </div>
+                                {% endif %}
+                                {% if cylinder.rental_days is defined and cylinder.rental_days > 0 %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Duration:</strong></div>
+                                    <div class="col-sm-8">
+                                        {{ cylinder.rental_days }} days
+                                        {% if cylinder.rental_months > 0 %}
+                                            ({{ cylinder.rental_months }} months)
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Quick Actions for Rented Cylinders -->
+                                <div class="mt-4">
+                                    <h6 class="text-muted">Quick Actions:</h6>
+                                    <a href="{{ url_for('bulk_cylinder_management', customer_id=cylinder.rented_to) }}" class="btn btn-outline-primary btn-sm me-2">
+                                        <i class="bi bi-arrow-repeat me-1"></i>Manage Rentals
+                                    </a>
+                                    <a href="{{ url_for('customer_details', customer_id=cylinder.rented_to) }}" class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-person-lines-fill me-1"></i>Customer Details
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-cylinder display-4 d-block mb-2"></i>
+                                    <p class="mb-0">This cylinder is not currently rented</p>
+                                    {% if cylinder.status == 'available' %}
+                                        <small class="text-success">Available for rental</small>
+                                    {% else %}
+                                        <small>Status: {{ cylinder.status }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rental History -->
+            {% if rental_history %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-clock-history me-2"></i>Rental History
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Customer</th>
+                                            <th>Rental Date</th>
+                                            <th>Return Date</th>
+                                            <th>Duration</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for history in rental_history %}
+                                        <tr>
+                                            <td>
+                                                {% if history.customer_id %}
+                                                    <a href="{{ url_for('customer_details', customer_id=history.customer_id) }}" class="text-decoration-none">
+                                                        {{ history.customer_name or 'Unknown Customer' }}
+                                                    </a>
+                                                {% else %}
+                                                    {{ history.customer_name or 'Unknown Customer' }}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ history.rental_date.strftime('%b %d, %Y') if history.rental_date else 'N/A' }}</td>
+                                            <td>{{ history.return_date.strftime('%b %d, %Y') if history.return_date else 'Still Rented' }}</td>
+                                            <td>
+                                                {% if history.return_date and history.rental_date %}
+                                                    {% set duration = (history.return_date - history.rental_date).days %}
+                                                    {{ duration }} days
+                                                {% elif history.rental_date %}
+                                                    {% set duration = (moment().date() - history.rental_date.date()).days %}
+                                                    {{ duration }} days (ongoing)
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if history.return_date %}
+                                                    <span class="badge bg-success">Completed</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">Active</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
