@@ -1866,11 +1866,23 @@ def return_cylinder_custom(cylinder_id, customer_id):
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
     with CustomerService() as customer_service:
-        customer = customer_service.get_by_id(customer_id)
-    
-    if not customer:
-        flash('Customer not found', 'error')
-        return redirect(url_for('customers'))
+        customer_obj = customer_service.get_by_id(customer_id)
+        
+        if not customer_obj:
+            flash('Customer not found', 'error')
+            return redirect(url_for('customers'))
+        
+        # Convert customer to dictionary within session to avoid detached instance errors
+        customer = {
+            'id': customer_obj.id,
+            'customer_no': customer_obj.customer_no,
+            'customer_name': customer_obj.customer_name,
+            'customer_email': customer_obj.customer_email,
+            'customer_phone': customer_obj.customer_phone,
+            'customer_address': customer_obj.customer_address,
+            'customer_city': customer_obj.customer_city,
+            'customer_state': customer_obj.customer_state
+        }
     
     if request.method == 'GET':
         # Get current rentals for this customer
