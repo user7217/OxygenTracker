@@ -42,6 +42,50 @@ with app.app_context():
     
     # Create all tables
     db.create_all()
+    
+    # Run database migrations for existing tables
+    try:
+        from sqlalchemy import text
+        
+        # Check if customer_address column exists, if not add it
+        result = db.session.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='cylinders' AND column_name='customer_address'
+        """)).fetchone()
+        
+        if not result:
+            logging.info("Adding missing customer_address column to cylinders table")
+            db.session.execute(text("ALTER TABLE cylinders ADD COLUMN customer_address VARCHAR"))
+            
+        # Check for other missing columns that might be needed
+        missing_columns = [
+            ('serial_number', 'VARCHAR'),
+            ('pressure', 'VARCHAR'), 
+            ('last_inspection', 'VARCHAR'),
+            ('next_inspection', 'VARCHAR'),
+            ('notes', 'TEXT'),
+            ('customer_no', 'VARCHAR')
+        ]
+        
+        for column_name, column_type in missing_columns:
+            result = db.session.execute(text(f"""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='cylinders' AND column_name='{column_name}'
+            """)).fetchone()
+            
+            if not result:
+                logging.info(f"Adding missing {column_name} column to cylinders table")
+                db.session.execute(text(f"ALTER TABLE cylinders ADD COLUMN {column_name} {column_type}"))
+        
+        db.session.commit()
+        logging.info("Database migration completed successfully")
+        
+    except Exception as e:
+        logging.warning(f"Database migration failed (might be normal for new deployments): {e}")
+        db.session.rollback()
+    
     logging.info("Database tables created successfully")
 
 # Import routes after app and database setup to avoid circular imports
