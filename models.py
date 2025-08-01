@@ -20,35 +20,43 @@ class Customer(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    cylinders = db.relationship("Cylinder", back_populates="customer", lazy='dynamic')
+    # Note: No direct relationship to cylinders since they use string references
 
 class Cylinder(db.Model):
-    """Cylinder model using Flask-SQLAlchemy"""
+    """Cylinder model matching exact JSON data structure"""
     __tablename__ = 'cylinders'
     
-    id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cylinder_id = db.Column(db.String, unique=True, nullable=False, index=True)
-    custom_id = db.Column(db.String, index=True)
-    type = db.Column(db.String, index=True)
-    size = db.Column(db.String)
-    status = db.Column(db.String, default='available', index=True)
-    location = db.Column(db.String, default='Warehouse')
-    rented_to = db.Column(db.String, db.ForeignKey('customers.id'), nullable=True)
-    customer_name = db.Column(db.String)
-    customer_email = db.Column(db.String)
-    customer_phone = db.Column(db.String)
-    customer_no = db.Column(db.String)
-    customer_city = db.Column(db.String)
-    customer_state = db.Column(db.String)
-    date_borrowed = db.Column(db.DateTime)
-    rental_date = db.Column(db.DateTime)
-    date_returned = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Primary fields matching your JSON structure exactly
+    id = db.Column(db.String, primary_key=True)  # Uses your CYL-* format directly
+    custom_id = db.Column(db.String, index=True)  # Your cylinder identifier like "35254"
+    type = db.Column(db.String, index=True)  # "O2", etc.
+    size = db.Column(db.String)  # "7", "7.2", etc.
+    location = db.Column(db.String, default='Warehouse')  # Location like "Nellore"
+    status = db.Column(db.String, default='Available', index=True)  # "Available" or "rented"
+    created_at = db.Column(db.String)  # Store as string to match JSON format
+    updated_at = db.Column(db.String)  # Store as string to match JSON format
     
-    # Relationships
-    customer = db.relationship("Customer", back_populates="cylinders")
+    # Customer fields for rented cylinders
+    customer_name = db.Column(db.String)  # "VAPL", etc.
+    customer_email = db.Column(db.String)  # Usually empty ""
+    customer_phone = db.Column(db.String)  # "0.0" or actual phone
+    customer_address = db.Column(db.String)  # Customer address
+    customer_city = db.Column(db.String)  # "Nellore", etc.
+    customer_state = db.Column(db.String)  # "Andhra Pradesh", etc.
+    
+    # Rental tracking fields
+    rented_to = db.Column(db.String, nullable=True)  # "CUST-3514E7AB" format
+    date_returned = db.Column(db.String)  # Store as string, empty when still rented
+    rental_date = db.Column(db.String)  # "2007-04-22" format
+    date_borrowed = db.Column(db.String)  # "2007-04-22" format
+    
+    # Additional fields for compatibility (not in your JSON but needed by code)
+    serial_number = db.Column(db.String, index=True)  # For backward compatibility
+    pressure = db.Column(db.String)  # For pressure tracking
+    last_inspection = db.Column(db.String)  # Store as string for consistency
+    next_inspection = db.Column(db.String)  # Store as string for consistency
+    notes = db.Column(db.Text)  # For additional notes
+    customer_no = db.Column(db.String)  # For customer number linkage
 
 class RentalHistory(db.Model):
     """Rental history model using Flask-SQLAlchemy"""
