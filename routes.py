@@ -1825,9 +1825,7 @@ def return_cylinder_custom(cylinder_id, customer_id):
 def bulk_cylinder_management(customer_id):
     """Bulk cylinder rental/return management"""
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     
     if not customer:
         flash('Customer not found', 'error')
@@ -2094,9 +2092,7 @@ def process_bulk_rental():
         return redirect(url_for('bulk_rental_management'))
     
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('bulk_rental_management'))
@@ -2127,17 +2123,21 @@ def process_bulk_rental():
     
     for cylinder_id in cylinder_ids:
         with CylinderService() as cylinder_service:
-            cylinder = cylinder_service.get_by_id(cylinder_id)
+            cylinder = cylinder_service.find_by_any_identifier(cylinder_id)
         
         if not cylinder:
             errors.append(f'Cylinder {cylinder_id}: Not found in database')
             skipped += 1
             continue
         
+        # Use the actual system ID for operations
+        actual_cylinder_id = cylinder.get('id')
+        cylinder_display = cylinder.get('custom_id') or cylinder.get('serial_number') or actual_cylinder_id
+        
         if action == 'rent':
             # Check if cylinder is available
             if cylinder.get('status', '').lower() != 'available':
-                errors.append(f'Cylinder {cylinder_id}: Not available (current status: {cylinder.get("status", "unknown")})')
+                errors.append(f'"{cylinder_display}": Not available (current status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             
@@ -2145,18 +2145,18 @@ def process_bulk_rental():
             # Convert date from YYYY-MM-DD to datetime ISO format
             rental_datetime = f"{date}T00:00:00"
             with CylinderService() as cylinder_service:
-                success = cylinder_service.rent_cylinder(cylinder_id, customer_id, rental_datetime)
+                success = cylinder_service.rent_cylinder(actual_cylinder_id, customer_id, rental_datetime)
             if success:
                 processed += 1
-                success_cylinders.append(cylinder_id)
+                success_cylinders.append(cylinder_display)
             else:
-                errors.append(f'Cylinder {cylinder_id}: Failed to dispatch')
+                errors.append(f'"{cylinder_display}": Failed to dispatch')
                 skipped += 1
         
         elif action == 'return':
             # Check if cylinder is rented to this customer
             if cylinder.get('status', '').lower() != 'rented' or cylinder.get('rented_to') != customer_id:
-                errors.append(f'Cylinder {cylinder_id}: Not rented to this customer')
+                errors.append(f'"{cylinder_display}": Not rented to this customer')
                 skipped += 1
                 continue
             
@@ -2164,12 +2164,12 @@ def process_bulk_rental():
             # Convert date from YYYY-MM-DD to datetime ISO format  
             return_datetime = f"{date}T00:00:00"
             with CylinderService() as cylinder_service:
-                success = cylinder_service.return_cylinder(cylinder_id, return_datetime)
+                success = cylinder_service.return_cylinder(actual_cylinder_id, return_datetime)
             if success:
                 processed += 1
-                success_cylinders.append(cylinder_id)
+                success_cylinders.append(cylinder_display)
             else:
-                errors.append(f'Cylinder {cylinder_id}: Failed to return')
+                errors.append(f'"{cylinder_display}": Failed to return')
                 skipped += 1
     
     # Create summary message

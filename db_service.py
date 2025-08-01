@@ -268,6 +268,50 @@ class CylinderService(DatabaseService):
         """Get cylinder by ID"""
         return self.db.query(Cylinder).filter(Cylinder.id == cylinder_id).first()
     
+    def find_by_any_identifier(self, identifier: str) -> Optional[Dict]:
+        """
+        Find cylinder by any identifier (system ID, custom ID, or serial number).
+        Returns a dictionary representation for compatibility.
+        """
+        if not identifier:
+            return None
+            
+        # Try to find by custom_id first (most common use case)
+        cylinder = self.db.query(Cylinder).filter(Cylinder.custom_id == identifier).first()
+        
+        # If not found, try by system ID
+        if not cylinder:
+            cylinder = self.db.query(Cylinder).filter(Cylinder.id == identifier).first()
+        
+        # If still not found, try by serial_number
+        if not cylinder:
+            cylinder = self.db.query(Cylinder).filter(Cylinder.serial_number == identifier).first()
+        
+        if not cylinder:
+            return None
+            
+        # Convert to dictionary for compatibility
+        return {
+            'id': cylinder.id,
+            'custom_id': cylinder.custom_id or '',
+            'serial_number': cylinder.serial_number or '',
+            'type': cylinder.type or 'Medical Oxygen',
+            'size': cylinder.size or '40L',
+            'status': cylinder.status or 'available',
+            'location': cylinder.location or 'Warehouse',
+            'pressure': getattr(cylinder, 'pressure', ''),
+            'last_inspection': getattr(cylinder, 'last_inspection', None),
+            'next_inspection': getattr(cylinder, 'next_inspection', None),
+            'notes': getattr(cylinder, 'notes', ''),
+            'rented_to': cylinder.rented_to,
+            'customer_name': cylinder.customer_name or '',
+            'customer_no': cylinder.customer_no or '',
+            'date_borrowed': cylinder.date_borrowed.isoformat() if cylinder.date_borrowed else '',
+            'date_returned': cylinder.date_returned.isoformat() if cylinder.date_returned else '',
+            'created_at': cylinder.created_at.isoformat() if cylinder.created_at else '',
+            'updated_at': cylinder.updated_at.isoformat() if cylinder.updated_at else ''
+        }
+    
     def get_by_customer(self, customer_id: str) -> List[Dict]:
         """Get cylinders rented by customer, returning dictionaries"""
         cylinders = self.db.query(Cylinder).filter(
