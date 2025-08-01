@@ -32,9 +32,15 @@ class DatabaseService:
         """Close database connection"""
         if self.db:
             try:
+                # Commit any pending transactions first
+                self.db.commit()
                 self.db.close()
             except Exception as e:
                 # Handle SSL connection closed errors gracefully
+                try:
+                    self.db.rollback()
+                except:
+                    pass
                 print(f"Database close error (ignored): {e}")
                 pass
     

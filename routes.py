@@ -712,9 +712,7 @@ def customers():
 def customer_details(customer_id):
     """Display detailed information for a specific customer with rental history tabs"""
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer_obj = customer_service.get_by_id(customer_id)
     
     if not customer_obj:
         flash('Customer not found', 'error')
@@ -2107,20 +2105,9 @@ def bulk_rental_management():
                 'date_borrowed': cylinder.date_borrowed.isoformat() if getattr(cylinder, 'date_borrowed', None) else ''
             }
         
-        # Add customer name for rented cylinders
-        if cylinder_dict.get('rented_to'):
-            with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
-            with CustomerService() as customer_service:
-                customers, _ = customer_service.get_all(page=1, per_page=10000)
-            if customer:
-                # Handle both dict and SQLAlchemy object
-                if hasattr(customer, 'customer_name'):
-                    cylinder_dict['customer_name'] = customer.customer_name or 'Unknown Customer'
-                elif isinstance(customer, dict):
-                    cylinder_dict['customer_name'] = customer.get('customer_name') or customer.get('name') or 'Unknown Customer'
-                else:
-                    cylinder_dict['customer_name'] = 'Unknown Customer'
+        # Add customer name for rented cylinders (use existing customer_name if available)
+        if cylinder_dict.get('rented_to') and not cylinder_dict.get('customer_name'):
+            cylinder_dict['customer_name'] = 'Rented Customer'
         
         cylinders_dict.append(cylinder_dict)
     
