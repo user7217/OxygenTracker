@@ -47,6 +47,23 @@ with app.app_context():
     try:
         from sqlalchemy import text
         
+        # Check if old cylinder_id column exists and remove it if it does
+        result = db.session.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='cylinders' AND column_name='cylinder_id'
+        """)).fetchone()
+        
+        if result:
+            logging.info("Removing old cylinder_id column from cylinders table")
+            # First drop the constraint if it exists
+            try:
+                db.session.execute(text("ALTER TABLE cylinders DROP CONSTRAINT IF EXISTS cylinders_cylinder_id_key"))
+            except:
+                pass
+            # Then drop the column
+            db.session.execute(text("ALTER TABLE cylinders DROP COLUMN cylinder_id"))
+        
         # Check if customer_address column exists, if not add it
         result = db.session.execute(text("""
             SELECT column_name 
@@ -60,6 +77,12 @@ with app.app_context():
             
         # Check for other missing columns that might be needed
         missing_columns = [
+            ('customer_city', 'VARCHAR'),
+            ('customer_state', 'VARCHAR'),
+            ('customer_phone', 'VARCHAR'),
+            ('date_returned', 'VARCHAR'),
+            ('rental_date', 'VARCHAR'),
+            ('date_borrowed', 'VARCHAR'),
             ('serial_number', 'VARCHAR'),
             ('pressure', 'VARCHAR'), 
             ('last_inspection', 'VARCHAR'),
