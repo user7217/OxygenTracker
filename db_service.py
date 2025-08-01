@@ -2,15 +2,15 @@
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_, desc, asc, case
-from sqlalchemy.orm import Session
-from db_models import get_db_session, Customer, Cylinder, RentalHistory
+from app import db
+from models import Customer, Cylinder, RentalHistory
 import uuid
 
 class DatabaseService:
-    """Service layer for database operations"""
+    """Service layer for database operations using Flask-SQLAlchemy"""
     
     def __init__(self):
-        self.db = get_db_session()
+        self.db = db.session
     
     def _ensure_connection(self):
         """Ensure database connection is alive, reconnect if needed"""
@@ -21,28 +21,25 @@ class DatabaseService:
         except Exception as e:
             print(f"Database connection lost, reconnecting: {e}")
             try:
-                self.db.close()
+                self.db.rollback()
             except:
                 pass
-            # Import here to avoid circular imports
-            from db_models import get_db_session
-            self.db = get_db_session()
     
     def close(self):
-        """Close database connection"""
-        if self.db:
-            try:
-                # Commit any pending transactions first
-                self.db.commit()
-                self.db.close()
-            except Exception as e:
-                # Handle SSL connection closed errors gracefully
-                try:
-                    self.db.rollback()
-                except:
-                    pass
-                print(f"Database close error (ignored): {e}")
-                pass
+        """Close database session"""
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            print(f"Database close error: {e}")
+    
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+        
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()
     
     def __enter__(self):
         return self
@@ -413,24 +410,36 @@ class CylinderService(DatabaseService):
         if not cylinder or cylinder.status != 'available':
             return False
         
-        # Get customer info
+        # Get customer info and extract data while in session
         customer_service = CustomerService()
         customer = customer_service.get_by_id(customer_id)
-        customer_service.close()
         
         if not customer:
+            customer_service.close()
             return False
         
-        # Update cylinder with rental info
+        # Extract all customer data while still in session to avoid DetachedInstanceError
+        customer_data = {
+            'customer_name': customer.customer_name if hasattr(customer, 'customer_name') else '',
+            'customer_email': customer.customer_email if hasattr(customer, 'customer_email') else '',
+            'customer_phone': customer.customer_phone if hasattr(customer, 'customer_phone') else '',
+            'customer_no': customer.customer_no if hasattr(customer, 'customer_no') else '',
+            'customer_city': customer.customer_city if hasattr(customer, 'customer_city') else '',
+            'customer_state': customer.customer_state if hasattr(customer, 'customer_state') else '',
+            'customer_address': customer.customer_address if hasattr(customer, 'customer_address') else ''
+        }
+        customer_service.close()
+        
+        # Update cylinder with rental info using extracted data
         cylinder.status = 'rented'
         cylinder.rented_to = customer_id
-        cylinder.customer_name = customer.customer_name
-        cylinder.customer_email = customer.customer_email
-        cylinder.customer_phone = customer.customer_phone
-        cylinder.customer_no = customer.customer_no
-        cylinder.customer_city = customer.customer_city
-        cylinder.customer_state = customer.customer_state
-        cylinder.location = customer.customer_address or customer.customer_city
+        cylinder.customer_name = customer_data['customer_name']
+        cylinder.customer_email = customer_data['customer_email']
+        cylinder.customer_phone = customer_data['customer_phone']
+        cylinder.customer_no = customer_data['customer_no']
+        cylinder.customer_city = customer_data['customer_city']
+        cylinder.customer_state = customer_data['customer_state']
+        cylinder.location = customer_data['customer_address'] or customer_data['customer_city'] or 'Unknown'
         
         if rental_date:
             try:
@@ -536,10 +545,11 @@ class RentalHistoryService(DatabaseService):
             return {'active': [], 'past': []}
         
         # Get past rental history using both customer_id and customer_no for broader matching
+        customer_no = getattr(customer, 'customer_no', '') if customer else ''
         past_rentals = self.db.query(RentalHistory).filter(
             or_(
                 RentalHistory.customer_id == customer_id,
-                RentalHistory.customer_no == customer.customer_no
+                RentalHistory.customer_no == customer_no
             )
         ).order_by(desc(RentalHistory.return_date)).limit(50).all()
     
@@ -558,10 +568,11 @@ class RentalHistoryService(DatabaseService):
             return {'monthly_data': [], 'available_years': []}
         
         # Get all rental history for this customer
+        customer_no = getattr(customer, 'customer_no', '') if customer else ''
         all_history = self.db.query(RentalHistory).filter(
             or_(
                 RentalHistory.customer_id == customer_id,
-                RentalHistory.customer_no == customer.customer_no
+                RentalHistory.customer_no == customer_no
             )
         ).order_by(desc(RentalHistory.rental_date)).all()
         
@@ -722,7 +733,7 @@ class RentalHistoryService(DatabaseService):
             return {'active': [], 'past': []}
         
         # Extract customer_no before closing the session
-        customer_no = customer.customer_no
+        customer_no = getattr(customer, 'customer_no', '') if customer else ''
         customer_service.close()
         
         # Get past rentals from history

@@ -2529,10 +2529,8 @@ def process_bulk_rental():
                 errors.append(f'"{cylinder_display}": Failed to return')
                 skipped += 1
     
-    # Create summary message
-    if hasattr(customer, 'customer_name'):
-        customer_name = customer.customer_name or 'Unknown Customer'
-    elif isinstance(customer, dict):
+    # Create summary message - use safe dict access since customer is already converted to dict
+    if isinstance(customer, dict):
         customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
     else:
         customer_name = 'Unknown Customer'
