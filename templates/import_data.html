@@ -1,69 +1,152 @@
 {% extends "base.html" %}
 
-{% block title %}Import Data - Oxygen Cylinder Tracker{% endblock %}
+{% block title %}Import Data - Varasicyl{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="display-4 mb-3">
-                <i class="bi bi-download me-3"></i>Import Data
-            </h1>
-            <p class="lead">Import existing data from MS Access databases</p>
-        </div>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <!-- Upload Form -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-file-earmark-arrow-up me-2"></i>Upload Access Database
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('upload_access_file') }}" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label for="access_file" class="form-label">Select Access Database File</label>
-                            <input type="file" class="form-control" id="access_file" name="access_file" 
-                                   accept=".mdb,.accdb" required>
-                            <div class="form-text">
-                                Supported formats: .mdb (Access 2003 and earlier), .accdb (Access 2007 and later)
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-upload me-2"></i>Upload and Connect
-                        </button>
-                    </form>
-                </div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-upload"></i> Import Data</h2>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="bi bi-house"></i> Back to Dashboard
+                </a>
             </div>
 
-            <!-- Information Card -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="bi bi-info-circle me-2"></i>Import Process
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-primary">Steps:</h6>
-                            <ol class="mb-3">
-                                <li>Upload your Access database file</li>
-                                <li>Select tables to import</li>
-                                <li>Map fields to match our system</li>
-                                <li>Review and confirm import</li>
-                            </ol>
+            <div class="row">
+
+                <!-- JSON Import - Primary Option -->
+                <div class="col-md-6">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-file-earmark-code"></i> JSON Import</h5>
+                            <small>Recommended for Render deployment</small>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-primary">🚀 INSTANT Import:</h6>
-                            <ul class="mb-3">
-                                <li>Zero overhead processing</li>
-                                <li>Direct memory operations</li>
-                                <li>Handles 300k+ records instantly</li>
-                                <li>All historical transaction data</li>
-                            </ul>
+                        <div class="card-body d-flex flex-column">
+                            <p class="text-muted">Import data from JSON files - perfect for cloud deployment</p>
+                            
+                            <div class="mb-3">
+                                <h6>Supported Data Types:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Customer records</li>
+                                    <li><i class="bi bi-check text-success"></i> Cylinder inventory</li>
+                                    <li><i class="bi bi-check text-success"></i> Rental history</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Features:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Automatic data type detection</li>
+                                    <li><i class="bi bi-check text-success"></i> Smart field mapping</li>
+                                    <li><i class="bi bi-check text-success"></i> Data validation and preview</li>
+                                    <li><i class="bi bi-check text-success"></i> Works on any hosting platform</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-auto">
+                                <a href="{{ url_for('import_json') }}" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-file-earmark-arrow-up"></i> Import JSON Data
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MS Access Import - Legacy Option -->
+                <div class="col-md-6">
+                    <div class="card h-100 {% if not access_available %}border-secondary{% endif %}">
+                        <div class="card-header {% if access_available %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+                            <h5 class="mb-0"><i class="bi bi-database"></i> MS Access Import</h5>
+                            {% if not access_available %}<small>Not available on this platform</small>{% endif %}
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <p class="text-muted">Import data from MS Access database files (.mdb or .accdb)</p>
+                            
+                            {% if access_available %}
+                            <div class="mb-3">
+                                <h6>Supported Data Types:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Customer records</li>
+                                    <li><i class="bi bi-check text-success"></i> Cylinder inventory</li>
+                                    <li><i class="bi bi-check text-success"></i> Transaction history</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Features:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Interactive table selection</li>
+                                    <li><i class="bi bi-check text-success"></i> Field mapping interface</li>
+                                    <li><i class="bi bi-check text-success"></i> Data validation and preview</li>
+                                    <li><i class="bi bi-check text-success"></i> Import progress tracking</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-auto">
+                                <form method="POST" action="{{ url_for('upload_access_file') }}" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="access_file" class="form-label">Select Access Database File</label>
+                                        <input type="file" class="form-control" id="access_file" name="access_file" accept=".mdb,.accdb" required>
+                                        <div class="form-text">Supported formats: .mdb, .accdb (up to 100MB)</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-lg w-100">
+                                        <i class="bi bi-upload"></i> Upload Access File
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                MS Access import is not available on cloud hosting platforms like Render. 
+                                <strong>Use JSON import instead</strong> - convert your Access data to JSON format first.
+                            </div>
+                            
+                            <div class="mt-auto">
+                                <button class="btn btn-secondary btn-lg w-100" disabled>
+                                    <i class="bi bi-database-x"></i> Access Import Unavailable
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Import Tips -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Import Tips for Render Deployment</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Preparing JSON Data:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Export Access data to JSON format</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Validate JSON syntax before upload</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Check required fields are populated</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Use consistent field naming</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">During Import:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Review automatic field mappings</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Check data preview before importing</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Monitor validation messages</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Import customers before cylinders</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Converting Access to JSON:</strong> Use tools like Access's export feature, online converters, 
+                                or scripts to convert your .mdb/.accdb files to JSON format before uploading to Varasicyl on Render.
+                            </div>
                         </div>
                     </div>
                 </div>
