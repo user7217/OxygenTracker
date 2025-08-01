@@ -1951,9 +1951,17 @@ def bulk_cylinder_management(customer_id):
                 skipped += 1
         
         elif action == 'return':
+            # Debug info for troubleshooting
+            cylinder_status = cylinder.get('status', '').lower()
+            cylinder_rented_to = cylinder.get('rented_to')
+            
             # Check if cylinder is rented to this customer
-            if cylinder.get('status', '').lower() != 'rented' or cylinder.get('rented_to') != customer_id:
-                errors.append(f'"{cylinder_display}": Not rented to this customer')
+            if cylinder_status != 'rented':
+                errors.append(f'"{cylinder_display}": Not rented (current status: {cylinder.get("status", "unknown")})')
+                skipped += 1
+                continue
+            elif cylinder_rented_to != customer_id:
+                errors.append(f'"{cylinder_display}": Rented to different customer (ID: {cylinder_rented_to})')
                 skipped += 1
                 continue
             
@@ -1965,7 +1973,7 @@ def bulk_cylinder_management(customer_id):
             if success:
                 processed += 1
             else:
-                errors.append(f'"{cylinder_display}": Failed to return')
+                errors.append(f'"{cylinder_display}": Failed to return - database error')
                 skipped += 1
     
     # Create summary message
