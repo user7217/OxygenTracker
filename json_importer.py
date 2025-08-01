@@ -1,0 +1,375 @@
+"""
+Varasicyl JSON Data Importer
+
+Imports customer and cylinder data from JSON files with validation and field mapping.
+Supports various JSON formats and provides detailed import feedback.
+
+Author: Development Team
+Date: August 2025
+Version: 1.0
+"""
+
+import json
+import os
+from datetime import datetime
+from typing import Dict, List, Any, Tuple
+from db_service import CustomerService, CylinderService
+
+
+class JSONImporter:
+    """JSON data importer with validation and field mapping"""
+    
+    def __init__(self):
+        self.supported_formats = {
+            'customers': ['customer_name', 'customer_no', 'customer_phone', 'customer_email', 'customer_address', 'customer_city', 'customer_state', 'customer_apgst', 'customer_cst'],
+            'cylinders': ['serial_number', 'custom_id', 'type', 'size', 'status', 'location', 'rented_to', 'date_borrowed', 'date_returned', 'customer_name', 'customer_email'],
+            'rental_transactions': ['customer_no', 'customer_name', 'customer_phone', 'customer_address', 'customer_city', 'customer_state', 'cylinder_no', 'cylinder_custom_id', 'cylinder_serial', 'cylinder_type', 'cylinder_size', 'dispatch_date', 'return_date', 'rental_days', 'status']
+        }
+        
+    def analyze_json_file(self, file_path: str) -> Dict[str, Any]:
+        """Analyze JSON file structure and detect data type"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            if not data:
+                return {'error': 'File is empty', 'data_type': None, 'records': 0}
+            
+            # Handle different JSON structures
+            if isinstance(data, list):
+                if not data:
+                    return {'error': 'No records found', 'data_type': None, 'records': 0}
+                sample_record = data[0]
+                records_count = len(data)
+            elif isinstance(data, dict):
+                # Check if it's a wrapper object with data arrays
+                if 'customers' in data:
+                    sample_record = data['customers'][0] if data['customers'] else {}
+                    records_count = len(data['customers'])
+                    data = data['customers']
+                elif 'cylinders' in data:
+                    sample_record = data['cylinders'][0] if data['cylinders'] else {}
+                    records_count = len(data['cylinders'])
+                    data = data['cylinders']
+                else:
+                    # Single record
+                    sample_record = data
+                    records_count = 1
+                    data = [data]
+            else:
+                return {'error': 'Invalid JSON format', 'data_type': None, 'records': 0}
+            
+            # Detect data type based on fields
+            fields = list(sample_record.keys()) if sample_record else []
+            data_type = self._detect_data_type(fields)
+            
+            return {
+                'data_type': data_type,
+                'records': records_count,
+                'fields': fields,
+                'sample_record': sample_record,
+                'data': data,
+                'error': None
+            }
+            
+        except json.JSONDecodeError as e:
+            return {'error': f'Invalid JSON format: {str(e)}', 'data_type': None, 'records': 0}
+        except Exception as e:
+            return {'error': f'Error reading file: {str(e)}', 'data_type': None, 'records': 0}
+    
+    def _detect_data_type(self, fields: List[str]) -> str:
+        """Detect data type based on field names"""
+        customer_indicators = ['customer_name', 'customer_no', 'customer_phone', 'name', 'phone', 'email']
+        cylinder_indicators = ['serial_number', 'type', 'size', 'cylinder_id', 'custom_id']
+        rental_indicators = ['dispatch_date', 'return_date', 'rental_days', 'cylinder_no', 'cylinder_custom_id']
+        
+        customer_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in customer_indicators))
+        cylinder_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in cylinder_indicators))
+        rental_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in rental_indicators))
+        
+        if customer_score >= cylinder_score and customer_score >= rental_score:
+            return 'customers'
+        elif cylinder_score >= rental_score:
+            return 'cylinders'
+        else:
+            return 'rental_transactions'
+    
+    def map_fields(self, source_fields: List[str], target_type: str) -> Dict[str, str]:
+        """Automatic field mapping with manual override support"""
+        target_fields = self.supported_formats[target_type]
+        mapping = {}
+        
+        # Automatic mapping based on field name similarity
+        for source_field in source_fields:
+            best_match = None
+            best_score = 0
+            
+            for target_field in target_fields:
+                # Calculate similarity score
+                score = self._calculate_field_similarity(source_field.lower(), target_field.lower())
+                if score > best_score and score > 0.5:  # Minimum 50% similarity
+                    best_match = target_field
+                    best_score = score
+            
+            if best_match:
+                mapping[source_field] = best_match
+        
+        return mapping
+    
+    def _calculate_field_similarity(self, source: str, target: str) -> float:
+        """Calculate field name similarity score"""
+        # Simple similarity based on common substrings
+        if source == target:
+            return 1.0
+        
+        # Check for exact substring matches
+        if source in target or target in source:
+            return 0.8
+        
+        # Check for common keywords
+        keywords = {
+            'name': ['name', 'nm', 'title'],
+            'phone': ['phone', 'tel', 'mobile', 'cell'],
+            'email': ['email', 'mail', '@'],
+            'address': ['address', 'addr', 'location'],
+            'city': ['city', 'town'],
+            'state': ['state', 'province', 'region'],
+            'serial': ['serial', 'sn', 'number'],
+            'type': ['type', 'category', 'kind'],
+            'size': ['size', 'capacity', 'volume'],
+            'status': ['status', 'state', 'condition'],
+            'date': ['date', 'time', 'created', 'modified']
+        }
+        
+        for key, variations in keywords.items():
+            if key in target and any(var in source for var in variations):
+                return 0.7
+        
+        return 0.0
+    
+    def validate_data(self, data: List[Dict], data_type: str, field_mapping: Dict[str, str]) -> Tuple[List[Dict], List[str]]:
+        """Validate and transform data for import"""
+        valid_records = []
+        errors = []
+        
+        for i, record in enumerate(data):
+            try:
+                mapped_record = {}
+                
+                # Apply field mapping
+                for source_field, target_field in field_mapping.items():
+                    if source_field in record:
+                        value = record[source_field]
+                        mapped_record[target_field] = self._validate_and_transform_field(target_field, value, data_type)
+                
+                # Validate required fields
+                validation_result = self._validate_required_fields(mapped_record, data_type)
+                if validation_result['valid']:
+                    valid_records.append(mapped_record)
+                else:
+                    errors.append(f"Record {i+1}: {validation_result['error']}")
+                    
+            except Exception as e:
+                errors.append(f"Record {i+1}: Error processing - {str(e)}")
+        
+        return valid_records, errors
+    
+    def _validate_and_transform_field(self, field_name: str, value: Any, data_type: str) -> Any:
+        """Validate and transform individual field values"""
+        if value is None or value == '':
+            return None
+        
+        # Convert to string and strip whitespace
+        str_value = str(value).strip()
+        
+        # Date field transformations
+        if 'date' in field_name:
+            if str_value and str_value.lower() not in ['', 'null', 'none']:
+                try:
+                    # Try to parse various date formats
+                    for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
+                        try:
+                            dt = datetime.strptime(str_value, fmt)
+                            return dt.isoformat()
+                        except ValueError:
+                            continue
+                    # If no format matches, return as-is for manual review
+                    return str_value
+                except:
+                    return None
+            return None
+        
+        # Phone number cleaning
+        if 'phone' in field_name:
+            # Handle "0.0" phone numbers from exports
+            if str_value in ['0.0', '0', 'null', 'NULL']:
+                return None
+            # Remove common phone number formatting
+            cleaned = ''.join(c for c in str_value if c.isdigit() or c in '+- ()')
+            return cleaned if cleaned and cleaned != '0' else None
+        
+        # Email validation
+        if 'email' in field_name:
+            if '@' in str_value and '.' in str_value:
+                return str_value.lower()
+            return None
+        
+        # Status field normalization
+        if field_name == 'status':
+            status_map = {
+                'available': 'Available',
+                'rented': 'Rented',
+                'maintenance': 'Maintenance',
+                'out of service': 'Out of Service',
+                'available': 'Available'
+            }
+            return status_map.get(str_value.lower(), str_value)
+        
+        return str_value if str_value else None
+    
+    def _validate_required_fields(self, record: Dict, data_type: str) -> Dict[str, Any]:
+        """Validate required fields for each data type"""
+        required_fields = {
+            'customers': ['customer_name'],
+            'cylinders': ['type', 'size'],
+            'rental_transactions': ['customer_no', 'cylinder_custom_id', 'dispatch_date']
+        }
+        
+        missing_fields = []
+        for field in required_fields.get(data_type, []):
+            if field not in record or not record[field]:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            return {'valid': False, 'error': f"Missing required fields: {', '.join(missing_fields)}"}
+        
+        return {'valid': True, 'error': None}
+    
+    def import_data(self, valid_records: List[Dict], data_type: str) -> Dict[str, Any]:
+        """Import validated data into database"""
+        imported_count = 0
+        errors = []
+        
+        try:
+            if data_type == 'customers':
+                return self._import_customers(valid_records)
+            elif data_type == 'cylinders':
+                return self._import_cylinders(valid_records)
+            elif data_type == 'rental_transactions':
+                return self._import_rental_transactions(valid_records)
+            else:
+                return {'success': False, 'error': 'Unknown data type', 'imported': 0}
+                
+        except Exception as e:
+            return {'success': False, 'error': f'Import failed: {str(e)}', 'imported': imported_count}
+    
+    def _import_customers(self, customers: List[Dict]) -> Dict[str, Any]:
+        """Import customer records"""
+        imported_count = 0
+        errors = []
+        
+        with CustomerService() as customer_service:
+            for customer_data in customers:
+                try:
+                    # Set defaults for missing fields
+                    customer_data.setdefault('customer_city', 'Unknown')
+                    customer_data.setdefault('customer_state', 'Unknown')
+                    customer_data.setdefault('customer_address', '')
+                    
+                    # Remove system fields that shouldn't be imported
+                    system_fields = ['id', 'created_at', 'updated_at']
+                    for field in system_fields:
+                        customer_data.pop(field, None)
+                    
+                    # Handle empty email field
+                    if not customer_data.get('customer_email'):
+                        customer_data['customer_email'] = None
+                    
+                    customer_service.create(customer_data)
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"Customer '{customer_data.get('customer_name', 'Unknown')}': {str(e)}")
+        
+        return {
+            'success': len(errors) == 0,
+            'imported': imported_count,
+            'errors': errors,
+            'total': len(customers)
+        }
+    
+    def _import_cylinders(self, cylinders: List[Dict]) -> Dict[str, Any]:
+        """Import cylinder records"""
+        imported_count = 0
+        errors = []
+        
+        with CylinderService() as cylinder_service:
+            for cylinder_data in cylinders:
+                try:
+                    # Set defaults for missing fields
+                    cylinder_data.setdefault('status', 'Available')
+                    cylinder_data.setdefault('location', 'Warehouse')
+                    
+                    # Remove system fields that shouldn't be imported
+                    system_fields = ['id', 'created_at', 'updated_at', 'customer_name', 'customer_email']
+                    for field in system_fields:
+                        cylinder_data.pop(field, None)
+                    
+                    # Generate serial number if missing
+                    if not cylinder_data.get('serial_number') and not cylinder_data.get('custom_id'):
+                        cylinder_data['serial_number'] = f"SN-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
+                    
+                    cylinder_service.create(cylinder_data)
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"Cylinder '{cylinder_data.get('custom_id', cylinder_data.get('serial_number', 'Unknown'))}': {str(e)}")
+        
+        return {
+            'success': len(errors) == 0,
+            'imported': imported_count,
+            'errors': errors,
+            'total': len(cylinders)
+        }
+    
+    def _import_rental_transactions(self, transactions: List[Dict]) -> Dict[str, Any]:
+        """Import rental transaction records"""
+        imported_count = 0
+        errors = []
+        
+        # Import using RentalHistoryService
+        from db_service import RentalHistoryService
+        
+        with RentalHistoryService() as rental_service:
+            for transaction_data in transactions:
+                try:
+                    # Remove system fields that shouldn't be imported
+                    system_fields = ['id', 'created_at', 'updated_at']
+                    for field in system_fields:
+                        transaction_data.pop(field, None)
+                    
+                    # Convert date fields to proper format
+                    for date_field in ['dispatch_date', 'return_date']:
+                        if date_field in transaction_data and transaction_data[date_field]:
+                            try:
+                                # Handle various date formats
+                                date_str = str(transaction_data[date_field])
+                                if 'T' in date_str:  # ISO format
+                                    transaction_data[date_field] = date_str.split('T')[0]
+                                # Otherwise keep as-is (assume YYYY-MM-DD format)
+                            except:
+                                pass
+                    
+                    # Set default status if missing
+                    transaction_data.setdefault('status', 'completed')
+                    
+                    rental_service.create(transaction_data)
+                    imported_count += 1
+                except Exception as e:
+                    customer_info = transaction_data.get('customer_name', transaction_data.get('customer_no', 'Unknown'))
+                    errors.append(f"Transaction for '{customer_info}': {str(e)}")
+        
+        return {
+            'success': len(errors) == 0,
+            'imported': imported_count,
+            'errors': errors,
+            'total': len(transactions)
+        }

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Import JSON Data - Varasicyl{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-file-earmark-arrow-up"></i> Import JSON Data</h2>
+                <a href="{{ url_for('import_data') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Import Options
+                </a>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-file-earmark-code"></i> Upload JSON File</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">
+                                Upload a JSON file containing customer or cylinder data. The system will automatically detect the data type and help you map fields.
+                            </p>
+
+                            <form method="POST" enctype="multipart/form-data">
+                                <div class="mb-4">
+                                    <label for="json_file" class="form-label">Select JSON File</label>
+                                    <input type="file" class="form-control" id="json_file" name="json_file" accept=".json" required>
+                                    <div class="form-text">Only JSON files (.json) are supported. Maximum file size: 10MB</div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-upload"></i> Upload and Analyze File
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Supported Format Information -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-info-circle"></i> Supported JSON Formats</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Customer Data</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="bi bi-check text-success"></i> customer_name</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_no</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_phone</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_email (optional)</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_address</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_city</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_state</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_apgst (optional)</li>
+                                        <li><i class="bi bi-check text-success"></i> customer_cst (optional)</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-primary">Cylinder Data</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="bi bi-check text-success"></i> serial_number</li>
+                                        <li><i class="bi bi-check text-success"></i> custom_id</li>
+                                        <li><i class="bi bi-check text-success"></i> type</li>
+                                        <li><i class="bi bi-check text-success"></i> size</li>
+                                        <li><i class="bi bi-check text-success"></i> status</li>
+                                        <li><i class="bi bi-check text-success"></i> location</li>
+                                        <li><i class="bi bi-check text-success"></i> rented_to</li>
+                                        <li><i class="bi bi-check text-success"></i> date_borrowed</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6 class="text-primary">Supported File Structures</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Your Data Format:</strong>
+                                    <pre class="bg-light p-2 small rounded"><code>[
+  {
+    "customer_no": "49",
+    "customer_name": "Srinivasa Reddy",
+    "customer_address": "Pulivendala",
+    "customer_city": "Pulivendala",
+    "customer_state": "Andhra Pradesh",
+    "customer_phone": "9876543210"
+  }
+]</code></pre>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Object Format:</strong>
+                                    <pre class="bg-light p-2 small rounded"><code>{
+  "customers": [
+    {"name": "John Doe", "phone": "123-456-7890"},
+    {"name": "Jane Smith", "phone": "098-765-4321"}
+  ]
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

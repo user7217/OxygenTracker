@@ -50,9 +50,13 @@ from auth_models import UserManager
 from functools import wraps
 import os
 import tempfile
+import json
 
 # Try to import Access functionality with graceful degradation
 # MS Access import is optional - system works without it
+
+# JSON Import functionality
+from json_importer import JSONImporter
 try:
     from data_importer import DataImporter
     ACCESS_AVAILABLE = True
@@ -1019,25 +1023,33 @@ def rental_history():
         all_transactions, total_count = service.get_all(page=1, per_page=5000)  # Get larger batch
         print(f"Debug: Retrieved {len(all_transactions)} transactions out of {total_count} total")
     
-    # Convert SQLAlchemy objects to dicts for filtering
-    transaction_dicts = []
-    for t in all_transactions:
-        if hasattr(t, 'customer_name'):  # SQLAlchemy object
-            transaction_dicts.append({
-                'customer_name': t.customer_name or '',
-                'cylinder_custom_id': t.cylinder_custom_id or '',
-                'customer_no': t.customer_no or '',
-                'return_date': t.return_date.isoformat() if t.return_date else '',
-                'dispatch_date': t.dispatch_date.isoformat() if t.dispatch_date else '',
-                'rental_days': t.rental_days or 0,
-                'cylinder_type': t.cylinder_type or '',
-                'cylinder_size': t.cylinder_size or '',
-                'customer_phone': t.customer_phone or '',
-                'customer_address': t.customer_address or '',
-                'location': t.location or ''
-            })
-        else:  # Already a dict
-            transaction_dicts.append(t)
+    # Convert SQLAlchemy objects to dicts for filtering - do this inside the service context
+    with RentalHistoryService() as service:
+        transaction_dicts = []
+        for t in all_transactions:
+            if isinstance(t, dict):  # Already a dict
+                transaction_dicts.append(t)
+            else:  # SQLAlchemy object - convert within active session
+                try:
+                    transaction_dicts.append({
+                        'id': getattr(t, 'id', ''),
+                        'customer_name': getattr(t, 'customer_name', '') or '',
+                        'cylinder_custom_id': getattr(t, 'cylinder_custom_id', '') or '',
+                        'customer_no': getattr(t, 'customer_no', '') or '',
+                        'return_date': t.return_date.isoformat() if getattr(t, 'return_date', None) else '',
+                        'dispatch_date': t.dispatch_date.isoformat() if getattr(t, 'dispatch_date', None) else '',
+                        'rental_days': getattr(t, 'rental_days', 0) or 0,
+                        'cylinder_type': getattr(t, 'cylinder_type', '') or '',
+                        'cylinder_size': getattr(t, 'cylinder_size', '') or '',
+                        'customer_phone': getattr(t, 'customer_phone', '') or '',
+                        'customer_address': getattr(t, 'customer_address', '') or '',
+                        'location': getattr(t, 'location', '') or '',
+                        'status': getattr(t, 'status', '') or ''
+                    })
+                except Exception as e:
+                    app.logger.error(f"Error converting transaction: {str(e)}")
+                    # Skip problematic transactions
+                    continue
     
     all_transactions = transaction_dicts
     
@@ -1597,15 +1609,195 @@ def delete_cylinder(cylinder_id):
     
     return redirect(url_for('cylinders'))
 
+# JSON Import routes
+@app.route('/import/json', methods=['GET', 'POST'])
+@login_required
+def import_json():
+    """JSON file import interface"""
+    if request.method == 'POST':
+        if 'json_file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(request.url)
+        
+        file = request.files['json_file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(request.url)
+        
+        if file and file.filename.lower().endswith('.json'):
+            try:
+                # Save uploaded file temporarily
+                import tempfile
+                import json
+                
+                # Read file content as bytes first
+                file_content = file.read()
+                
+                # Try to decode and validate JSON
+                try:
+                    json_str = file_content.decode('utf-8')
+                    json.loads(json_str)  # Validate JSON syntax
+                except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                    flash(f'Invalid JSON file: {str(e)}', 'error')
+                    return redirect(request.url)
+                
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as temp_file:
+                    temp_file.write(json_str)
+                    temp_file_path = temp_file.name
+                
+                # Analyze the JSON file
+                importer = JSONImporter()
+                analysis = importer.analyze_json_file(temp_file_path)
+                
+                # Clean up temp file
+                os.unlink(temp_file_path)
+                
+                if analysis['error']:
+                    flash(f'Error analyzing file: {analysis["error"]}', 'error')
+                    return redirect(request.url)
+                
+                # Store analysis in session for next step - compress large data
+                # Don't store the full data in session to avoid size limits
+                session_data = {
+                    'data_type': analysis['data_type'],
+                    'records': analysis['records'],
+                    'fields': analysis['fields'],
+                    'sample_record': analysis['sample_record'],
+                    'error': analysis['error']
+                }
+                session['json_analysis'] = session_data
+                session['json_filename'] = file.filename
+                
+                # Store the data separately in a temporary file for the next step
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as data_file:
+                    json.dump(analysis['data'], data_file)
+                    session['json_data_path'] = data_file.name
+                
+                return redirect(url_for('map_json_fields'))
+                
+            except Exception as e:
+                flash(f'Error processing file: {str(e)}', 'error')
+                return redirect(request.url)
+        else:
+            flash('Please upload a valid JSON file', 'error')
+            return redirect(request.url)
+    
+    return render_template('import_json.html')
+
+@app.route('/import/json/map-fields')
+@login_required
+def map_json_fields():
+    """JSON field mapping interface"""
+    if 'json_analysis' not in session:
+        flash('No JSON file data found. Please upload a file first.', 'error')
+        return redirect(url_for('import_json'))
+    
+    analysis = session['json_analysis']
+    filename = session.get('json_filename', 'uploaded_file.json')
+    
+    # Generate automatic field mapping
+    importer = JSONImporter()
+    suggested_mapping = importer.map_fields(analysis['fields'], analysis['data_type'])
+    target_fields = importer.supported_formats[analysis['data_type']]
+    
+    return render_template('map_json_fields.html', 
+                         analysis=analysis, 
+                         filename=filename,
+                         suggested_mapping=suggested_mapping,
+                         target_fields=target_fields)
+
+@app.route('/import/json/execute', methods=['POST'])
+@login_required
+def execute_json_import():
+    """Execute JSON data import with user-defined field mapping"""
+    if 'json_analysis' not in session:
+        flash('No JSON file data found. Please start over.', 'error')
+        return redirect(url_for('import_json'))
+    
+    analysis = session['json_analysis']
+    data_type = analysis['data_type']
+    
+    # Load data from temporary file
+    data_path = session.get('json_data_path')
+    if not data_path or not os.path.exists(data_path):
+        flash('Data file not found. Please upload the file again.', 'error')
+        return redirect(url_for('import_json'))
+    
+    try:
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        flash(f'Error reading data file: {str(e)}', 'error')
+        return redirect(url_for('import_json'))
+    
+    # Get field mapping from form
+    field_mapping = {}
+    for source_field in analysis['fields']:
+        target_field = request.form.get(f'mapping_{source_field}')
+        if target_field and target_field != 'skip':
+            field_mapping[source_field] = target_field
+    
+    if not field_mapping:
+        flash('Please map at least one field', 'error')
+        return redirect(url_for('map_json_fields'))
+    
+    try:
+        # Validate and transform data
+        importer = JSONImporter()
+        valid_records, validation_errors = importer.validate_data(data, data_type, field_mapping)
+        
+        if not valid_records:
+            flash('No valid records found after validation', 'error')
+            if validation_errors:
+                for error in validation_errors[:5]:  # Show first 5 errors
+                    flash(error, 'error')
+            return redirect(url_for('map_json_fields'))
+        
+        # Import data
+        import_result = importer.import_data(valid_records, data_type)
+        
+        # Clear session data and cleanup temp files
+        session.pop('json_analysis', None)
+        session.pop('json_filename', None)
+        data_path = session.pop('json_data_path', None)
+        if data_path and os.path.exists(data_path):
+            try:
+                os.unlink(data_path)
+            except:
+                pass  # Ignore cleanup errors
+        
+        # Show results
+        if import_result['success']:
+            flash(f'Successfully imported {import_result["imported"]} {data_type} records', 'success')
+        else:
+            flash(f'Import completed with errors. Imported {import_result["imported"]} of {import_result["total"]} records', 'warning')
+            for error in import_result.get('errors', [])[:10]:  # Show first 10 errors
+                flash(error, 'error')
+        
+        # Show validation errors if any
+        if validation_errors:
+            flash(f'{len(validation_errors)} records had validation errors and were skipped', 'warning')
+        
+        # Redirect based on data type
+        if data_type == 'customers':
+            return redirect(url_for('customers'))
+        elif data_type == 'cylinders':
+            return redirect(url_for('cylinders'))
+        else:
+            return redirect(url_for('index'))
+            
+    except Exception as e:
+        flash(f'Import failed: {str(e)}', 'error')
+        return redirect(url_for('map_json_fields'))
+
 # Data Import routes
 @app.route('/import')
 @login_required
 def import_data():
-    """Data import dashboard"""
-    if not ACCESS_AVAILABLE:
-        flash('MS Access import functionality is not available on this system', 'error')
-        return redirect(url_for('index'))
-    return render_template('import_data.html')
+    """Data import dashboard with JSON and Access support"""
+    return render_template('import_data.html', access_available=ACCESS_AVAILABLE)
 
 @app.route('/import/upload', methods=['POST'])
 def upload_access_file():
