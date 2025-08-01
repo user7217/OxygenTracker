@@ -1018,39 +1018,41 @@ def rental_history():
     search_query = request.args.get('search', '')
     customer_filter = request.args.get('customer', '')
     
-    # Use RentalHistory service to get return records  
+    # Use RentalHistory service to get return records and convert within session  
     with RentalHistoryService() as service:
         all_transactions, total_count = service.get_all(page=1, per_page=5000)  # Get larger batch
         print(f"Debug: Retrieved {len(all_transactions)} transactions out of {total_count} total")
-    
-    # Convert SQLAlchemy objects to dicts for filtering - do this inside the service context
-    with RentalHistoryService() as service:
+        
+        # Convert SQLAlchemy objects to dicts immediately within the active session
         transaction_dicts = []
         for t in all_transactions:
             if isinstance(t, dict):  # Already a dict
                 transaction_dicts.append(t)
             else:  # SQLAlchemy object - convert within active session
                 try:
-                    transaction_dicts.append({
-                        'id': getattr(t, 'id', ''),
-                        'customer_name': getattr(t, 'customer_name', '') or '',
-                        'cylinder_custom_id': getattr(t, 'cylinder_custom_id', '') or '',
-                        'customer_no': getattr(t, 'customer_no', '') or '',
-                        'return_date': t.return_date.isoformat() if getattr(t, 'return_date', None) else '',
-                        'dispatch_date': t.dispatch_date.isoformat() if getattr(t, 'dispatch_date', None) else '',
-                        'rental_days': getattr(t, 'rental_days', 0) or 0,
-                        'cylinder_type': getattr(t, 'cylinder_type', '') or '',
-                        'cylinder_size': getattr(t, 'cylinder_size', '') or '',
-                        'customer_phone': getattr(t, 'customer_phone', '') or '',
-                        'customer_address': getattr(t, 'customer_address', '') or '',
-                        'location': getattr(t, 'location', '') or '',
-                        'status': getattr(t, 'status', '') or ''
-                    })
+                    # Access all attributes while session is active
+                    transaction_dict = {
+                        'id': t.id if hasattr(t, 'id') else '',
+                        'customer_name': t.customer_name if hasattr(t, 'customer_name') and t.customer_name else '',
+                        'cylinder_custom_id': t.cylinder_custom_id if hasattr(t, 'cylinder_custom_id') and t.cylinder_custom_id else '',
+                        'customer_no': t.customer_no if hasattr(t, 'customer_no') and t.customer_no else '',
+                        'return_date': t.return_date.isoformat() if hasattr(t, 'return_date') and t.return_date else '',
+                        'dispatch_date': t.dispatch_date.isoformat() if hasattr(t, 'dispatch_date') and t.dispatch_date else '',
+                        'rental_days': t.rental_days if hasattr(t, 'rental_days') and t.rental_days else 0,
+                        'cylinder_type': t.cylinder_type if hasattr(t, 'cylinder_type') and t.cylinder_type else '',
+                        'cylinder_size': t.cylinder_size if hasattr(t, 'cylinder_size') and t.cylinder_size else '',
+                        'customer_phone': t.customer_phone if hasattr(t, 'customer_phone') and t.customer_phone else '',
+                        'customer_address': t.customer_address if hasattr(t, 'customer_address') and t.customer_address else '',
+                        'location': t.location if hasattr(t, 'location') and t.location else '',
+                        'status': t.status if hasattr(t, 'status') and t.status else ''
+                    }
+                    transaction_dicts.append(transaction_dict)
                 except Exception as e:
                     app.logger.error(f"Error converting transaction: {str(e)}")
-                    # Skip problematic transactions
+                    # Skip problematic transactions but continue processing
                     continue
     
+    # Use the converted transactions
     all_transactions = transaction_dicts
     
     # Apply search filter
@@ -2365,58 +2367,71 @@ def archive_data():
 @login_required
 def bulk_rental_management():
     """Dedicated page for bulk cylinder rental management"""
+    # Get customers and convert to dict within service context
     with CustomerService() as customer_service:
         customers, _ = customer_service.get_all(page=1, per_page=500)  # Get all customers
+        
+        # Convert customers to dict format within active session
+        customers_dict = []
+        for customer in customers:
+            if isinstance(customer, dict):
+                customers_dict.append(customer)
+            else:
+                # Convert SQLAlchemy object to dict within active session
+                try:
+                    customer_dict = {
+                        'id': customer.id if hasattr(customer, 'id') else '',
+                        'customer_no': customer.customer_no if hasattr(customer, 'customer_no') and customer.customer_no else '',
+                        'customer_name': customer.customer_name if hasattr(customer, 'customer_name') and customer.customer_name else '',
+                        'customer_email': customer.customer_email if hasattr(customer, 'customer_email') and customer.customer_email else '',
+                        'customer_phone': customer.customer_phone if hasattr(customer, 'customer_phone') and customer.customer_phone else '',
+                        'customer_address': customer.customer_address if hasattr(customer, 'customer_address') and customer.customer_address else '',
+                        'customer_city': customer.customer_city if hasattr(customer, 'customer_city') and customer.customer_city else '',
+                        'customer_state': customer.customer_state if hasattr(customer, 'customer_state') and customer.customer_state else ''
+                    }
+                    customers_dict.append(customer_dict)
+                except Exception as e:
+                    app.logger.error(f"Error converting customer: {str(e)}")
+                    continue
+    
+    # Get cylinders and convert to dict within service context
     with CylinderService() as cylinder_service:
         cylinders, _ = cylinder_service.get_all()
-    
-    # Convert customers to dict format if needed
-    customers_dict = []
-    for customer in customers:
-        if isinstance(customer, dict):
-            customers_dict.append(customer)
-        else:
-            # Convert SQLAlchemy object to dict
-            customer_dict = {
-                'id': customer.id,
-                'customer_no': getattr(customer, 'customer_no', '') or '',
-                'customer_name': getattr(customer, 'customer_name', '') or '',
-                'customer_email': getattr(customer, 'customer_email', '') or '',
-                'customer_phone': getattr(customer, 'customer_phone', '') or '',
-                'customer_address': getattr(customer, 'customer_address', '') or '',
-                'customer_city': getattr(customer, 'customer_city', '') or '',
-                'customer_state': getattr(customer, 'customer_state', '') or ''
-            }
-            customers_dict.append(customer_dict)
-    
-    # Convert cylinders to dict format if needed and add customer names
-    cylinders_dict = []
-    for cylinder in cylinders:
-        if isinstance(cylinder, dict):
-            cylinder_dict = cylinder
-        else:
-            # Convert SQLAlchemy object to dict
-            from datetime import datetime
-            cylinder_dict = {
-                'id': cylinder.id,
-                'custom_id': getattr(cylinder, 'custom_id', '') or '',
-                'serial_number': getattr(cylinder, 'serial_number', '') or '',
-                'display_id': getattr(cylinder, 'custom_id', '') or getattr(cylinder, 'serial_number', '') or f"ID-{cylinder.id[:8]}",
-                'type': getattr(cylinder, 'type', '') or '',
-                'size': getattr(cylinder, 'size', '') or '',
-                'status': getattr(cylinder, 'status', '') or '',
-                'location': getattr(cylinder, 'location', '') or '',
-                'rented_to': getattr(cylinder, 'rented_to', '') or '',
-                'customer_name': getattr(cylinder, 'customer_name', '') or '',
-                'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if getattr(cylinder, 'date_borrowed', None) else 0,
-                'date_borrowed': cylinder.date_borrowed.isoformat() if getattr(cylinder, 'date_borrowed', None) else ''
-            }
         
-        # Add customer name for rented cylinders (use existing customer_name if available)
-        if cylinder_dict.get('rented_to') and not cylinder_dict.get('customer_name'):
-            cylinder_dict['customer_name'] = 'Rented Customer'
-        
-        cylinders_dict.append(cylinder_dict)
+        # Convert cylinders to dict format within active session
+        cylinders_dict = []
+        for cylinder in cylinders:
+            if isinstance(cylinder, dict):
+                cylinder_dict = cylinder
+            else:
+                # Convert SQLAlchemy object to dict within active session
+                try:
+                    from datetime import datetime
+                    cylinder_dict = {
+                        'id': cylinder.id if hasattr(cylinder, 'id') else '',
+                        'custom_id': cylinder.custom_id if hasattr(cylinder, 'custom_id') and cylinder.custom_id else '',
+                        'serial_number': cylinder.serial_number if hasattr(cylinder, 'serial_number') and cylinder.serial_number else '',
+                        'display_id': (cylinder.custom_id if hasattr(cylinder, 'custom_id') and cylinder.custom_id else 
+                                     cylinder.serial_number if hasattr(cylinder, 'serial_number') and cylinder.serial_number else 
+                                     f"ID-{cylinder.id[:8]}" if hasattr(cylinder, 'id') else 'Unknown'),
+                        'type': cylinder.type if hasattr(cylinder, 'type') and cylinder.type else '',
+                        'size': cylinder.size if hasattr(cylinder, 'size') and cylinder.size else '',
+                        'status': cylinder.status if hasattr(cylinder, 'status') and cylinder.status else '',
+                        'location': cylinder.location if hasattr(cylinder, 'location') and cylinder.location else '',
+                        'rented_to': cylinder.rented_to if hasattr(cylinder, 'rented_to') and cylinder.rented_to else '',
+                        'customer_name': cylinder.customer_name if hasattr(cylinder, 'customer_name') and cylinder.customer_name else '',
+                        'rental_days': (datetime.utcnow() - cylinder.date_borrowed).days if hasattr(cylinder, 'date_borrowed') and cylinder.date_borrowed else 0,
+                        'date_borrowed': cylinder.date_borrowed.isoformat() if hasattr(cylinder, 'date_borrowed') and cylinder.date_borrowed else ''
+                    }
+                    
+                    # Add customer name for rented cylinders (use existing customer_name if available)
+                    if cylinder_dict.get('rented_to') and not cylinder_dict.get('customer_name'):
+                        cylinder_dict['customer_name'] = 'Rented Customer'
+                    
+                    cylinders_dict.append(cylinder_dict)
+                except Exception as e:
+                    app.logger.error(f"Error converting cylinder: {str(e)}")
+                    continue
     
     return render_template('bulk_rental_management.html', customers=customers_dict, cylinders=cylinders_dict)
 
