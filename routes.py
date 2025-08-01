@@ -45,7 +45,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from app import app
-from db_service import CustomerService, CylinderService
+from db_service import CustomerService, CylinderService, RentalHistoryService
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -1338,8 +1338,26 @@ def add_cylinder():
             flash(f'Error adding cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and today's date
+    # Convert customers to dictionaries while session is active
+    customers = []
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all()
+        customers_list, _ = customer_service.get_all()
+        
+        # Convert customers to dictionaries while session is active
+        for customer in customers_list:
+            try:
+                customers.append({
+                    'id': customer.id,
+                    'customer_name': customer.customer_name,
+                    'customer_no': customer.customer_no,
+                    'customer_phone': customer.customer_phone,
+                    'customer_email': customer.customer_email or '',
+                    'customer_city': customer.customer_city,
+                    'customer_state': customer.customer_state
+                })
+            except (AttributeError, Exception):
+                customers.append(customer)
+    
     from datetime import datetime
     today_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_cylinder.html', customers=customers, today_date=today_date)
@@ -1348,31 +1366,33 @@ def add_cylinder():
 @admin_or_user_can_edit
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
+    # Convert SQLAlchemy object to dictionary while session is active
+    cylinder = None
     with CylinderService() as cylinder_service:
         cylinder_obj = cylinder_service.get_by_id(cylinder_id)
-    if not cylinder_obj:
-        flash('Cylinder not found', 'error')
-        return redirect(url_for('cylinders'))
-    
-    # Convert SQLAlchemy object to dictionary for template
-    cylinder = {
-        'id': cylinder_obj.id,
-        'custom_id': cylinder_obj.custom_id or '',
-        'serial_number': cylinder_obj.serial_number or '',
-        'type': cylinder_obj.type or 'Medical Oxygen',
-        'size': cylinder_obj.size or '40L',
-        'status': cylinder_obj.status or 'available',
-        'location': cylinder_obj.location or 'Warehouse',
-        'pressure': getattr(cylinder_obj, 'pressure', ''),
-        'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
-        'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
-        'notes': getattr(cylinder_obj, 'notes', ''),
-        'rented_to': cylinder_obj.rented_to,
-        'customer_name': cylinder_obj.customer_name or '',
-        'customer_no': cylinder_obj.customer_no or '',
-        'date_borrowed': cylinder_obj.date_borrowed.isoformat() if cylinder_obj.date_borrowed else '',
-        'date_returned': cylinder_obj.date_returned.isoformat() if cylinder_obj.date_returned else ''
-    }
+        if not cylinder_obj:
+            flash('Cylinder not found', 'error')
+            return redirect(url_for('cylinders'))
+        
+        # Convert SQLAlchemy object to dictionary while session is active
+        cylinder = {
+            'id': cylinder_obj.id,
+            'custom_id': cylinder_obj.custom_id or '',
+            'serial_number': cylinder_obj.serial_number or '',
+            'type': cylinder_obj.type or 'Medical Oxygen',
+            'size': cylinder_obj.size or '40L',
+            'status': cylinder_obj.status or 'available',
+            'location': cylinder_obj.location or 'Warehouse',
+            'pressure': getattr(cylinder_obj, 'pressure', ''),
+            'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
+            'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
+            'notes': getattr(cylinder_obj, 'notes', ''),
+            'rented_to': cylinder_obj.rented_to,
+            'customer_name': cylinder_obj.customer_name or '',
+            'customer_no': cylinder_obj.customer_no or '',
+            'date_borrowed': cylinder_obj.date_borrowed.isoformat() if cylinder_obj.date_borrowed else '',
+            'date_returned': cylinder_obj.date_returned.isoformat() if cylinder_obj.date_returned else ''
+        }
     
     if request.method == 'POST':
         # Validate required fields
@@ -1383,8 +1403,19 @@ def edit_cylinder(cylinder_id):
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
+                # Get customers for dropdown while converting to dictionaries
+                customers = []
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+                    customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+                    for customer in customers_list:
+                        try:
+                            customers.append({
+                                'id': customer.id,
+                                'customer_name': customer.customer_name,
+                                'customer_no': customer.customer_no
+                            })
+                        except:
+                            customers.append(customer)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             cylinder_data[field] = value
         
