@@ -1185,38 +1185,40 @@ def cylinders():
 @login_required
 def cylinder_details(cylinder_id):
     """Display detailed information for a specific cylinder"""
+    # Convert SQLAlchemy object to dictionary while session is active
+    cylinder = None
     with CylinderService() as cylinder_service:
         cylinder_obj = cylinder_service.get_by_id(cylinder_id)
-    if not cylinder_obj:
-        flash('Cylinder not found', 'error')
-        return redirect(url_for('cylinders'))
-    
-    # Convert SQLAlchemy object to dictionary
-    cylinder = {
-        'id': cylinder_obj.id,
-        'custom_id': cylinder_obj.custom_id or '',
-        'serial_number': cylinder_obj.serial_number or '',
-        'type': cylinder_obj.type or 'Medical Oxygen',
-        'size': cylinder_obj.size or '40L',
-        'status': cylinder_obj.status or 'available',
-        'location': cylinder_obj.location or 'Warehouse',
-        'pressure': getattr(cylinder_obj, 'pressure', ''),
-        'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
-        'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
-        'notes': getattr(cylinder_obj, 'notes', ''),
-        'rented_to': cylinder_obj.rented_to,
-        'customer_name': cylinder_obj.customer_name or '',
-        'customer_no': cylinder_obj.customer_no or '',
-        'customer_email': getattr(cylinder_obj, 'customer_email', ''),
-        'customer_phone': getattr(cylinder_obj, 'customer_phone', ''),
-        'customer_city': getattr(cylinder_obj, 'customer_city', ''),
-        'customer_state': getattr(cylinder_obj, 'customer_state', ''),
-        'date_borrowed': cylinder_obj.date_borrowed,
-        'rental_date': cylinder_obj.rental_date,
-        'date_returned': cylinder_obj.date_returned,
-        'created_at': cylinder_obj.created_at,
-        'updated_at': cylinder_obj.updated_at
-    }
+        if not cylinder_obj:
+            flash('Cylinder not found', 'error')
+            return redirect(url_for('cylinders'))
+        
+        # Convert SQLAlchemy object to dictionary while session is active
+        cylinder = {
+            'id': cylinder_obj.id,
+            'custom_id': cylinder_obj.custom_id or '',
+            'serial_number': cylinder_obj.serial_number or '',
+            'type': cylinder_obj.type or 'Medical Oxygen',
+            'size': cylinder_obj.size or '40L',
+            'status': cylinder_obj.status or 'available',
+            'location': cylinder_obj.location or 'Warehouse',
+            'pressure': getattr(cylinder_obj, 'pressure', ''),
+            'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
+            'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
+            'notes': getattr(cylinder_obj, 'notes', ''),
+            'rented_to': cylinder_obj.rented_to,
+            'customer_name': cylinder_obj.customer_name or '',
+            'customer_no': cylinder_obj.customer_no or '',
+            'customer_email': getattr(cylinder_obj, 'customer_email', ''),
+            'customer_phone': getattr(cylinder_obj, 'customer_phone', ''),
+            'customer_city': getattr(cylinder_obj, 'customer_city', ''),
+            'customer_state': getattr(cylinder_obj, 'customer_state', ''),
+            'date_borrowed': cylinder_obj.date_borrowed,
+            'rental_date': cylinder_obj.rental_date,
+            'date_returned': cylinder_obj.date_returned,
+            'created_at': cylinder_obj.created_at,
+            'updated_at': cylinder_obj.updated_at
+        }
     
     # Add display ID (custom_id if available, otherwise generated serial)
     cylinder['display_id'] = cylinder['custom_id'] or cylinder['serial_number'] or f"ID-{cylinder['id'][:8]}"
