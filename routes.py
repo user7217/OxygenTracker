@@ -1435,8 +1435,20 @@ def edit_cylinder(cylinder_id):
                 existing_id = existing.id if hasattr(existing, 'id') else existing.get('id', '')
                 if existing_custom_id == cylinder_data['custom_id'] and existing_id != cylinder_id:
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
+                    # Get customers for dropdown while converting to dictionaries
+                    customers = []
                     with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
+                        customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+                        for customer in customers_list:
+                            try:
+                                customers.append({
+                                    'id': customer.id,
+                                    'customer_name': customer.customer_name,
+                                    'customer_no': customer.customer_no,
+                                    'customer_email': customer.customer_email or ''
+                                })
+                            except:
+                                customers.append(customer)
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -1444,8 +1456,20 @@ def edit_cylinder(cylinder_id):
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
+                # Get customers for dropdown while converting to dictionaries
+                customers = []
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+                    customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+                    for customer in customers_list:
+                        try:
+                            customers.append({
+                                'id': customer.id,
+                                'customer_name': customer.customer_name,
+                                'customer_no': customer.customer_no,
+                                'customer_email': customer.customer_email or ''
+                            })
+                        except:
+                            customers.append(customer)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             # Verify customer exists
@@ -1453,8 +1477,20 @@ def edit_cylinder(cylinder_id):
                 customer = customer_service.get_by_id(rented_to)
             if not customer:
                 flash('Selected customer not found', 'error')
+                # Get customers for dropdown while converting to dictionaries
+                customers = []
                 with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
+                    customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+                    for customer in customers_list:
+                        try:
+                            customers.append({
+                                'id': customer.id,
+                                'customer_name': customer.customer_name,
+                                'customer_no': customer.customer_no,
+                                'customer_email': customer.customer_email or ''
+                            })
+                        except:
+                            customers.append(customer)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
             
             cylinder_data['rented_to'] = rented_to
@@ -1527,8 +1563,21 @@ def edit_cylinder(cylinder_id):
             flash(f'Error updating cylinder: {str(e)}', 'error')
     
     # Get all customers for the dropdown and add display ID
+    # Convert customers to dictionaries while session is active
+    customers = []
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers_list, _ = customer_service.get_all(page=1, per_page=10000)
+        for customer in customers_list:
+            try:
+                customers.append({
+                    'id': customer.id,
+                    'customer_name': customer.customer_name,
+                    'customer_no': customer.customer_no,
+                    'customer_email': customer.customer_email or ''
+                })
+            except:
+                customers.append(customer)
+    
     cylinder['display_serial'] = cylinder.get('custom_id') or cylinder.get('serial_number') or f"ID-{cylinder['id'][:8]}"
     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
 
