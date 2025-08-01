@@ -14,6 +14,7 @@ Cylinder management: Enhanced with customer-wise filtering, rental tracking with
 Data archiving: Automatic archiving system for old data (6+ months) to maintain performance. Admin-only feature with backup file creation.
 Rental duration filtering: Added 1, 6, and 12 month filters to identify long-term rentals in cylinders view.
 Data import: Email is optional for customers, location defaults to "Warehouse" for cylinders, status defaults to "Available" for cylinders when importing from Access databases.
+Deployment preference: Render.com platform with PostgreSQL hosting for production deployment. All local setup files removed in favor of cloud deployment configuration.
 
 ## System Architecture
 
@@ -35,6 +36,12 @@ Data import: Email is optional for customers, location defaults to "Warehouse" f
 - **Authentication**: `users.json` for user authentication only.
 - **ORM**: SQLAlchemy with service layer architecture.
 - **Environment**: Requires `DATABASE_URL` environment variable.
+
+### Deployment
+- **Platform**: Render.com with PostgreSQL hosting
+- **Configuration**: `render.yaml`, `Procfile`, `runtime.txt`
+- **Dependencies**: Managed via `pyproject.toml` and `requirements.txt`
+- **Database**: PostgreSQL on Render with automatic SSL and backups
 
 ### Key Features
 - **Authentication**: Custom `UserManager` with role-based access control (Admin, User, Viewer), Werkzeug password hashing (scrypt), session-based authentication.
