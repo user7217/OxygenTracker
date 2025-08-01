@@ -1176,20 +1176,51 @@ def cylinders():
 def cylinder_details(cylinder_id):
     """Display detailed information for a specific cylinder"""
     with CylinderService() as cylinder_service:
-        cylinder = cylinder_service.get_by_id(cylinder_id)
-    if not cylinder:
+        cylinder_obj = cylinder_service.get_by_id(cylinder_id)
+    if not cylinder_obj:
         flash('Cylinder not found', 'error')
         return redirect(url_for('cylinders'))
     
+    # Convert SQLAlchemy object to dictionary
+    cylinder = {
+        'id': cylinder_obj.id,
+        'custom_id': cylinder_obj.custom_id or '',
+        'serial_number': cylinder_obj.serial_number or '',
+        'type': cylinder_obj.type or 'Medical Oxygen',
+        'size': cylinder_obj.size or '40L',
+        'status': cylinder_obj.status or 'available',
+        'location': cylinder_obj.location or 'Warehouse',
+        'pressure': getattr(cylinder_obj, 'pressure', ''),
+        'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
+        'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
+        'notes': getattr(cylinder_obj, 'notes', ''),
+        'rented_to': cylinder_obj.rented_to,
+        'customer_name': cylinder_obj.customer_name or '',
+        'customer_no': cylinder_obj.customer_no or '',
+        'date_borrowed': cylinder_obj.date_borrowed.isoformat() if cylinder_obj.date_borrowed else '',
+        'date_returned': cylinder_obj.date_returned.isoformat() if cylinder_obj.date_returned else '',
+        'created_at': cylinder_obj.created_at.isoformat() if cylinder_obj.created_at else '',
+        'updated_at': cylinder_obj.updated_at.isoformat() if cylinder_obj.updated_at else ''
+    }
+    
     # Add display ID (custom_id if available, otherwise generated serial)
-    cylinder['display_serial'] = cylinder.get('custom_id') or cylinder.get('serial_number') or f"ID-{cylinder['id'][:8]}"
+    cylinder['display_serial'] = cylinder['custom_id'] or cylinder['serial_number'] or f"ID-{cylinder['id'][:8]}"
     
     # Add rental days calculation
-    cylinder['rental_days'] = (datetime.utcnow() - datetime.fromisoformat(cylinder['date_borrowed'])).days if cylinder.get('date_borrowed') else 0
-    cylinder['rental_months'] = cylinder['rental_days'] // 30
+    if cylinder['date_borrowed']:
+        try:
+            rental_days = (datetime.utcnow() - datetime.fromisoformat(cylinder['date_borrowed'])).days
+            cylinder['rental_days'] = rental_days
+            cylinder['rental_months'] = rental_days // 30
+        except:
+            cylinder['rental_days'] = 0
+            cylinder['rental_months'] = 0
+    else:
+        cylinder['rental_days'] = 0
+        cylinder['rental_months'] = 0
     
     # Get customer info if cylinder is rented
-    if cylinder.get('rented_to'):
+    if cylinder['rented_to']:
         with CustomerService() as customer_service:
             customer = customer_service.get_by_id(cylinder['rented_to'])
         if customer:
@@ -1305,10 +1336,30 @@ def add_cylinder():
 def edit_cylinder(cylinder_id):
     """Edit existing cylinder"""
     with CylinderService() as cylinder_service:
-        cylinder = cylinder_service.get_by_id(cylinder_id)
-    if not cylinder:
+        cylinder_obj = cylinder_service.get_by_id(cylinder_id)
+    if not cylinder_obj:
         flash('Cylinder not found', 'error')
         return redirect(url_for('cylinders'))
+    
+    # Convert SQLAlchemy object to dictionary for template
+    cylinder = {
+        'id': cylinder_obj.id,
+        'custom_id': cylinder_obj.custom_id or '',
+        'serial_number': cylinder_obj.serial_number or '',
+        'type': cylinder_obj.type or 'Medical Oxygen',
+        'size': cylinder_obj.size or '40L',
+        'status': cylinder_obj.status or 'available',
+        'location': cylinder_obj.location or 'Warehouse',
+        'pressure': getattr(cylinder_obj, 'pressure', ''),
+        'last_inspection': getattr(cylinder_obj, 'last_inspection', None),
+        'next_inspection': getattr(cylinder_obj, 'next_inspection', None),
+        'notes': getattr(cylinder_obj, 'notes', ''),
+        'rented_to': cylinder_obj.rented_to,
+        'customer_name': cylinder_obj.customer_name or '',
+        'customer_no': cylinder_obj.customer_no or '',
+        'date_borrowed': cylinder_obj.date_borrowed.isoformat() if cylinder_obj.date_borrowed else '',
+        'date_returned': cylinder_obj.date_returned.isoformat() if cylinder_obj.date_returned else ''
+    }
     
     if request.method == 'POST':
         # Validate required fields
@@ -1319,8 +1370,6 @@ def edit_cylinder(cylinder_id):
             value = request.form.get(field, '').strip()
             if not value:
                 flash(f'{field.replace("_", " ").title()} is required', 'error')
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
                 with CustomerService() as customer_service:
                     customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
@@ -1344,8 +1393,6 @@ def edit_cylinder(cylinder_id):
                     flash(f'Custom ID "{cylinder_data["custom_id"]}" is already in use. Please choose a different one.', 'error')
                     with CustomerService() as customer_service:
                         customers, _ = customer_service.get_all(page=1, per_page=10000)
-                    with CustomerService() as customer_service:
-                        customers, _ = customer_service.get_all(page=1, per_page=10000)
                     return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
         
         # Handle customer assignment for rented cylinders
@@ -1353,8 +1400,6 @@ def edit_cylinder(cylinder_id):
         if cylinder_data['status'].lower() == 'rented':
             if not rented_to:
                 flash('Customer selection is required when status is "Rented"', 'error')
-                with CustomerService() as customer_service:
-                    customers, _ = customer_service.get_all(page=1, per_page=10000)
                 with CustomerService() as customer_service:
                     customers, _ = customer_service.get_all(page=1, per_page=10000)
                 return render_template('edit_cylinder.html', cylinder=cylinder, customers=customers)
@@ -1426,9 +1471,10 @@ def edit_cylinder(cylinder_id):
                     pass
         
         try:
-            updated_cylinder = cylinder_service.update(cylinder_id, cylinder_data)
+            with CylinderService() as cylinder_service:
+                updated_cylinder = cylinder_service.update(cylinder_id, cylinder_data)
             if updated_cylinder:
-                display_id = cylinder_model.get_display_id(updated_cylinder)
+                display_id = cylinder_data.get('custom_id') or cylinder['custom_id'] or f"ID-{cylinder_id[:8]}"
                 flash(f'Cylinder {display_id} updated successfully', 'success')
                 return redirect(url_for('cylinders'))
             else:
@@ -1447,10 +1493,12 @@ def edit_cylinder(cylinder_id):
 def delete_cylinder(cylinder_id):
     """Delete cylinder"""
     try:
-        if cylinder_model.delete(cylinder_id):
-            flash('Cylinder deleted successfully', 'success')
-        else:
-            flash('Cylinder not found', 'error')
+        with CylinderService() as cylinder_service:
+            cylinder = cylinder_service.get_by_id(cylinder_id)
+            if cylinder and cylinder_service.delete(cylinder_id):
+                flash('Cylinder deleted successfully', 'success')
+            else:
+                flash('Cylinder not found', 'error')
     except Exception as e:
         flash(f'Error deleting cylinder: {str(e)}', 'error')
     
