@@ -706,16 +706,20 @@ class RentalHistoryService(DatabaseService):
         # Get customer info for matching
         customer_service = CustomerService()
         customer = customer_service.get_by_id(customer_id)
-        customer_service.close()
         
         if not customer:
+            customer_service.close()
             return {'active': [], 'past': []}
+        
+        # Extract customer_no before closing the session
+        customer_no = customer.customer_no
+        customer_service.close()
         
         # Get past rentals from history
         past_rentals = self.db.query(RentalHistory).filter(
             or_(
                 RentalHistory.customer_id == customer_id,
-                RentalHistory.customer_no == customer.customer_no
+                RentalHistory.customer_no == customer_no
             )
         ).order_by(desc(RentalHistory.return_date)).all()
         

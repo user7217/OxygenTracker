@@ -747,7 +747,8 @@ def customer_details(customer_id):
     
     # Get customer's rental history from rental history service
     with RentalHistoryService() as history_service:
-        past_transactions = history_service.get_customer_history(customer['id'])['past']
+        history_result = history_service.get_customer_history(customer['id'])
+        past_transactions = history_result['past']
     
     # Past transactions are already dictionaries from the service
     past_transactions_dict = past_transactions[:50]  # Limit to recent 50 transactions for performance
