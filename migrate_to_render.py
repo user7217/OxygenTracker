@@ -223,7 +223,8 @@ class ReplitToRenderMigrator:
                 # Add rented_to lookup if customer exists
                 rented_to = 'NULL'
                 if cylinder.get('customer_name'):
-                    rented_to = f"(SELECT id FROM customers WHERE customer_name = '{cylinder.get('customer_name', '').replace(\"'\", \"''\")}' LIMIT 1)"
+                    customer_name_escaped = cylinder.get('customer_name', '').replace("'", "''")
+                    rented_to = f"(SELECT id FROM customers WHERE customer_name = '{customer_name_escaped}' LIMIT 1)"
                 
                 values.append(rented_to)
                 

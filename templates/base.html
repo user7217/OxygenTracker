@@ -613,8 +613,8 @@
                         </a>
                     </li>
                     <li class="nav-item d-lg-none">
-                        <a class="nav-link d-flex align-items-center text-danger" href="{{ url_for('reset_data_page') }}">
-                            <i class="bi bi-trash me-2"></i>Reset Data
+                        <a class="nav-link d-flex align-items-center text-danger" href="{{ url_for('wipe_records') }}">
+                            <i class="bi bi-trash me-2"></i>Wipe Data
                         </a>
                     </li>
                     {% endif %}
@@ -678,8 +678,8 @@
                             <li><a class="dropdown-item d-flex align-items-center" href="{{ url_for('manual_backup') }}">
                                 <i class="bi bi-download me-2"></i>Create Backup
                             </a></li>
-                            <li><a class="dropdown-item d-flex align-items-center text-danger" href="{{ url_for('reset_data_page') }}">
-                                <i class="bi bi-trash me-2"></i>Reset Data
+                            <li><a class="dropdown-item d-flex align-items-center text-danger" href="{{ url_for('wipe_records') }}">
+                                <i class="bi bi-trash me-2"></i>Wipe Data
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}

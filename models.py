@@ -74,18 +74,14 @@ class RentalHistory(db.Model):
     customer_phone = db.Column(db.String)
     customer_city = db.Column(db.String)
     customer_state = db.Column(db.String)
-    rental_date = db.Column(db.DateTime, index=True)
+    customer_address = db.Column(db.Text)
+    cylinder_no = db.Column(db.String)
+    cylinder_serial = db.Column(db.String)
     dispatch_date = db.Column(db.DateTime)
     return_date = db.Column(db.DateTime, index=True)
+    date_borrowed = db.Column(db.DateTime)
+    date_returned = db.Column(db.DateTime)
+    status = db.Column(db.String)
     rental_days = db.Column(db.Integer)
     location = db.Column(db.String)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Indexes for better query performance
-    __table_args__ = (
-        db.Index('idx_rental_customer', 'customer_id'),
-        db.Index('idx_rental_cylinder', 'cylinder_id'),
-        db.Index('idx_rental_dates', 'rental_date', 'return_date'),
-        db.Index('idx_customer_no', 'customer_no'),
-    )

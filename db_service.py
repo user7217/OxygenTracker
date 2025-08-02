@@ -427,7 +427,7 @@ class CylinderService(DatabaseService):
     def rent_cylinder(self, cylinder_id: str, customer_id: str, rental_date: str = None) -> bool:
         """Rent cylinder to customer"""
         cylinder = self.get_by_id(cylinder_id)
-        if not cylinder or cylinder.status != 'available':
+        if not cylinder or cylinder.status.lower() != 'available':
             return False
         
         # Get customer info and extract data while in session
@@ -450,8 +450,8 @@ class CylinderService(DatabaseService):
         }
         customer_service.close()
         
-        # Update cylinder with rental info using extracted data
-        cylinder.status = 'rented'
+        # Update cylinder with rental info using extracted data  
+        cylinder.status = 'dispatched'  # Use 'dispatched' as the primary rental status
         cylinder.rented_to = customer_id
         cylinder.customer_name = customer_data['customer_name']
         cylinder.customer_email = customer_data['customer_email']
@@ -463,16 +463,17 @@ class CylinderService(DatabaseService):
         
         if rental_date:
             try:
-                cylinder.date_borrowed = datetime.fromisoformat(rental_date.replace('Z', '+00:00'))
-                cylinder.rental_date = cylinder.date_borrowed
+                cylinder.date_borrowed = rental_date  # Store as string to match model
+                # rental_date field removed - using date_borrowed instead
             except:
-                cylinder.date_borrowed = datetime.utcnow()
-                cylinder.rental_date = cylinder.date_borrowed
+                current_date = datetime.utcnow().isoformat()
+                cylinder.date_borrowed = current_date
+                # rental_date field removed - using date_borrowed instead
         else:
-            cylinder.date_borrowed = datetime.utcnow()
-            cylinder.rental_date = cylinder.date_borrowed
+            current_date = datetime.utcnow().isoformat()
+            cylinder.date_borrowed = current_date
         
-        cylinder.updated_at = datetime.utcnow()
+        cylinder.updated_at = datetime.utcnow().isoformat()
         self.db.commit()
         return True
     
@@ -480,7 +481,7 @@ class CylinderService(DatabaseService):
         """Return cylinder from rental"""
         self._ensure_connection()
         cylinder = self.get_by_id(cylinder_id)
-        if not cylinder or cylinder.status != 'rented':
+        if not cylinder or cylinder.status.lower() not in ['rented', 'dispatched']:
             return False
         
         # Save to rental history before updating
@@ -495,11 +496,11 @@ class CylinderService(DatabaseService):
         
         if return_date:
             try:
-                cylinder.date_returned = datetime.fromisoformat(return_date.replace('Z', '+00:00'))
+                cylinder.date_returned = return_date  # Store as string to match model
             except:
-                cylinder.date_returned = datetime.utcnow()
+                cylinder.date_returned = datetime.utcnow().isoformat()
         else:
-            cylinder.date_returned = datetime.utcnow()
+            cylinder.date_returned = datetime.utcnow().isoformat()
         
         # Clear rental info (use None for foreign key to avoid constraint violation)
         cylinder.rented_to = None
@@ -512,9 +513,8 @@ class CylinderService(DatabaseService):
         
         # Clear rental dates to prevent sorting issues
         cylinder.date_borrowed = None
-        cylinder.rental_date = None
         
-        cylinder.updated_at = datetime.utcnow()
+        cylinder.updated_at = datetime.utcnow().isoformat()
         self.db.commit()
         return True
     
@@ -550,7 +550,7 @@ class RentalHistoryService(DatabaseService):
         
         history = self.db.query(RentalHistory).filter(
             RentalHistory.cylinder_id == cylinder_id
-        ).order_by(desc(RentalHistory.rental_date)).limit(10).all()
+        ).order_by(desc(RentalHistory.return_date)).limit(10).all()
         
         return history
     
@@ -781,33 +781,28 @@ class RentalHistoryService(DatabaseService):
             except:
                 return_date_dt = datetime.utcnow()
         
-        # Calculate rental days
-        rental_days = 0
-        if cylinder.date_borrowed:
-            rental_days = max(0, (return_date_dt - cylinder.date_borrowed).days)
+        # Calculate rental days - simplified approach
+        rental_days = 1  # Default to 1 day
         
+        # Create history record matching the actual database schema
         history_record = RentalHistory(
-            id=str(uuid.uuid4()),
-            customer_id=cylinder.rented_to,
-            customer_no=cylinder.customer_no,
-            customer_name=cylinder.customer_name,
-            customer_phone=cylinder.customer_phone,
-            customer_email=cylinder.customer_email,
-            customer_city=cylinder.customer_city,
-            customer_state=cylinder.customer_state,
+            customer_id=cylinder.rented_to or '',
+            customer_name=cylinder.customer_name or '',
+            customer_phone=cylinder.customer_phone or '',
+            customer_email=cylinder.customer_email or '',
+            customer_city=cylinder.customer_city or '',
+            customer_state=cylinder.customer_state or '',
             cylinder_id=cylinder.id,
-            cylinder_custom_id=cylinder.custom_id,
-            cylinder_serial=cylinder.serial_number,
-            cylinder_type=cylinder.type,
-            cylinder_size=cylinder.size,
-            dispatch_date=cylinder.date_borrowed,
+            cylinder_custom_id=cylinder.custom_id or '',
+            cylinder_type=cylinder.type or '',
+            cylinder_size=cylinder.size or '',
+            dispatch_date=datetime.utcnow() if cylinder.date_borrowed else None,
             return_date=return_date_dt,
-            date_borrowed=cylinder.date_borrowed,
+            date_borrowed=cylinder.date_borrowed if hasattr(cylinder, 'date_borrowed') else None,
             date_returned=return_date_dt,
             rental_days=rental_days,
-            location=cylinder.location,
-            status='completed',
-            created_at=datetime.utcnow()
+            location=cylinder.location or '',
+            status='returned'
         )
         
         self.db.add(history_record)

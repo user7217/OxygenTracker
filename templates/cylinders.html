@@ -213,20 +213,20 @@
                                 <td>{{ cylinder.get('type', 'N/A') }}</td>
                                 <td>{{ cylinder.get('size', 'N/A') }}</td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
+                                    {% if cylinder.get('status', '').lower() in ['rented', 'dispatched'] and cylinder.customer_name %}
                                     <strong>{{ cylinder.customer_name }}</strong>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() == 'rented' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                        {% if cylinder.get('status', '').lower() == 'rented' %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
+                                    <span class="badge {% if cylinder.get('status', '').lower() == 'available' %}bg-success{% elif cylinder.get('status', '').lower() in ['rented', 'dispatched'] %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                        {% if cylinder.get('status', '').lower() in ['rented', 'dispatched'] %}Dispatched{% else %}{{ cylinder.get('status', 'Unknown').title() }}{% endif %}
                                     </span>
                                 </td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' %}
-                                        {% set dispatch_date = cylinder.get('date_borrowed', '') or cylinder.get('rental_date', '') %}
+                                    {% if cylinder.get('status', '').lower() in ['rented', 'dispatched'] %}
+                                        {% set dispatch_date = cylinder.get('date_borrowed', '') %}
                                         {% if dispatch_date %}
                                         <small class="text-muted">{{ dispatch_date[:10] }}</small>
                                         {% else %}
@@ -237,7 +237,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if cylinder.get('status', '').lower() == 'rented' and cylinder.customer_name %}
+                                    {% if cylinder.get('status', '').lower() in ['rented', 'dispatched'] and cylinder.customer_name %}
                                     {% set rental_months = cylinder.get('rental_months', 0) %}
                                     {% set rental_days = cylinder.get('rental_days', 0) %}
                                     <span class="badge {% if rental_months >= 6 %}bg-danger{% elif rental_months >= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">
@@ -262,7 +262,7 @@
                                                 data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Dispatch">
                                             <i class="bi bi-arrow-right-circle"></i>
                                         </button>
-                                        {% elif cylinder.get('status', '').lower() == 'rented' %}
+                                        {% elif cylinder.get('status', '').lower() in ['rented', 'dispatched'] %}
                                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" 
                                                 data-bs-target="#returnModal" data-cylinder-id="{{ cylinder.id }}" 
                                                 data-cylinder-display="{{ cylinder.custom_id or cylinder.display_serial or cylinder.serial_number or cylinder.id }}" title="Return">

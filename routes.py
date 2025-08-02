@@ -1323,8 +1323,8 @@ def add_cylinder():
                     return render_template('add_cylinder.html', customers=customers)
             
             cylinder_data['rented_to'] = rented_to
-            cylinder_data['customer_name'] = customer.get('name', '')
-            cylinder_data['customer_email'] = customer.get('email', '')
+            cylinder_data['customer_name'] = customer.get('customer_name', '')
+            cylinder_data['customer_email'] = customer.get('customer_email', '')
             
             # Handle rental date from form or use current date
             rental_date = request.form.get('rental_date', '').strip()
@@ -1334,19 +1334,18 @@ def add_cylinder():
                 try:
                     date_obj = datetime.strptime(rental_date, '%Y-%m-%d')
                     cylinder_data['date_borrowed'] = date_obj.isoformat()
-                    cylinder_data['rental_date'] = date_obj.isoformat()
+                    # rental_date field removed - using date_borrowed instead
                 except ValueError:
                     # Fallback to current date if invalid format
                     cylinder_data['date_borrowed'] = datetime.now().isoformat()
-                    cylinder_data['rental_date'] = datetime.now().isoformat()
+                    # rental_date field removed - using date_borrowed instead
             else:
                 cylinder_data['date_borrowed'] = datetime.now().isoformat()
-                cylinder_data['rental_date'] = datetime.now().isoformat()
         
         try:
             with CylinderService() as cylinder_service:
                 new_cylinder = cylinder_service.create(cylinder_data)
-            flash(f'Cylinder added successfully with ID: {new_cylinder["id"]}', 'success')
+            flash(f'Cylinder added successfully with ID: {new_cylinder.id}', 'success')
             return redirect(url_for('cylinders'))
         except Exception as e:
             flash(f'Error adding cylinder: {str(e)}', 'error')
@@ -3770,7 +3769,7 @@ def wipe_records():
             flash(f'Error during wipe operation: {str(e)}', 'error')
             return redirect(url_for('wipe_records'))
             
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     # GET request - show confirmation form
     return render_template('wipe_records.html')

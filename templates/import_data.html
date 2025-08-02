@@ -16,7 +16,7 @@
             <div class="row">
 
                 <!-- JSON Import - Primary Option -->
-                <div class="col-md-6">
+                <div class="col-lg-4 col-md-6">
                     <div class="card h-100 border-primary">
                         <div class="card-header bg-primary text-white">
                             <h5 class="mb-0"><i class="bi bi-file-earmark-code"></i> JSON Import</h5>
@@ -53,8 +53,47 @@
                     </div>
                 </div>
 
+                <!-- Direct Database Import - New Option -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="bi bi-database-gear"></i> Direct DB Import</h5>
+                            <small>Connect to any PostgreSQL database</small>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <p class="text-muted">Import data directly from PostgreSQL databases without JSON files</p>
+                            
+                            <div class="mb-3">
+                                <h6>Supported Sources:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Other Replit databases</li>
+                                    <li><i class="bi bi-check text-success"></i> Render PostgreSQL</li>
+                                    <li><i class="bi bi-check text-success"></i> Local PostgreSQL</li>
+                                    <li><i class="bi bi-check text-success"></i> Cloud databases</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Features:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Live database connection</li>
+                                    <li><i class="bi bi-check text-success"></i> Table preview</li>
+                                    <li><i class="bi bi-check text-success"></i> Visual field mapping</li>
+                                    <li><i class="bi bi-check text-success"></i> Skip JSON export step</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-auto">
+                                <a href="{{ url_for('direct_db_import') }}" class="btn btn-info btn-lg w-100">
+                                    <i class="bi bi-database-arrow-up"></i> Connect to Database
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- MS Access Import - Legacy Option -->
-                <div class="col-md-6">
+                <div class="col-lg-4 col-md-6">
                     <div class="card h-100 {% if not access_available %}border-secondary{% endif %}">
                         <div class="card-header {% if access_available %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
                             <h5 class="mb-0"><i class="bi bi-database"></i> MS Access Import</h5>
@@ -108,6 +147,38 @@
                                 </button>
                             </div>
                             {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Migration Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> Migrate from Replit to Render</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <p class="mb-2">
+                                        <strong>Moving to Render?</strong> Export your current Replit data and get everything you need 
+                                        for seamless migration to Render deployment.
+                                    </p>
+                                    <ul class="list-unstyled">
+                                        <li><i class="bi bi-check text-success"></i> Complete data export (customers + cylinders)</li>
+                                        <li><i class="bi bi-check text-success"></i> JSON files ready for import</li>
+                                        <li><i class="bi bi-check text-success"></i> SQL backup for direct restore</li>
+                                        <li><i class="bi bi-check text-success"></i> Detailed migration instructions</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <a href="{{ url_for('migrate_to_render') }}" class="btn btn-warning btn-lg">
+                                        <i class="bi bi-box-arrow-up"></i> Start Migration
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
