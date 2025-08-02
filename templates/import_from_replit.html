@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Import from Replit - Varasicyl{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-cloud-download"></i> Import from Replit</h2>
+                <a href="{{ url_for('import_data') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Import Dashboard
+                </a>
+            </div>
+
+            {% if results %}
+            <!-- Import Results -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-check-circle"></i> Import Results</h5>
+                        </div>
+                        <div class="card-body">
+                            {% for result in results %}
+                            <div class="alert {% if result.success %}alert-success{% else %}alert-warning{% endif %} mb-3">
+                                <h6><strong>{{ result.data_type|title }}</strong></h6>
+                                <p>Imported: {{ result.imported }} records</p>
+                                {% if result.errors %}
+                                <ul class="mb-0">
+                                    {% for error in result.errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Import Form -->
+            <div class="row">
+                <div class="col-lg-8 col-md-10 mx-auto">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-database-gear"></i> Connect to Source Database</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data">
+                                <!-- Database URL -->
+                                <div class="mb-4">
+                                    <label for="source_database_url" class="form-label">
+                                        <strong>Source Database URL</strong>
+                                        <small class="text-muted">(PostgreSQL connection string)</small>
+                                    </label>
+                                    <input type="url" class="form-control" id="source_database_url" name="source_database_url" 
+                                           placeholder="postgresql://username:password@host:port/database" required>
+                                    <div class="form-text">
+                                        Enter the full PostgreSQL connection URL from another Replit Varasicyl deployment.
+                                        You can find this in the other Replit's environment variables under DATABASE_URL.
+                                    </div>
+                                </div>
+
+                                <!-- Data Types Selection -->
+                                <div class="mb-4">
+                                    <label class="form-label"><strong>Select Data Types to Import</strong></label>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="customers" name="data_types" value="customers">
+                                                <label class="form-check-label" for="customers">
+                                                    <i class="bi bi-people"></i> Customers
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cylinders" name="data_types" value="cylinders">
+                                                <label class="form-check-label" for="cylinders">
+                                                    <i class="bi bi-archive"></i> Cylinders
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="rental_history" name="data_types" value="rental_history">
+                                                <label class="form-check-label" for="rental_history">
+                                                    <i class="bi bi-clock-history"></i> Rental History
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">
+                                        Select which data types you want to import from the source database.
+                                        You can select multiple types to import all at once.
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-warning btn-lg">
+                                        <i class="bi bi-cloud-arrow-down"></i> Import from Replit Database
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-info-circle"></i> How to Get Database URL</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>From Another Replit:</h6>
+                                    <ol>
+                                        <li>Go to the source Replit with Varasicyl</li>
+                                        <li>Open the Secrets tab (lock icon in sidebar)</li>
+                                        <li>Find the <code>DATABASE_URL</code> secret</li>
+                                        <li>Copy the entire URL and paste it above</li>
+                                    </ol>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>URL Format:</h6>
+                                    <pre class="bg-light p-2 rounded">postgresql://[user]:[password]@[host]:[port]/[database]</pre>
+                                    <p class="small text-muted">
+                                        The URL contains all connection information including host, port, username, password, and database name.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-star"></i> Import Features</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Data Validation:</h6>
+                                    <ul>
+                                        <li>Automatic schema compatibility checking</li>
+                                        <li>Data type validation and conversion</li>
+                                        <li>Duplicate detection and handling</li>
+                                        <li>Field mapping and transformation</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Safety Features:</h6>
+                                    <ul>
+                                        <li>Preview mode before actual import</li>
+                                        <li>Detailed error reporting</li>
+                                        <li>Rollback capability on failures</li>
+                                        <li>No destructive operations on source</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
