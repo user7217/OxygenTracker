@@ -845,22 +845,28 @@ class RentalHistoryService(DatabaseService):
         # Calculate rental days - simplified approach
         rental_days = 1  # Default to 1 day
         
-        # Create history record matching the new database schema
+        # Create history record matching the Render database schema exactly
         history_record = RentalHistory(
+            customer_id=cylinder.rented_to or '',  # Add customer_id field
             customer_no=cylinder.customer_no or '',
             customer_name=cylinder.customer_name or '',
             customer_phone=cylinder.customer_phone or '',
+            customer_email=cylinder.customer_email or '',  # Add customer_email field
             customer_address=cylinder.customer_address or '',
             customer_city=cylinder.customer_city or '',
             customer_state=cylinder.customer_state or '',
+            cylinder_id=cylinder.id,  # Add cylinder_id field
             cylinder_no=cylinder.id,
             cylinder_custom_id=cylinder.custom_id or '',
             cylinder_serial=cylinder.serial_number or '',
             cylinder_type=cylinder.type or '',
             cylinder_size=cylinder.size or '',
-            dispatch_date=cylinder.date_borrowed.date() if cylinder.date_borrowed else return_date_dt.date(),
-            return_date=return_date_dt.date() if return_date_dt else None,
+            dispatch_date=cylinder.date_borrowed if cylinder.date_borrowed else return_date_dt,
+            return_date=return_date_dt if return_date_dt else None,
+            date_borrowed=cylinder.date_borrowed if cylinder.date_borrowed else return_date_dt,  # Add date_borrowed field
+            date_returned=return_date_dt if return_date_dt else None,  # Add date_returned field
             rental_days=rental_days,
+            location=cylinder.location or 'Unknown',  # Add location field
             status='completed'
         )
         

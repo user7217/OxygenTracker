@@ -53,24 +53,30 @@ class Cylinder(db.Model):
     notes = db.Column(db.Text)
 
 class RentalHistory(db.Model):
-    """Rental history model matching your JSON format"""
+    """Rental history model matching Render database schema exactly"""
     __tablename__ = 'rental_history'
     
-    # Fields matching your JSON structure
+    # Fields matching Render database schema
     id = db.Column(db.String, primary_key=True, default=lambda: f"RT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:4].upper()}")
+    customer_id = db.Column(db.String)  # Missing field in Replit schema
     customer_no = db.Column(db.String, index=True)
     customer_name = db.Column(db.String)
     customer_phone = db.Column(db.String)
-    customer_address = db.Column(db.String)
+    customer_email = db.Column(db.String)  # Missing field in Replit schema
+    customer_address = db.Column(db.Text)  # Changed to Text to match Render
     customer_city = db.Column(db.String)
     customer_state = db.Column(db.String)
+    cylinder_id = db.Column(db.String)  # Missing field in Replit schema  
     cylinder_no = db.Column(db.String)
     cylinder_custom_id = db.Column(db.String)
     cylinder_serial = db.Column(db.String)
     cylinder_type = db.Column(db.String)
     cylinder_size = db.Column(db.String)
-    dispatch_date = db.Column(db.Date)
-    return_date = db.Column(db.Date)
+    dispatch_date = db.Column(db.DateTime)  # Changed to DateTime to match Render
+    return_date = db.Column(db.DateTime)  # Changed to DateTime to match Render
+    date_borrowed = db.Column(db.DateTime)  # Missing field in Replit schema
+    date_returned = db.Column(db.DateTime)  # Missing field in Replit schema
     rental_days = db.Column(db.Integer)
+    location = db.Column(db.String)  # Missing field in Replit schema
     status = db.Column(db.String, default='completed')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
