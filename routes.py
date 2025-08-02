@@ -1821,7 +1821,6 @@ def import_from_replit():
     
     try:
         from sqlalchemy import create_engine, text
-        import pandas as pd
         
         # Create connection to source database
         source_engine = create_engine(source_database_url)
@@ -1833,11 +1832,12 @@ def import_from_replit():
         for data_type in data_types:
             try:
                 with source_engine.connect() as conn:
-                    # Get data from source database
+                    # Get data from source database and convert to records
                     if data_type == 'customers':
                         query = text("SELECT * FROM customers")
-                        df = pd.read_sql(query, conn)
-                        records = df.to_dict('records')
+                        result_proxy = conn.execute(query)
+                        columns = result_proxy.keys()
+                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
                         
                         # Import using JSON importer
                         from json_importer import JSONImporter
@@ -1847,8 +1847,9 @@ def import_from_replit():
                         
                     elif data_type == 'cylinders':
                         query = text("SELECT * FROM cylinders")
-                        df = pd.read_sql(query, conn)
-                        records = df.to_dict('records')
+                        result_proxy = conn.execute(query)
+                        columns = result_proxy.keys()
+                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
                         
                         from json_importer import JSONImporter
                         importer = JSONImporter()
@@ -1857,8 +1858,9 @@ def import_from_replit():
                         
                     elif data_type == 'rental_history':
                         query = text("SELECT * FROM rental_history")
-                        df = pd.read_sql(query, conn)
-                        records = df.to_dict('records')
+                        result_proxy = conn.execute(query)
+                        columns = result_proxy.keys()
+                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
                         
                         from json_importer import JSONImporter
                         importer = JSONImporter()
