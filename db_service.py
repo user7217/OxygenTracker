@@ -1,5 +1,5 @@
 # db_service.py - Database service layer for PostgreSQL operations
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_, desc, asc, case
 from app import db
@@ -459,21 +459,33 @@ class CylinderService(DatabaseService):
         cylinder.customer_no = customer_data['customer_no']
         cylinder.customer_city = customer_data['customer_city']
         cylinder.customer_state = customer_data['customer_state']
-        cylinder.location = customer_data['customer_address'] or customer_data['customer_city'] or 'Unknown'
+        # Update location to customer's address or city
+        location_parts = []
+        if customer_data['customer_address']:
+            location_parts.append(customer_data['customer_address'])
+        if customer_data['customer_city']:
+            location_parts.append(customer_data['customer_city'])
+        if customer_data['customer_state']:
+            location_parts.append(customer_data['customer_state'])
+        
+        cylinder.location = ', '.join(location_parts) if location_parts else 'Customer Location'
         
         if rental_date:
             try:
-                cylinder.date_borrowed = rental_date  # Store as string to match model
-                # rental_date field removed - using date_borrowed instead
+                # Parse rental_date and convert to datetime object
+                if isinstance(rental_date, str):
+                    if 'T' in rental_date:
+                        cylinder.date_borrowed = datetime.fromisoformat(rental_date.replace('Z', '+00:00'))
+                    else:
+                        cylinder.date_borrowed = datetime.strptime(rental_date, '%Y-%m-%d')
+                else:
+                    cylinder.date_borrowed = rental_date
             except:
-                current_date = datetime.utcnow().isoformat()
-                cylinder.date_borrowed = current_date
-                # rental_date field removed - using date_borrowed instead
+                cylinder.date_borrowed = datetime.utcnow()
         else:
-            current_date = datetime.utcnow().isoformat()
-            cylinder.date_borrowed = current_date
+            cylinder.date_borrowed = datetime.utcnow()
         
-        cylinder.updated_at = datetime.utcnow().isoformat()
+        cylinder.updated_at = datetime.utcnow()
         self.db.commit()
         return True
     
@@ -496,11 +508,18 @@ class CylinderService(DatabaseService):
         
         if return_date:
             try:
-                cylinder.date_returned = return_date  # Store as string to match model
+                # Parse return_date and convert to datetime object
+                if isinstance(return_date, str):
+                    if 'T' in return_date:
+                        cylinder.date_returned = datetime.fromisoformat(return_date.replace('Z', '+00:00'))
+                    else:
+                        cylinder.date_returned = datetime.strptime(return_date, '%Y-%m-%d')
+                else:
+                    cylinder.date_returned = return_date
             except:
-                cylinder.date_returned = datetime.utcnow().isoformat()
+                cylinder.date_returned = datetime.utcnow()
         else:
-            cylinder.date_returned = datetime.utcnow().isoformat()
+            cylinder.date_returned = datetime.utcnow()
         
         # Clear rental info (use None for foreign key to avoid constraint violation)
         cylinder.rented_to = None
@@ -758,10 +777,7 @@ class RentalHistoryService(DatabaseService):
         
         # Get past rentals from history
         past_rentals = self.db.query(RentalHistory).filter(
-            or_(
-                RentalHistory.customer_id == customer_id,
-                RentalHistory.customer_no == customer_no
-            )
+            RentalHistory.customer_no == customer_no
         ).order_by(desc(RentalHistory.return_date)).all()
         
         return {
@@ -784,25 +800,23 @@ class RentalHistoryService(DatabaseService):
         # Calculate rental days - simplified approach
         rental_days = 1  # Default to 1 day
         
-        # Create history record matching the actual database schema
+        # Create history record matching the new database schema
         history_record = RentalHistory(
-            customer_id=cylinder.rented_to or '',
+            customer_no=cylinder.customer_no or '',
             customer_name=cylinder.customer_name or '',
             customer_phone=cylinder.customer_phone or '',
-            customer_email=cylinder.customer_email or '',
+            customer_address=cylinder.customer_address or '',
             customer_city=cylinder.customer_city or '',
             customer_state=cylinder.customer_state or '',
-            cylinder_id=cylinder.id,
+            cylinder_no=cylinder.id,
             cylinder_custom_id=cylinder.custom_id or '',
+            cylinder_serial=cylinder.serial_number or '',
             cylinder_type=cylinder.type or '',
             cylinder_size=cylinder.size or '',
-            dispatch_date=datetime.utcnow() if cylinder.date_borrowed else None,
-            return_date=return_date_dt,
-            date_borrowed=cylinder.date_borrowed if hasattr(cylinder, 'date_borrowed') else None,
-            date_returned=return_date_dt,
+            dispatch_date=cylinder.date_borrowed.date() if cylinder.date_borrowed else return_date_dt.date(),
+            return_date=return_date_dt.date() if return_date_dt else None,
             rental_days=rental_days,
-            location=cylinder.location or '',
-            status='returned'
+            status='completed'
         )
         
         self.db.add(history_record)
@@ -822,3 +836,56 @@ class RentalHistoryService(DatabaseService):
         self.db.commit()
         
         return count
+    
+    def create_history_record(self, history_data: Dict[str, Any]) -> RentalHistory:
+        """Create a new rental history record"""
+        self._ensure_connection()
+        
+        # Generate unique ID
+        record_id = str(uuid.uuid4())
+        
+        # Create rental history record
+        rental_history = RentalHistory(
+            id=record_id,
+            customer_no=history_data.get('customer_no', ''),
+            customer_name=history_data.get('customer_name', ''),
+            customer_phone=history_data.get('customer_phone', ''),
+            customer_address=history_data.get('customer_address', ''),
+            customer_city=history_data.get('customer_city', ''),
+            customer_state=history_data.get('customer_state', ''),
+            cylinder_no=history_data.get('cylinder_no', ''),
+            cylinder_custom_id=history_data.get('cylinder_custom_id', ''),
+            cylinder_serial=history_data.get('cylinder_serial', ''),
+            cylinder_type=history_data.get('cylinder_type', ''),
+            cylinder_size=history_data.get('cylinder_size', ''),
+            dispatch_date=self._parse_date_string(history_data.get('dispatch_date', '')),
+            return_date=self._parse_date_string(history_data.get('return_date', '')),
+            rental_days=history_data.get('rental_days', 0),
+            status=history_data.get('status', 'completed'),
+            created_at=self._parse_date_string(history_data.get('created_at', datetime.now().isoformat()))
+        )
+        
+        self.db.add(rental_history)
+        self.db.commit()
+        self.db.refresh(rental_history)
+        
+        return rental_history
+    
+    def _parse_date_string(self, date_str: str):
+        """Parse date string to date object for dispatch_date/return_date or datetime for created_at"""
+        if not date_str:
+            return None
+            
+        try:
+            # Handle ISO format with or without timezone
+            if 'T' in date_str:
+                if date_str.endswith('Z'):
+                    date_str = date_str[:-1] + '+00:00'
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                # For created_at, return datetime; for dates, return date
+                return dt
+            else:
+                # Handle date-only format - return as date
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except:
+            return None

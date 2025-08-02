@@ -53,30 +53,24 @@ class Cylinder(db.Model):
     notes = db.Column(db.Text)
 
 class RentalHistory(db.Model):
-    """Rental history model matching exact database structure"""
+    """Rental history model matching your JSON format"""
     __tablename__ = 'rental_history'
     
-    # Fields in exact order matching database schema
-    id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    customer_id = db.Column(db.String, index=True)
+    # Fields matching your JSON structure
+    id = db.Column(db.String, primary_key=True, default=lambda: f"RT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:4].upper()}")
     customer_no = db.Column(db.String, index=True)
     customer_name = db.Column(db.String)
     customer_phone = db.Column(db.String)
-    customer_email = db.Column(db.String)
-    customer_address = db.Column(db.Text)
+    customer_address = db.Column(db.String)
     customer_city = db.Column(db.String)
     customer_state = db.Column(db.String)
-    cylinder_id = db.Column(db.String, index=True)
     cylinder_no = db.Column(db.String)
     cylinder_custom_id = db.Column(db.String)
     cylinder_serial = db.Column(db.String)
     cylinder_type = db.Column(db.String)
     cylinder_size = db.Column(db.String)
-    dispatch_date = db.Column(db.DateTime)
-    return_date = db.Column(db.DateTime)
-    date_borrowed = db.Column(db.DateTime)
-    date_returned = db.Column(db.DateTime)
+    dispatch_date = db.Column(db.Date)
+    return_date = db.Column(db.Date)
     rental_days = db.Column(db.Integer)
-    location = db.Column(db.String)
-    status = db.Column(db.String)
+    status = db.Column(db.String, default='completed')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

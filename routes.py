@@ -44,8 +44,10 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
-from app import app
+from app import app, db
 from db_service import CustomerService, CylinderService, RentalHistoryService
+from models import Customer, Cylinder, RentalHistory
+import uuid
 from auth_models import UserManager
 from functools import wraps
 import os
@@ -1956,57 +1958,113 @@ def import_rental_history():
                 flash('JSON file must contain an array of rental history records', 'error')
                 return redirect(url_for('import_rental_history'))
             
-            # Import rental history records
-            from db_service import RentalHistoryService
+            # Import rental history records directly using Flask-SQLAlchemy
             imported_count = 0
             errors = []
             
-            with RentalHistoryService() as rental_service:
-                for i, record in enumerate(rental_data):
-                    try:
-                        # Create rental history record
-                        history_record = {
-                            'customer_id': record.get('customer_id', ''),
-                            'customer_no': record.get('customer_no', ''),
-                            'customer_name': record.get('customer_name', ''),
-                            'customer_phone': record.get('customer_phone', ''),
-                            'customer_email': record.get('customer_email', ''),
-                            'customer_address': record.get('customer_address', ''),
-                            'customer_city': record.get('customer_city', ''),
-                            'customer_state': record.get('customer_state', ''),
-                            'cylinder_id': record.get('cylinder_id', ''),
-                            'cylinder_no': record.get('cylinder_no', ''),
-                            'cylinder_custom_id': record.get('cylinder_custom_id', ''),
-                            'cylinder_serial': record.get('cylinder_serial', ''),
-                            'cylinder_type': record.get('cylinder_type', ''),
-                            'cylinder_size': record.get('cylinder_size', ''),
-                            'dispatch_date': record.get('dispatch_date', ''),
-                            'return_date': record.get('return_date', ''),
-                            'date_borrowed': record.get('date_borrowed', ''),
-                            'date_returned': record.get('date_returned', ''),
-                            'rental_days': record.get('rental_days', 0),
-                            'location': record.get('location', ''),
-                            'status': record.get('status', 'completed'),
-                            'created_at': record.get('created_at', datetime.now().isoformat())
-                        }
-                        
-                        # Create rental history record
-                        rental_service.create_history_record(history_record)
-                        imported_count += 1
-                        
-                    except Exception as e:
-                        errors.append(f"Record {i+1}: {str(e)}")
+            def parse_date(date_str):
+                """Parse date string to date object"""
+                if not date_str:
+                    return None
+                try:
+                    if 'T' in date_str:
+                        # Parse datetime and extract date
+                        if date_str.endswith('Z'):
+                            date_str = date_str[:-1] + '+00:00'
+                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                        return dt.date()
+                    else:
+                        # Parse date directly
+                        return datetime.strptime(date_str, '%Y-%m-%d').date()
+                except:
+                    return None
+            
+            def parse_datetime(date_str):
+                """Parse date string to datetime object"""
+                if not date_str:
+                    return None
+                try:
+                    if 'T' in date_str:
+                        if date_str.endswith('Z'):
+                            date_str = date_str[:-1] + '+00:00'
+                        return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    else:
+                        return datetime.strptime(date_str, '%Y-%m-%d')
+                except:
+                    return None
+            
+            # Get all existing IDs at once to avoid repeated database queries
+            try:
+                existing_ids = {record.id for record in db.session.query(RentalHistory.id).all()}
+            except Exception as e:
+                # If there's an issue with the database query, continue without duplicate checking
+                existing_ids = set()
+                errors.append(f"Warning: Could not check for duplicates: {str(e)}")
+            
+            for i, record in enumerate(rental_data):
+                try:
+                    record_id = record.get('id', f"RT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:4].upper()}")
+                    
+                    # Check if record already exists using the pre-loaded set
+                    if record_id in existing_ids:
+                        # Skip duplicate record
+                        errors.append(f"Record {i+1}: Skipped duplicate ID {record_id}")
                         continue
+                    
+                    # Create rental history record matching your exact JSON format
+                    rental_history = RentalHistory(
+                        id=record_id,
+                        customer_no=record.get('customer_no', ''),
+                        customer_name=record.get('customer_name', ''),
+                        customer_phone=record.get('customer_phone', ''),
+                        customer_address=record.get('customer_address', ''),
+                        customer_city=record.get('customer_city', ''),
+                        customer_state=record.get('customer_state', ''),
+                        cylinder_no=record.get('cylinder_no', ''),
+                        cylinder_custom_id=record.get('cylinder_custom_id', ''),
+                        cylinder_serial=record.get('cylinder_serial', ''),
+                        cylinder_type=record.get('cylinder_type', ''),
+                        cylinder_size=record.get('cylinder_size', ''),
+                        dispatch_date=parse_date(record.get('dispatch_date', '')),
+                        return_date=parse_date(record.get('return_date', '')),
+                        rental_days=record.get('rental_days', 0),
+                        status=record.get('status', 'completed'),
+                        created_at=parse_datetime(record.get('created_at', '')) or datetime.now()
+                    )
+                    
+                    db.session.add(rental_history)
+                    existing_ids.add(record_id)  # Add to set to prevent duplicates within the same import
+                    imported_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Record {i+1}: {str(e)}")
+                    continue
+            
+            # Commit all records at once
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Failed to save rental history records: {str(e)}', 'error')
+                return redirect(url_for('import_rental_history'))
             
             # Show results
             if imported_count > 0:
                 flash(f'Successfully imported {imported_count} rental history records', 'success')
             
             if errors:
-                error_msg = f"Errors encountered: {len(errors)} records failed to import"
-                if len(errors) <= 5:
-                    error_msg += ": " + "; ".join(errors)
-                flash(error_msg, 'warning')
+                duplicate_count = len([e for e in errors if 'Skipped duplicate' in e])
+                error_count = len(errors) - duplicate_count
+                
+                if duplicate_count > 0:
+                    flash(f'Skipped {duplicate_count} duplicate records', 'info')
+                
+                if error_count > 0:
+                    error_msg = f"Errors encountered: {error_count} records failed to import"
+                    if error_count <= 3:
+                        non_duplicate_errors = [e for e in errors if 'Skipped duplicate' not in e]
+                        error_msg += ": " + "; ".join(non_duplicate_errors[:3])
+                    flash(error_msg, 'warning')
             
             return redirect(url_for('rental_history'))
             

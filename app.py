@@ -80,22 +80,24 @@ with app.app_context():
             """)).fetchall()
             existing_columns = [row[0] for row in rental_columns]
             
-            # Add missing columns to rental_history
+            # Add missing columns to rental_history - updated for new format
             required_columns = [
-                ('customer_address', 'TEXT'),
-                ('dispatch_date', 'TIMESTAMP'),
-                ('return_date', 'TIMESTAMP'), 
-                ('date_borrowed', 'TIMESTAMP'),
-                ('date_returned', 'TIMESTAMP'),
-                ('rental_days', 'INTEGER'),
-                ('location', 'VARCHAR'),
-                ('status', 'VARCHAR'),
-                ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                ('customer_no', 'VARCHAR'),
+                ('customer_name', 'VARCHAR'),
+                ('customer_phone', 'VARCHAR'),
+                ('customer_address', 'VARCHAR'),
+                ('customer_city', 'VARCHAR'),
+                ('customer_state', 'VARCHAR'),
                 ('cylinder_no', 'VARCHAR'),
                 ('cylinder_custom_id', 'VARCHAR'),
                 ('cylinder_serial', 'VARCHAR'),
                 ('cylinder_type', 'VARCHAR'),
-                ('cylinder_size', 'VARCHAR')
+                ('cylinder_size', 'VARCHAR'),
+                ('dispatch_date', 'DATE'),
+                ('return_date', 'DATE'),
+                ('rental_days', 'INTEGER'),
+                ('status', 'VARCHAR'),
+                ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
             ]
             
             for col_name, col_type in required_columns:
