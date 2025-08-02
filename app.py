@@ -90,7 +90,12 @@ with app.app_context():
                 ('rental_days', 'INTEGER'),
                 ('location', 'VARCHAR'),
                 ('status', 'VARCHAR'),
-                ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+                ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                ('cylinder_no', 'VARCHAR'),
+                ('cylinder_custom_id', 'VARCHAR'),
+                ('cylinder_serial', 'VARCHAR'),
+                ('cylinder_type', 'VARCHAR'),
+                ('cylinder_size', 'VARCHAR')
             ]
             
             for col_name, col_type in required_columns:
