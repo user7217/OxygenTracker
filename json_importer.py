@@ -13,7 +13,7 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Any, Tuple
-from db_service import CustomerService, CylinderService
+from db_service import CustomerService, CylinderService, RentalHistoryService
 
 
 class JSONImporter:
@@ -23,7 +23,8 @@ class JSONImporter:
         self.supported_formats = {
             'customers': ['customer_name', 'customer_no', 'customer_phone', 'customer_email', 'customer_address', 'customer_city', 'customer_state', 'customer_apgst', 'customer_cst'],
             'cylinders': ['serial_number', 'custom_id', 'type', 'size', 'status', 'location', 'rented_to', 'date_borrowed', 'date_returned', 'customer_name', 'customer_email'],
-            'rental_transactions': ['customer_no', 'customer_name', 'customer_phone', 'customer_address', 'customer_city', 'customer_state', 'cylinder_no', 'cylinder_custom_id', 'cylinder_serial', 'cylinder_type', 'cylinder_size', 'dispatch_date', 'return_date', 'rental_days', 'status']
+            'rental_transactions': ['customer_no', 'customer_name', 'customer_phone', 'customer_address', 'customer_city', 'customer_state', 'cylinder_no', 'cylinder_custom_id', 'cylinder_serial', 'cylinder_type', 'cylinder_size', 'dispatch_date', 'return_date', 'rental_days', 'status'],
+            'rental_history': ['customer_id', 'customer_no', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_city', 'customer_state', 'cylinder_id', 'cylinder_no', 'cylinder_custom_id', 'cylinder_serial', 'cylinder_type', 'cylinder_size', 'dispatch_date', 'return_date', 'date_borrowed', 'date_returned', 'rental_days', 'location', 'status']
         }
         
     def analyze_json_file(self, file_path: str) -> Dict[str, Any]:
@@ -51,6 +52,10 @@ class JSONImporter:
                     sample_record = data['cylinders'][0] if data['cylinders'] else {}
                     records_count = len(data['cylinders'])
                     data = data['cylinders']
+                elif 'rental_history' in data:
+                    sample_record = data['rental_history'][0] if data['rental_history'] else {}
+                    records_count = len(data['rental_history'])
+                    data = data['rental_history']
                 else:
                     # Single record
                     sample_record = data
@@ -82,12 +87,17 @@ class JSONImporter:
         customer_indicators = ['customer_name', 'customer_no', 'customer_phone', 'name', 'phone', 'email']
         cylinder_indicators = ['serial_number', 'type', 'size', 'cylinder_id', 'custom_id']
         rental_indicators = ['dispatch_date', 'return_date', 'rental_days', 'cylinder_no', 'cylinder_custom_id']
+        rental_history_indicators = ['rental_history', 'history', 'completed', 'finished', 'returned']
         
         customer_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in customer_indicators))
         cylinder_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in cylinder_indicators))
         rental_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in rental_indicators))
+        history_score = sum(1 for field in fields if any(indicator in field.lower() for indicator in rental_history_indicators))
         
-        if customer_score >= cylinder_score and customer_score >= rental_score:
+        # Check for specific rental history patterns
+        if history_score > 0 or ('dispatch_date' in fields and 'return_date' in fields and 'rental_days' in fields):
+            return 'rental_history'
+        elif customer_score >= cylinder_score and customer_score >= rental_score:
             return 'customers'
         elif cylinder_score >= rental_score:
             return 'cylinders'
@@ -232,7 +242,8 @@ class JSONImporter:
         required_fields = {
             'customers': ['customer_name'],
             'cylinders': ['type', 'size'],
-            'rental_transactions': ['customer_no', 'cylinder_custom_id', 'dispatch_date']
+            'rental_transactions': ['customer_no', 'cylinder_custom_id', 'dispatch_date'],
+            'rental_history': ['customer_name', 'cylinder_custom_id', 'dispatch_date']
         }
         
         missing_fields = []
@@ -257,6 +268,8 @@ class JSONImporter:
                 return self._import_cylinders(valid_records)
             elif data_type == 'rental_transactions':
                 return self._import_rental_transactions(valid_records)
+            elif data_type == 'rental_history':
+                return self._import_rental_history(valid_records)
             else:
                 return {'success': False, 'error': 'Unknown data type', 'imported': 0}
                 
@@ -376,8 +389,16 @@ class JSONImporter:
                 customers, _ = customer_service.get_all(page=1, per_page=10000)
                 
                 for customer in customers:
-                    if (customer.get('customer_name', '').strip().lower() == customer_name.lower()):
-                        return customer.get('id')
+                    # Handle both dict and object customer data
+                    if hasattr(customer, 'customer_name'):
+                        customer_name_check = customer.customer_name or ''
+                        customer_id = customer.id
+                    else:
+                        customer_name_check = customer.get('customer_name', '')
+                        customer_id = customer.get('id')
+                        
+                    if customer_name_check.strip().lower() == customer_name.lower():
+                        return customer_id
                 
                 # If not found, create new customer from cylinder data
                 customer_data = {
@@ -443,4 +464,52 @@ class JSONImporter:
             'imported': imported_count,
             'errors': errors,
             'total': len(transactions)
+        }
+    
+    def _import_rental_history(self, history_records: List[Dict]) -> Dict[str, Any]:
+        """Import rental history records"""
+        imported_count = 0
+        errors = []
+        
+        with RentalHistoryService() as rental_service:
+            for history_data in history_records:
+                try:
+                    # Remove system fields that shouldn't be imported
+                    system_fields = ['id', 'created_at', 'updated_at']
+                    for field in system_fields:
+                        history_data.pop(field, None)
+                    
+                    # Convert date fields to proper datetime objects
+                    for date_field in ['dispatch_date', 'return_date', 'date_borrowed', 'date_returned']:
+                        if date_field in history_data and history_data[date_field]:
+                            try:
+                                date_str = str(history_data[date_field])
+                                if 'T' in date_str:  # ISO format
+                                    history_data[date_field] = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                                else:
+                                    # Try to parse as date string
+                                    history_data[date_field] = datetime.strptime(date_str[:10], '%Y-%m-%d')
+                            except Exception as e:
+                                # If date parsing fails, set to None
+                                history_data[date_field] = None
+                    
+                    # Set default values for missing fields
+                    history_data.setdefault('status', 'completed')
+                    history_data.setdefault('location', 'Warehouse')
+                    
+                    # Generate unique ID if not provided
+                    if 'id' not in history_data or not history_data['id']:
+                        history_data['id'] = f"HIST-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
+                    
+                    rental_service.create(history_data)
+                    imported_count += 1
+                except Exception as e:
+                    customer_info = history_data.get('customer_name', history_data.get('customer_no', 'Unknown'))
+                    errors.append(f"History record for '{customer_info}': {str(e)}")
+        
+        return {
+            'success': len(errors) == 0,
+            'imported': imported_count,
+            'errors': errors,
+            'total': len(history_records)
         }

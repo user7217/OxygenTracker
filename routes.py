@@ -1800,6 +1800,219 @@ def import_data():
     """Data import dashboard with JSON and Access support"""
     return render_template('import_data.html', access_available=ACCESS_AVAILABLE)
 
+@app.route('/import/from_replit', methods=['GET', 'POST'])
+@admin_required
+def import_from_replit():
+    """Import data from another Replit Varasicyl database"""
+    if request.method == 'GET':
+        return render_template('import_from_replit.html')
+    
+    # Get connection details from form
+    source_database_url = request.form.get('source_database_url', '').strip()
+    data_types = request.form.getlist('data_types')  # ['customers', 'cylinders', 'rental_history']
+    
+    if not source_database_url:
+        flash('Please provide a source database URL', 'error')
+        return render_template('import_from_replit.html')
+    
+    if not data_types:
+        flash('Please select at least one data type to import', 'error')
+        return render_template('import_from_replit.html')
+    
+    try:
+        from sqlalchemy import create_engine, text
+        import pandas as pd
+        
+        # Create connection to source database
+        source_engine = create_engine(source_database_url)
+        
+        import_results = []
+        total_imported = 0
+        
+        # Import each selected data type
+        for data_type in data_types:
+            try:
+                with source_engine.connect() as conn:
+                    # Get data from source database
+                    if data_type == 'customers':
+                        query = text("SELECT * FROM customers")
+                        df = pd.read_sql(query, conn)
+                        records = df.to_dict('records')
+                        
+                        # Import using JSON importer
+                        from json_importer import JSONImporter
+                        importer = JSONImporter()
+                        valid_records, errors = importer.validate_data(records, 'customers', {})
+                        result = importer.import_data(valid_records, 'customers')
+                        
+                    elif data_type == 'cylinders':
+                        query = text("SELECT * FROM cylinders")
+                        df = pd.read_sql(query, conn)
+                        records = df.to_dict('records')
+                        
+                        from json_importer import JSONImporter
+                        importer = JSONImporter()
+                        valid_records, errors = importer.validate_data(records, 'cylinders', {})
+                        result = importer.import_data(valid_records, 'cylinders')
+                        
+                    elif data_type == 'rental_history':
+                        query = text("SELECT * FROM rental_history")
+                        df = pd.read_sql(query, conn)
+                        records = df.to_dict('records')
+                        
+                        from json_importer import JSONImporter
+                        importer = JSONImporter()
+                        valid_records, errors = importer.validate_data(records, 'rental_history', {})
+                        result = importer.import_data(valid_records, 'rental_history')
+                    
+                    import_results.append({
+                        'data_type': data_type,
+                        'imported': result.get('imported', 0),
+                        'errors': result.get('errors', []),
+                        'success': result.get('success', False)
+                    })
+                    total_imported += result.get('imported', 0)
+                    
+            except Exception as e:
+                import_results.append({
+                    'data_type': data_type,
+                    'imported': 0,
+                    'errors': [f"Failed to import {data_type}: {str(e)}"],
+                    'success': False
+                })
+        
+        # Display results
+        if total_imported > 0:
+            flash(f'Successfully imported {total_imported} records from Replit database', 'success')
+        
+        for result in import_results:
+            if result['errors']:
+                for error in result['errors']:
+                    flash(f"{result['data_type']}: {error}", 'warning')
+        
+        return render_template('import_from_replit.html', results=import_results)
+        
+    except Exception as e:
+        flash(f'Error connecting to source database: {str(e)}', 'error')
+        return render_template('import_from_replit.html')
+
+@app.route('/import/rental-history', methods=['GET', 'POST'])
+@admin_required
+def import_rental_history():
+    """Import rental history from JSON file"""
+    if request.method == 'POST':
+        try:
+            # Check if file was uploaded
+            if 'file' not in request.files:
+                flash('No file selected', 'error')
+                return redirect(url_for('import_rental_history'))
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash('No file selected', 'error')
+                return redirect(url_for('import_rental_history'))
+            
+            if not file.filename.lower().endswith('.json'):
+                flash('Please select a JSON file', 'error')
+                return redirect(url_for('import_rental_history'))
+            
+            # Read and parse JSON file
+            file_content = file.read().decode('utf-8')
+            rental_data = json.loads(file_content)
+            
+            # Validate JSON structure
+            if not isinstance(rental_data, list):
+                flash('JSON file must contain an array of rental history records', 'error')
+                return redirect(url_for('import_rental_history'))
+            
+            # Import rental history records
+            from db_service import RentalHistoryService
+            imported_count = 0
+            errors = []
+            
+            with RentalHistoryService() as rental_service:
+                for i, record in enumerate(rental_data):
+                    try:
+                        # Create rental history record
+                        history_record = {
+                            'customer_id': record.get('customer_id', ''),
+                            'customer_no': record.get('customer_no', ''),
+                            'customer_name': record.get('customer_name', ''),
+                            'customer_phone': record.get('customer_phone', ''),
+                            'customer_email': record.get('customer_email', ''),
+                            'customer_address': record.get('customer_address', ''),
+                            'customer_city': record.get('customer_city', ''),
+                            'customer_state': record.get('customer_state', ''),
+                            'cylinder_id': record.get('cylinder_id', ''),
+                            'cylinder_no': record.get('cylinder_no', ''),
+                            'cylinder_custom_id': record.get('cylinder_custom_id', ''),
+                            'cylinder_serial': record.get('cylinder_serial', ''),
+                            'cylinder_type': record.get('cylinder_type', ''),
+                            'cylinder_size': record.get('cylinder_size', ''),
+                            'dispatch_date': record.get('dispatch_date', ''),
+                            'return_date': record.get('return_date', ''),
+                            'date_borrowed': record.get('date_borrowed', ''),
+                            'date_returned': record.get('date_returned', ''),
+                            'rental_days': record.get('rental_days', 0),
+                            'location': record.get('location', ''),
+                            'status': record.get('status', 'completed'),
+                            'created_at': record.get('created_at', datetime.now().isoformat())
+                        }
+                        
+                        # Create rental history record
+                        rental_service.create_history_record(history_record)
+                        imported_count += 1
+                        
+                    except Exception as e:
+                        errors.append(f"Record {i+1}: {str(e)}")
+                        continue
+            
+            # Show results
+            if imported_count > 0:
+                flash(f'Successfully imported {imported_count} rental history records', 'success')
+            
+            if errors:
+                error_msg = f"Errors encountered: {len(errors)} records failed to import"
+                if len(errors) <= 5:
+                    error_msg += ": " + "; ".join(errors)
+                flash(error_msg, 'warning')
+            
+            return redirect(url_for('rental_history'))
+            
+        except json.JSONDecodeError:
+            flash('Invalid JSON file format', 'error')
+        except Exception as e:
+            flash(f'Error importing rental history: {str(e)}', 'error')
+    
+    return render_template('import_rental_history.html')
+
+@app.route('/import/recreate-tables', methods=['POST'])
+@admin_required
+def recreate_tables():
+    """Recreate database tables with exact schema matching"""
+    try:
+        from migrate_to_render import ReplitToRenderMigrator
+        migrator = ReplitToRenderMigrator()
+        
+        # Recreate tables
+        result = migrator.recreate_exact_tables()
+        
+        if 'error' in result:
+            flash(f'Error recreating tables: {result["error"]}', 'error')
+        else:
+            flash(f'Tables recreated successfully: {", ".join(result["tables_created"])}', 'success')
+            
+            # Verify structure
+            verification = migrator.verify_table_structure()
+            if 'error' not in verification:
+                flash('Table structure verified successfully', 'success')
+        
+        return redirect(url_for('import_data'))
+        
+    except Exception as e:
+        flash(f'Error recreating tables: {str(e)}', 'error')
+        return redirect(url_for('import_data'))
+
 @app.route('/import/upload', methods=['POST'])
 def upload_access_file():
     """Upload and connect to Access database"""
@@ -3728,7 +3941,25 @@ def wipe_records():
                 
                 with CylinderService() as cylinder_service:
                     cylinders, _ = cylinder_service.get_all(page=1, per_page=100000)
-                    backup_data['cylinders'] = [cylinder_service.to_dict(c) for c in cylinders]
+                    backup_data['cylinders'] = []
+                    for c in cylinders:
+                        cylinder_dict = {
+                            'id': c.id if hasattr(c, 'id') else c.get('id'),
+                            'custom_id': c.custom_id if hasattr(c, 'custom_id') else c.get('custom_id'),
+                            'serial_number': c.serial_number if hasattr(c, 'serial_number') else c.get('serial_number'),
+                            'type': c.type if hasattr(c, 'type') else c.get('type'),
+                            'size': c.size if hasattr(c, 'size') else c.get('size'),
+                            'status': c.status if hasattr(c, 'status') else c.get('status'),
+                            'location': c.location if hasattr(c, 'location') else c.get('location'),
+                            'rented_to': c.rented_to if hasattr(c, 'rented_to') else c.get('rented_to'),
+                            'customer_name': c.customer_name if hasattr(c, 'customer_name') else c.get('customer_name'),
+                            'customer_email': c.customer_email if hasattr(c, 'customer_email') else c.get('customer_email'),
+                            'customer_phone': c.customer_phone if hasattr(c, 'customer_phone') else c.get('customer_phone'),
+                            'date_borrowed': str(c.date_borrowed) if hasattr(c, 'date_borrowed') and c.date_borrowed else (str(c.get('date_borrowed')) if c.get('date_borrowed') else None),
+                            'rental_date': str(c.rental_date) if hasattr(c, 'rental_date') and c.rental_date else (str(c.get('rental_date')) if c.get('rental_date') else None),
+                            'date_returned': str(c.date_returned) if hasattr(c, 'date_returned') and c.date_returned else (str(c.get('date_returned')) if c.get('date_returned') else None)
+                        }
+                        backup_data['cylinders'].append(cylinder_dict)
                 
                 # Save backup file
                 backup_path = f"data/{backup_filename}"

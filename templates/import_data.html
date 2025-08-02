@@ -45,8 +45,50 @@
                             </div>
                             
                             <div class="mt-auto">
-                                <a href="{{ url_for('import_json') }}" class="btn btn-primary btn-lg w-100">
+                                <a href="{{ url_for('import_json') }}" class="btn btn-primary btn-lg w-100 mb-2">
                                     <i class="bi bi-file-earmark-arrow-up"></i> Import JSON Data
+                                </a>
+                                <a href="{{ url_for('import_rental_history') }}" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-clock-history"></i> Import Rental History
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import from Replit -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="bi bi-cloud-download"></i> Import from Replit</h5>
+                            <small>Connect to another Replit Varasicyl database</small>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <p class="text-muted">Import data directly from another Replit Varasicyl deployment</p>
+                            
+                            <div class="mb-3">
+                                <h6>Supported Data Types:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Customer records</li>
+                                    <li><i class="bi bi-check text-success"></i> Cylinder inventory</li>
+                                    <li><i class="bi bi-check text-success"></i> Rental history</li>
+                                    <li><i class="bi bi-check text-success"></i> Complete backup</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Features:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success"></i> Direct Replit connection</li>
+                                    <li><i class="bi bi-check text-success"></i> Schema compatibility</li>
+                                    <li><i class="bi bi-check text-success"></i> Selective import</li>
+                                    <li><i class="bi bi-check text-success"></i> Data validation</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-auto">
+                                <a href="{{ url_for('import_from_replit') }}" class="btn btn-warning btn-lg w-100">
+                                    <i class="bi bi-cloud-arrow-down"></i> Import from Replit
                                 </a>
                             </div>
                         </div>
@@ -66,7 +108,7 @@
                             <div class="mb-3">
                                 <h6>Supported Sources:</h6>
                                 <ul class="list-unstyled">
-                                    <li><i class="bi bi-check text-success"></i> Other Replit databases</li>
+                                    <li><i class="bi bi-check text-success"></i> Other PostgreSQL databases</li>
                                     <li><i class="bi bi-check text-success"></i> Render PostgreSQL</li>
                                     <li><i class="bi bi-check text-success"></i> Local PostgreSQL</li>
                                     <li><i class="bi bi-check text-success"></i> Cloud databases</li>
@@ -108,6 +150,7 @@
                                 <ul class="list-unstyled">
                                     <li><i class="bi bi-check text-success"></i> Customer records</li>
                                     <li><i class="bi bi-check text-success"></i> Cylinder inventory</li>
+                                    <li><i class="bi bi-check text-success"></i> Rental history</li>
                                     <li><i class="bi bi-check text-success"></i> Transaction history</li>
                                 </ul>
                             </div>
@@ -274,6 +317,38 @@
                         <li>Clean up data beforehand to avoid import errors</li>
                         <li>Backup your current data before importing</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Management Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-tools"></i> Database Management</h5>
+                    <small>Advanced tools for database maintenance and migration</small>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6>Recreate Database Tables</h6>
+                            <p class="text-muted mb-0">
+                                Recreate all database tables with exact schema matching between Replit and Render.
+                                This ensures proper column names, types, and indexes for compatibility.
+                                <strong class="text-danger">Warning: This will drop all existing data!</strong>
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <form method="POST" action="{{ url_for('recreate_tables') }}" 
+                                  onsubmit="return confirm('Are you sure? This will delete all existing data and recreate the tables!')">
+                                <button type="submit" class="btn btn-warning btn-lg">
+                                    <i class="bi bi-arrow-clockwise"></i> Recreate Tables
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
