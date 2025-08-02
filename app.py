@@ -64,6 +64,43 @@ with app.app_context():
             # Then drop the column
             db.session.execute(text("ALTER TABLE cylinders DROP COLUMN cylinder_id"))
         
+        # Fix rental_history table schema if needed
+        rental_history_exists = db.session.execute(text("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_name='rental_history'
+        """)).fetchone()
+        
+        if rental_history_exists:
+            # Get current columns in rental_history
+            rental_columns = db.session.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='rental_history'
+            """)).fetchall()
+            existing_columns = [row[0] for row in rental_columns]
+            
+            # Add missing columns to rental_history
+            required_columns = [
+                ('customer_address', 'TEXT'),
+                ('dispatch_date', 'TIMESTAMP'),
+                ('return_date', 'TIMESTAMP'), 
+                ('date_borrowed', 'TIMESTAMP'),
+                ('date_returned', 'TIMESTAMP'),
+                ('rental_days', 'INTEGER'),
+                ('location', 'VARCHAR'),
+                ('status', 'VARCHAR'),
+                ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+            ]
+            
+            for col_name, col_type in required_columns:
+                if col_name not in existing_columns:
+                    try:
+                        db.session.execute(text(f"ALTER TABLE rental_history ADD COLUMN {col_name} {col_type}"))
+                        logging.info(f"Added missing column {col_name} to rental_history")
+                    except Exception as e:
+                        logging.warning(f"Failed to add column {col_name}: {e}")
+        
         # Check if customer_address column exists, if not add it
         result = db.session.execute(text("""
             SELECT column_name 
