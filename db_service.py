@@ -207,10 +207,11 @@ class CylinderService(DatabaseService):
         cylinders = query.order_by(
             case(
                 (Cylinder.status == 'rented', 0),  # Rented cylinders first
+                (Cylinder.status == 'dispatched', 0),  # Dispatched cylinders first (same priority as rented)
                 (Cylinder.status == 'available', 1),  # Available cylinders second
                 else_=2  # Others last (maintenance, etc.)
             ),
-            # For rented cylinders: sort by date_borrowed ascending (oldest dispatch = longest rental first)
+            # For rented/dispatched cylinders: sort by date_borrowed ascending (oldest dispatch = longest rental first)
             Cylinder.date_borrowed.asc().nulls_last(),
             # For available cylinders: sort by custom_id
             Cylinder.custom_id.asc().nulls_last()
@@ -316,9 +317,9 @@ class CylinderService(DatabaseService):
         }
     
     def get_by_customer(self, customer_id: str) -> List[Dict]:
-        """Get cylinders rented by customer, returning dictionaries"""
+        """Get cylinders rented/dispatched by customer, returning dictionaries"""
         cylinders = self.db.query(Cylinder).filter(
-            and_(Cylinder.rented_to == customer_id, Cylinder.status == 'rented')
+            and_(Cylinder.rented_to == customer_id, Cylinder.status.in_(['rented', 'dispatched']))
         ).all()
         
         # Convert to dictionaries for template compatibility
@@ -378,27 +379,24 @@ class CylinderService(DatabaseService):
         self.db.commit()
         return cylinder
     
-    def create_exact(self, cylinder_data: Dict) -> Cylinder:
-        """Create cylinder with exact JSON data structure preservation"""
-        # Use the exact data structure from your JSON
-        cylinder = Cylinder()
-        
-        # Map all fields exactly as they come from JSON
-        for field, value in cylinder_data.items():
-            if hasattr(cylinder, field):
-                setattr(cylinder, field, value)
-        
-        # Ensure required fields have values
-        if not cylinder.id:
-            cylinder.id = str(uuid.uuid4())
-        if not cylinder.status:
-            cylinder.status = 'Available'
-        if not cylinder.location:
-            cylinder.location = 'Warehouse'
+    def update_exact(self, cylinder_id: str, cylinder_data: Dict) -> bool:
+        """Update cylinder with exact data preservation"""
+        try:
+            cylinder = self.db.query(Cylinder).filter(Cylinder.id == cylinder_id).first()
+            if not cylinder:
+                return False
             
-        self.db.add(cylinder)
-        self.db.commit()
-        return cylinder
+            # Update all fields exactly as provided
+            for field, value in cylinder_data.items():
+                if hasattr(cylinder, field):
+                    setattr(cylinder, field, value)
+            
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error updating cylinder: {e}")
+            return False
     
     def update(self, cylinder_id: str, cylinder_data: Dict) -> bool:
         """Update cylinder"""

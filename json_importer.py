@@ -298,15 +298,23 @@ class JSONImporter:
         }
     
     def _import_cylinders(self, cylinders: List[Dict]) -> Dict[str, Any]:
-        """Import cylinder records with exact JSON structure preservation"""
+        """Import/update cylinder records with exact JSON structure preservation"""
         imported_count = 0
+        updated_count = 0
         errors = []
         
         with CylinderService() as cylinder_service:
             for cylinder_data in cylinders:
                 try:
-                    # Preserve all fields from your JSON format exactly as they are
-                    # Don't remove ANY fields - import them as-is
+                    # Check if cylinder already exists by ID or custom_id
+                    existing_cylinder = None
+                    cylinder_id = cylinder_data.get('id')
+                    custom_id = cylinder_data.get('custom_id')
+                    
+                    if cylinder_id:
+                        existing_cylinder = cylinder_service.find_by_any_identifier(cylinder_id)
+                    elif custom_id:
+                        existing_cylinder = cylinder_service.find_by_any_identifier(custom_id)
                     
                     # Set defaults only for truly missing required fields
                     cylinder_data.setdefault('status', 'Available')
@@ -322,26 +330,76 @@ class JSONImporter:
                             if value is None:
                                 cylinder_data[field] = ""
                     
-                    # Use the exact ID from your JSON (CYL-* format)
-                    if 'id' in cylinder_data and cylinder_data['id']:
-                        # Your JSON already has the correct ID format
-                        pass  
-                    else:
-                        # Only generate if absolutely no ID provided
-                        if not cylinder_data.get('custom_id'):
-                            cylinder_data['custom_id'] = f"CYL-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
+                    # Link to customer if customer data exists and cylinder is dispatched/rented
+                    if (cylinder_data.get('status', '').lower() in ['rented', 'dispatched'] and 
+                        cylinder_data.get('customer_name')):
+                        customer_link_id = self._find_or_create_customer_from_cylinder(cylinder_data)
+                        if customer_link_id:
+                            cylinder_data['rented_to'] = customer_link_id
                     
-                    cylinder_service.create_exact(cylinder_data)
-                    imported_count += 1
+                    if existing_cylinder:
+                        # Update existing cylinder with new data
+                        actual_id = existing_cylinder.get('id')
+                        success = cylinder_service.update_exact(actual_id, cylinder_data)
+                        if success:
+                            updated_count += 1
+                        else:
+                            errors.append(f"Cylinder '{cylinder_id or custom_id}': Failed to update")
+                    else:
+                        # Create new cylinder
+                        if not cylinder_data.get('id') and not cylinder_data.get('custom_id'):
+                            cylinder_data['custom_id'] = f"CYL-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
+                        
+                        cylinder_service.create_exact(cylinder_data)
+                        imported_count += 1
+                        
                 except Exception as e:
                     errors.append(f"Cylinder '{cylinder_data.get('id', cylinder_data.get('custom_id', 'Unknown'))}': {str(e)}")
         
         return {
             'success': len(errors) == 0,
             'imported': imported_count,
+            'updated': updated_count,
             'errors': errors,
             'total': len(cylinders)
         }
+    
+    def _find_or_create_customer_from_cylinder(self, cylinder_data: Dict) -> str:
+        """Find existing customer or create new one based on cylinder customer data"""
+        try:
+            customer_name = cylinder_data.get('customer_name', '').strip()
+            if not customer_name:
+                return None
+                
+            # Try to find existing customer by name first
+            with CustomerService() as customer_service:
+                customers, _ = customer_service.get_all(page=1, per_page=10000)
+                
+                for customer in customers:
+                    if (customer.get('customer_name', '').strip().lower() == customer_name.lower()):
+                        return customer.get('id')
+                
+                # If not found, create new customer from cylinder data
+                customer_data = {
+                    'customer_name': customer_name,
+                    'customer_email': cylinder_data.get('customer_email', ''),
+                    'customer_phone': cylinder_data.get('customer_phone', ''),
+                    'customer_address': cylinder_data.get('customer_address', ''),
+                    'customer_city': cylinder_data.get('customer_city', ''),
+                    'customer_state': cylinder_data.get('customer_state', ''),
+                    'customer_no': f"AUTO-{datetime.now().strftime('%Y%m%d')}-{customer_name[:3].upper()}"
+                }
+                
+                # Clean up phone number
+                if customer_data['customer_phone'] in ['0.0', '0', '', None]:
+                    customer_data['customer_phone'] = None
+                    
+                new_customer = customer_service.create(customer_data)
+                return new_customer.id if new_customer else None
+                
+        except Exception as e:
+            print(f"Error finding/creating customer: {e}")
+            return None
     
     def _import_rental_transactions(self, transactions: List[Dict]) -> Dict[str, Any]:
         """Import rental transaction records"""

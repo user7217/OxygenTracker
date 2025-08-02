@@ -608,7 +608,7 @@ def customers():
                    c.customer_address, c.customer_city, c.customer_state, c.created_at,
                    COUNT(cyl.id) as active_dispatches
             FROM customers c 
-            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status IN ('rented', 'dispatched')
             WHERE LOWER(c.customer_name) LIKE LOWER(:search) 
                OR LOWER(c.customer_no) LIKE LOWER(:search)
                OR LOWER(c.customer_phone) LIKE LOWER(:search)
@@ -639,7 +639,7 @@ def customers():
                    c.customer_address, c.customer_city, c.customer_state, c.created_at,
                    COUNT(cyl.id) as active_dispatches
             FROM customers c 
-            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status = 'rented'
+            LEFT JOIN cylinders cyl ON cyl.rented_to = c.id AND cyl.status IN ('rented', 'dispatched')
             GROUP BY c.id, c.customer_no, c.customer_name, c.customer_email, c.customer_phone, 
                      c.customer_address, c.customer_city, c.customer_state, c.created_at
             ORDER BY active_dispatches DESC
@@ -2075,9 +2075,7 @@ def rent_cylinder(cylinder_id):
     
     # Verify customer exists
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
-    with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customer = customer_service.get_by_id(customer_id)
     if not customer:
         flash('Customer not found', 'error')
         return redirect(url_for('cylinders'))
@@ -2249,13 +2247,13 @@ def bulk_cylinder_management(customer_id):
             cylinder_status = cylinder.get('status', '').lower()
             cylinder_rented_to = cylinder.get('rented_to')
             
-            # Check if cylinder is rented to this customer
-            if cylinder_status != 'rented':
-                errors.append(f'"{cylinder_display}": Not rented (current status: {cylinder.get("status", "unknown")})')
+            # Check if cylinder is rented/dispatched to this customer
+            if cylinder_status not in ['rented', 'dispatched']:
+                errors.append(f'"{cylinder_display}": Not rented/dispatched (current status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             elif cylinder_rented_to != customer_id:
-                errors.append(f'"{cylinder_display}": Rented to different customer (ID: {cylinder_rented_to})')
+                errors.append(f'"{cylinder_display}": Rented/dispatched to different customer (ID: {cylinder_rented_to})')
                 skipped += 1
                 continue
             
@@ -2511,9 +2509,10 @@ def process_bulk_rental():
                 skipped += 1
         
         elif action == 'return':
-            # Check if cylinder is rented to this customer
-            if cylinder.get('status', '').lower() != 'rented' or cylinder.get('rented_to') != customer_id:
-                errors.append(f'"{cylinder_display}": Not rented to this customer')
+            # Check if cylinder is rented/dispatched to this customer
+            cylinder_status = cylinder.get('status', '').lower()
+            if cylinder_status not in ['rented', 'dispatched'] or cylinder.get('rented_to') != customer_id:
+                errors.append(f'"{cylinder_display}": Not rented/dispatched to this customer (status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             
