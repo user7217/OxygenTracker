@@ -423,93 +423,248 @@ class JSONImporter:
             return None
     
     def _import_rental_transactions(self, transactions: List[Dict]) -> Dict[str, Any]:
-        """Import rental transaction records"""
+        """Import rental transaction records with efficient batch processing"""
         imported_count = 0
+        skipped_count = 0
         errors = []
+        batch_size = 100  # Process in smaller batches
         
-        # Import using RentalHistoryService
+        print(f"Starting import of {len(transactions)} rental transactions...")
+        
+        # Import using RentalHistoryService (transactions are just rental history records)
         from db_service import RentalHistoryService
         
         with RentalHistoryService() as rental_service:
-            for transaction_data in transactions:
-                try:
-                    # Remove system fields that shouldn't be imported
-                    system_fields = ['id', 'created_at', 'updated_at']
-                    for field in system_fields:
-                        transaction_data.pop(field, None)
-                    
-                    # Convert date fields to proper format
-                    for date_field in ['dispatch_date', 'return_date']:
-                        if date_field in transaction_data and transaction_data[date_field]:
+            # Get existing record IDs for duplicate checking
+            existing_ids = set()
+            try:
+                page = 1
+                while True:
+                    existing_records, total = rental_service.get_all(page=page, per_page=5000)
+                    if not existing_records:
+                        break
+                    for record in existing_records:
+                        if hasattr(record, 'id') and record.id:
+                            existing_ids.add(record.id)
+                    page += 1
+                    if len(existing_records) < 5000:
+                        break
+            except Exception as e:
+                print(f"Warning: Could not load existing IDs: {e}")
+            
+            # Process in batches
+            for batch_start in range(0, len(transactions), batch_size):
+                batch_end = min(batch_start + batch_size, len(transactions))
+                batch = transactions[batch_start:batch_end]
+                
+                print(f"Processing transaction batch {batch_start//batch_size + 1}: records {batch_start+1}-{batch_end}")
+                
+                batch_records = []
+                for i, transaction_data in enumerate(batch):
+                    try:
+                        processed_data = transaction_data.copy()
+                        
+                        # Check for duplicates
+                        record_id = processed_data.get('id', '')
+                        if record_id and record_id in existing_ids:
+                            skipped_count += 1
+                            continue
+                        
+                        # Remove system fields
+                        system_fields = ['created_at', 'updated_at']
+                        for field in system_fields:
+                            processed_data.pop(field, None)
+                        
+                        # Convert date fields to proper date objects
+                        for date_field in ['dispatch_date', 'return_date']:
+                            if date_field in processed_data and processed_data[date_field]:
+                                try:
+                                    date_str = str(processed_data[date_field])
+                                    if 'T' in date_str:  # ISO format
+                                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                                        processed_data[date_field] = dt.date()
+                                    else:
+                                        dt = datetime.strptime(date_str[:10], '%Y-%m-%d')
+                                        processed_data[date_field] = dt.date()
+                                except:
+                                    processed_data[date_field] = None
+                        
+                        # Set default status
+                        processed_data.setdefault('status', 'completed')
+                        
+                        # Generate ID if missing
+                        if 'id' not in processed_data or not processed_data['id']:
+                            processed_data['id'] = f"RT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{(batch_start + i + 1):04d}"
+                        
+                        batch_records.append(processed_data)
+                        
+                    except Exception as e:
+                        customer_info = transaction_data.get('customer_name', transaction_data.get('customer_no', 'Unknown'))
+                        errors.append(f"Transaction {batch_start + i + 1} for '{customer_info}': {str(e)}")
+                
+                # Bulk insert batch
+                if batch_records:
+                    try:
+                        from models import RentalHistory
+                        rental_objects = [RentalHistory(**record) for record in batch_records]
+                        
+                        rental_service.db.add_all(rental_objects)
+                        rental_service.db.commit()
+                        
+                        imported_count += len(batch_records)
+                        print(f"Successfully imported batch of {len(batch_records)} transactions")
+                        
+                        # Update existing IDs set
+                        for record in rental_objects:
+                            existing_ids.add(record.id)
+                        
+                    except Exception as e:
+                        rental_service.db.rollback()
+                        print(f"Batch insert failed, trying individual inserts: {e}")
+                        
+                        for record_data in batch_records:
                             try:
-                                # Handle various date formats
-                                date_str = str(transaction_data[date_field])
-                                if 'T' in date_str:  # ISO format
-                                    transaction_data[date_field] = date_str.split('T')[0]
-                                # Otherwise keep as-is (assume YYYY-MM-DD format)
-                            except:
-                                pass
-                    
-                    # Set default status if missing
-                    transaction_data.setdefault('status', 'completed')
-                    
-                    rental_service.create(transaction_data)
-                    imported_count += 1
-                except Exception as e:
-                    customer_info = transaction_data.get('customer_name', transaction_data.get('customer_no', 'Unknown'))
-                    errors.append(f"Transaction for '{customer_info}': {str(e)}")
+                                rental_service.create(record_data)
+                                imported_count += 1
+                                existing_ids.add(record_data['id'])
+                            except Exception as individual_error:
+                                customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
+                                errors.append(f"Individual transaction insert for '{customer_info}': {str(individual_error)}")
+        
+        print(f"Transaction import completed: {imported_count} imported, {skipped_count} skipped, {len(errors)} errors")
         
         return {
             'success': len(errors) == 0,
             'imported': imported_count,
+            'skipped': skipped_count,
             'errors': errors,
             'total': len(transactions)
         }
     
     def _import_rental_history(self, history_records: List[Dict]) -> Dict[str, Any]:
-        """Import rental history records"""
+        """Import rental history records with efficient batch processing"""
         imported_count = 0
+        skipped_count = 0
         errors = []
+        batch_size = 100  # Process in smaller batches to prevent timeouts
+        
+        print(f"Starting import of {len(history_records)} rental history records...")
         
         with RentalHistoryService() as rental_service:
-            for history_data in history_records:
-                try:
-                    # Remove system fields that shouldn't be imported
-                    system_fields = ['id', 'created_at', 'updated_at']
-                    for field in system_fields:
-                        history_data.pop(field, None)
-                    
-                    # Convert date fields to proper datetime objects
-                    for date_field in ['dispatch_date', 'return_date', 'date_borrowed', 'date_returned']:
-                        if date_field in history_data and history_data[date_field]:
+            # Get existing record IDs for duplicate checking (more efficient than checking each record)
+            existing_ids = set()
+            try:
+                # Get existing IDs in batches to avoid memory issues
+                page = 1
+                while True:
+                    existing_records, total = rental_service.get_all(page=page, per_page=5000)
+                    if not existing_records:
+                        break
+                    for record in existing_records:
+                        if hasattr(record, 'id') and record.id:
+                            existing_ids.add(record.id)
+                    page += 1
+                    if len(existing_records) < 5000:  # Last page
+                        break
+            except Exception as e:
+                print(f"Warning: Could not load existing IDs for duplicate check: {e}")
+            
+            print(f"Found {len(existing_ids)} existing records for duplicate checking")
+            
+            # Process records in batches
+            for batch_start in range(0, len(history_records), batch_size):
+                batch_end = min(batch_start + batch_size, len(history_records))
+                batch = history_records[batch_start:batch_end]
+                
+                print(f"Processing batch {batch_start//batch_size + 1}: records {batch_start+1}-{batch_end} of {len(history_records)}")
+                
+                batch_records = []
+                for i, history_data in enumerate(batch):
+                    try:
+                        # Create a copy to avoid modifying original data
+                        processed_data = history_data.copy()
+                        
+                        # Check for duplicates by ID
+                        record_id = processed_data.get('id', '')
+                        if record_id and record_id in existing_ids:
+                            skipped_count += 1
+                            continue
+                        
+                        # Remove system fields that shouldn't be imported
+                        system_fields = ['created_at', 'updated_at']
+                        for field in system_fields:
+                            processed_data.pop(field, None)
+                        
+                        # Convert date fields to proper date objects (not datetime to match model)
+                        for date_field in ['dispatch_date', 'return_date']:
+                            if date_field in processed_data and processed_data[date_field]:
+                                try:
+                                    date_str = str(processed_data[date_field])
+                                    if 'T' in date_str:  # ISO format
+                                        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                                        processed_data[date_field] = dt.date()
+                                    else:
+                                        # Try to parse as date string
+                                        dt = datetime.strptime(date_str[:10], '%Y-%m-%d')
+                                        processed_data[date_field] = dt.date()
+                                except Exception as e:
+                                    # If date parsing fails, set to None
+                                    processed_data[date_field] = None
+                        
+                        # Set default values for missing fields
+                        processed_data.setdefault('status', 'completed')
+                        
+                        # Generate unique ID if not provided
+                        if 'id' not in processed_data or not processed_data['id']:
+                            processed_data['id'] = f"RT-{datetime.now().strftime('%Y%m%d%H%M%S')}-{(batch_start + i + 1):04d}"
+                        
+                        batch_records.append(processed_data)
+                        
+                    except Exception as e:
+                        customer_info = history_data.get('customer_name', history_data.get('customer_no', 'Unknown'))
+                        errors.append(f"Record {batch_start + i + 1} for '{customer_info}': {str(e)}")
+                
+                # Bulk insert batch records
+                if batch_records:
+                    try:
+                        from models import RentalHistory
+                        rental_history_objects = []
+                        
+                        for record_data in batch_records:
+                            rental_history = RentalHistory(**record_data)
+                            rental_history_objects.append(rental_history)
+                        
+                        # Bulk insert using SQLAlchemy
+                        rental_service.db.add_all(rental_history_objects)
+                        rental_service.db.commit()
+                        
+                        imported_count += len(batch_records)
+                        print(f"Successfully imported batch of {len(batch_records)} records")
+                        
+                        # Add new IDs to existing set for future duplicate checking
+                        for record in rental_history_objects:
+                            existing_ids.add(record.id)
+                        
+                    except Exception as e:
+                        # If batch fails, try individual inserts for this batch
+                        rental_service.db.rollback()
+                        print(f"Batch insert failed, trying individual inserts: {e}")
+                        
+                        for record_data in batch_records:
                             try:
-                                date_str = str(history_data[date_field])
-                                if 'T' in date_str:  # ISO format
-                                    history_data[date_field] = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                                else:
-                                    # Try to parse as date string
-                                    history_data[date_field] = datetime.strptime(date_str[:10], '%Y-%m-%d')
-                            except Exception as e:
-                                # If date parsing fails, set to None
-                                history_data[date_field] = None
-                    
-                    # Set default values for missing fields
-                    history_data.setdefault('status', 'completed')
-                    history_data.setdefault('location', 'Warehouse')
-                    
-                    # Generate unique ID if not provided
-                    if 'id' not in history_data or not history_data['id']:
-                        history_data['id'] = f"HIST-{datetime.now().strftime('%Y%m%d')}-{imported_count+1:04d}"
-                    
-                    rental_service.create(history_data)
-                    imported_count += 1
-                except Exception as e:
-                    customer_info = history_data.get('customer_name', history_data.get('customer_no', 'Unknown'))
-                    errors.append(f"History record for '{customer_info}': {str(e)}")
+                                rental_service.create(record_data)
+                                imported_count += 1
+                                existing_ids.add(record_data['id'])
+                            except Exception as individual_error:
+                                customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
+                                errors.append(f"Individual insert for '{customer_info}': {str(individual_error)}")
+        
+        print(f"Import completed: {imported_count} imported, {skipped_count} skipped duplicates, {len(errors)} errors")
         
         return {
             'success': len(errors) == 0,
             'imported': imported_count,
+            'skipped': skipped_count,
             'errors': errors,
             'total': len(history_records)
         }

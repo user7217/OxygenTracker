@@ -568,7 +568,7 @@ class RentalHistoryService(DatabaseService):
         self._ensure_connection()
         
         history = self.db.query(RentalHistory).filter(
-            RentalHistory.cylinder_id == cylinder_id
+            RentalHistory.cylinder_no == cylinder_id
         ).order_by(desc(RentalHistory.return_date)).limit(10).all()
         
         return history
@@ -609,11 +609,8 @@ class RentalHistoryService(DatabaseService):
         # Get all rental history for this customer
         customer_no = getattr(customer, 'customer_no', '') if customer else ''
         all_history = self.db.query(RentalHistory).filter(
-            or_(
-                RentalHistory.customer_id == customer_id,
-                RentalHistory.customer_no == customer_no
-            )
-        ).order_by(desc(RentalHistory.rental_date)).all()
+            RentalHistory.customer_no == customer_no
+        ).order_by(desc(RentalHistory.dispatch_date)).all()
         
         # Also get current active rentals
         cylinder_service = CylinderService()
@@ -633,9 +630,9 @@ class RentalHistoryService(DatabaseService):
         
         # Process rental history
         for rental in all_history:
-            if rental.rental_date:
-                rental_year = rental.rental_date.year
-                rental_month = rental.rental_date.month
+            if rental.dispatch_date:
+                rental_year = rental.dispatch_date.year
+                rental_month = rental.dispatch_date.month
                 available_years.add(rental_year)
                 
                 if year is None or rental_year == year:
@@ -644,11 +641,11 @@ class RentalHistoryService(DatabaseService):
                     monthly_data[month_key]['total_transactions'] += 1
                     
                     transaction_data = {
-                        'date': rental.rental_date,
-                        'cylinder_id': rental.cylinder_id,
+                        'date': rental.dispatch_date,
+                        'cylinder_id': rental.cylinder_no,
                         'cylinder_no': rental.cylinder_no,
                         'cylinder_type': rental.cylinder_type,
-                        'rental_date': rental.rental_date,
+                        'rental_date': rental.dispatch_date,
                         'return_date': rental.return_date
                     }
                     monthly_data[month_key]['transactions'].append(transaction_data)
@@ -664,10 +661,10 @@ class RentalHistoryService(DatabaseService):
                                 monthly_data[return_month_key]['total_transactions'] += 1
                                 monthly_data[return_month_key]['transactions'].append({
                                     'date': rental.return_date,
-                                    'cylinder_id': rental.cylinder_id,
+                                    'cylinder_id': rental.cylinder_no,
                                     'cylinder_no': rental.cylinder_no,
                                     'cylinder_type': rental.cylinder_type,
-                                    'rental_date': rental.rental_date,
+                                    'rental_date': rental.dispatch_date,
                                     'return_date': rental.return_date
                                 })
         

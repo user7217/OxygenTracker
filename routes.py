@@ -1771,13 +1771,29 @@ def execute_json_import():
             except:
                 pass  # Ignore cleanup errors
         
-        # Show results
+        # Show results with detailed information
+        imported = import_result.get("imported", 0)
+        skipped = import_result.get("skipped", 0)
+        total = import_result.get("total", 0)
+        errors = import_result.get("errors", [])
+        
         if import_result['success']:
-            flash(f'Successfully imported {import_result["imported"]} {data_type} records', 'success')
+            success_msg = f'Successfully imported {imported} {data_type} records'
+            if skipped > 0:
+                success_msg += f' (skipped {skipped} duplicates)'
+            flash(success_msg, 'success')
         else:
-            flash(f'Import completed with errors. Imported {import_result["imported"]} of {import_result["total"]} records', 'warning')
-            for error in import_result.get('errors', [])[:10]:  # Show first 10 errors
+            warning_msg = f'Import completed with errors. Imported {imported} of {total} records'
+            if skipped > 0:
+                warning_msg += f', skipped {skipped} duplicates'
+            flash(warning_msg, 'warning')
+            
+            # Show first 10 errors
+            for error in errors[:10]:
                 flash(error, 'error')
+            
+            if len(errors) > 10:
+                flash(f'... and {len(errors) - 10} more errors', 'info')
         
         # Show validation errors if any
         if validation_errors:
