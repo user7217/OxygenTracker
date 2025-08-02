@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Wipe Records - Varasicyl{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Wipe Records</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Wipe Records</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Danger Zone - Wipe Database Records
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>Warning!</strong> This action will permanently delete records from the database. 
+                        This cannot be undone unless you create a backup first.
+                    </div>
+                    
+                    <form method="POST" onsubmit="return confirmWipe()">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">What would you like to wipe?</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="wipe_option" id="wipe_all" value="all" required>
+                                <label class="form-check-label" for="wipe_all">
+                                    <strong>All Records</strong> - Delete all customers, cylinders, and rental history
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="wipe_option" id="wipe_cylinders" value="cylinders" required>
+                                <label class="form-check-label" for="wipe_cylinders">
+                                    <strong>Cylinders Only</strong> - Delete all cylinders and rental history (keep customers)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="wipe_option" id="wipe_customers" value="customers" required>
+                                <label class="form-check-label" for="wipe_customers">
+                                    <strong>Customers Only</strong> - Delete all customers and rental history (keep cylinders)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="create_backup" name="create_backup" checked>
+                                <label class="form-check-label" for="create_backup">
+                                    <strong>Create backup before wiping</strong> (Recommended)
+                                    <small class="text-muted d-block">Saves all data as JSON file in /data/ folder</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="text-warning">
+                                <i class="bi bi-info-circle me-1"></i>
+                                What happens when you wipe:
+                            </h6>
+                            <ul class="small text-muted">
+                                <li><strong>All Records:</strong> Complete database reset - all data permanently deleted</li>
+                                <li><strong>Cylinders Only:</strong> Customers remain, but all cylinder and rental data is lost</li>
+                                <li><strong>Customers Only:</strong> Cylinders remain but are unlinked from customers</li>
+                                <li><strong>Backup:</strong> Creates JSON file with current data before deletion</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>
+                                Wipe Records
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmWipe() {
+    const option = document.querySelector('input[name="wipe_option"]:checked');
+    const backup = document.getElementById('create_backup').checked;
+    
+    if (!option) {
+        alert('Please select what to wipe.');
+        return false;
+    }
+    
+    let message = `Are you sure you want to wipe ${option.value === 'all' ? 'ALL RECORDS' : option.value.toUpperCase()}?\n\n`;
+    message += backup ? 'A backup will be created first.' : 'NO BACKUP will be created!';
+    message += '\n\nThis action cannot be undone!';
+    
+    return confirm(message);
+}
+</script>
+{% endblock %}

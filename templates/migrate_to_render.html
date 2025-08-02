@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Migrate to Render - Varasicyl{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Migrate to Render</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Migrate to Render</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-cloud-upload me-2"></i>
+                        Export Replit Data for Render Deployment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Migration Process:</strong> Export your current Replit data and get everything you need 
+                        to migrate to Render, including JSON files, SQL backup, and detailed instructions.
+                    </div>
+                    
+                    {% if not show_download and not show_connection_info %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-download me-2"></i>
+                                        Export All Data
+                                    </h6>
+                                    <p class="card-text">
+                                        Creates a complete migration package with JSON files, SQL backup, and instructions.
+                                    </p>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="export_all">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-box-arrow-down me-1"></i>
+                                            Create Migration Package
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        Connection Info
+                                    </h6>
+                                    <p class="card-text">
+                                        Get your Replit database URL and Render setup instructions.
+                                    </p>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="get_connection_info">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="bi bi-link-45deg me-1"></i>
+                                            Get Connection Info
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if show_download and export_result %}
+                    <div class="alert alert-success" role="alert">
+                        <h6 class="alert-heading">Migration Package Created Successfully!</h6>
+                        <p class="mb-1">Your data has been exported to: <code>{{ export_result.migration_dir }}/</code></p>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Customers:</strong> {{ export_result.stats.total_customers }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Cylinders:</strong> {{ export_result.stats.total_cylinders }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Active Rentals:</strong> {{ export_result.stats.active_rentals }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Files Created</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                {% for file in export_result.files_created %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ file }}</strong>
+                                        {% if 'complete_data' in file %}
+                                        <small class="text-muted d-block">Complete export (customers + cylinders)</small>
+                                        {% elif 'customers' in file %}
+                                        <small class="text-muted d-block">Customers only export</small>
+                                        {% elif 'cylinders' in file %}
+                                        <small class="text-muted d-block">Cylinders only export</small>
+                                        {% elif 'INSTRUCTIONS' in file %}
+                                        <small class="text-muted d-block">Detailed migration steps</small>
+                                        {% elif 'sql' in file %}
+                                        <small class="text-muted d-block">SQL backup for direct restore</small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge bg-success">Created</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="text-primary">Next Steps:</h6>
+                        <ol class="small">
+                            <li>Download the migration files from the <code>{{ export_result.migration_dir }}/</code> folder</li>
+                            <li>Deploy Varasicyl to Render using your existing configuration</li>
+                            <li>Use the JSON import feature in your Render deployment to upload the data</li>
+                            <li>Follow the detailed instructions in <code>MIGRATION_INSTRUCTIONS.md</code></li>
+                        </ol>
+                    </div>
+                    {% endif %}
+                    
+                    {% if show_connection_info and connection_info %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Database Connection Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Current Replit Database URL:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control font-monospace" 
+                                           value="{{ connection_info.current_replit_url }}" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="navigator.clipboard.writeText('{{ connection_info.current_replit_url }}')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Use this URL in your Render deployment's Direct DB Import feature</div>
+                            </div>
+                            
+                            <div class="alert alert-light">
+                                <h6 class="alert-heading">Render Setup Instructions:</h6>
+                                <pre class="mb-0">{{ connection_info.render_setup_instructions }}</pre>
+                            </div>
+                            
+                            <div class="alert alert-success">
+                                <h6 class="alert-heading">Alternative: Direct Import</h6>
+                                <p class="mb-0">{{ connection_info.direct_import_option }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h6 class="text-warning">Migration Options:</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-success">Option 1: JSON Import</h6>
+                                        <small class="text-muted">Upload exported JSON files to Render deployment</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-info">Option 2: Direct DB</h6>
+                                        <small class="text-muted">Connect Render to this Replit database directly</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-warning">Option 3: SQL Restore</h6>
+                                        <small class="text-muted">Use SQL backup file for direct database restore</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

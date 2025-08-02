@@ -3694,3 +3694,203 @@ def export_rental_history():
     except Exception as e:
         flash(f'Error exporting rental history: {str(e)}', 'error')
         return redirect(url_for('reports'))
+
+@app.route('/wipe_records', methods=['GET', 'POST'])
+@login_required  
+@admin_required
+def wipe_records():
+    """Wipe all records with backup option"""
+    if request.method == 'POST':
+        wipe_option = request.form.get('wipe_option')
+        create_backup = request.form.get('create_backup') == 'on'
+        
+        try:
+            if create_backup:
+                # Create backup before wiping
+                backup_filename = f"backup_before_wipe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                backup_data = {}
+                
+                # Export all data
+                with CustomerService() as customer_service:
+                    customers, _ = customer_service.get_all(page=1, per_page=100000)
+                    backup_data['customers'] = []
+                    for c in customers:
+                        customer_dict = {
+                            'id': c.id if hasattr(c, 'id') else c.get('id'),
+                            'customer_no': c.customer_no if hasattr(c, 'customer_no') else c.get('customer_no'),
+                            'customer_name': c.customer_name if hasattr(c, 'customer_name') else c.get('customer_name'),
+                            'customer_email': c.customer_email if hasattr(c, 'customer_email') else c.get('customer_email'),
+                            'customer_phone': c.customer_phone if hasattr(c, 'customer_phone') else c.get('customer_phone'),
+                            'customer_address': c.customer_address if hasattr(c, 'customer_address') else c.get('customer_address'),
+                            'customer_city': c.customer_city if hasattr(c, 'customer_city') else c.get('customer_city'),
+                            'customer_state': c.customer_state if hasattr(c, 'customer_state') else c.get('customer_state')
+                        }
+                        backup_data['customers'].append(customer_dict)
+                
+                with CylinderService() as cylinder_service:
+                    cylinders, _ = cylinder_service.get_all(page=1, per_page=100000)
+                    backup_data['cylinders'] = [cylinder_service.to_dict(c) for c in cylinders]
+                
+                # Save backup file
+                backup_path = f"data/{backup_filename}"
+                os.makedirs('data', exist_ok=True)
+                with open(backup_path, 'w') as f:
+                    json.dump(backup_data, f, indent=2, default=str)
+                
+                flash(f'Backup created: {backup_filename}', 'info')
+            
+            # Perform the wipe
+            with app.app_context():
+                from app import db
+                from sqlalchemy import text
+                
+                if wipe_option == 'all':
+                    # Wipe all records
+                    db.session.execute(text("DELETE FROM rental_history"))
+                    db.session.execute(text("DELETE FROM cylinders"))  
+                    db.session.execute(text("DELETE FROM customers"))
+                    flash('All records have been wiped', 'success')
+                    
+                elif wipe_option == 'cylinders':
+                    # Wipe only cylinders and rental history
+                    db.session.execute(text("DELETE FROM rental_history"))
+                    db.session.execute(text("DELETE FROM cylinders"))
+                    flash('All cylinder records have been wiped', 'success')
+                    
+                elif wipe_option == 'customers':
+                    # Wipe only customers and update cylinders
+                    db.session.execute(text("UPDATE cylinders SET rented_to = NULL WHERE rented_to IS NOT NULL"))
+                    db.session.execute(text("DELETE FROM rental_history"))
+                    db.session.execute(text("DELETE FROM customers"))
+                    flash('All customer records have been wiped, cylinders updated', 'success')
+                
+                db.session.commit()
+                
+        except Exception as e:
+            flash(f'Error during wipe operation: {str(e)}', 'error')
+            return redirect(url_for('wipe_records'))
+            
+        return redirect(url_for('dashboard'))
+    
+    # GET request - show confirmation form
+    return render_template('wipe_records.html')
+
+@app.route('/direct_db_import', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def direct_db_import():
+    """Import data directly from external PostgreSQL database"""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'connect':
+            connection_string = request.form.get('connection_string')
+            session['db_connection'] = connection_string
+            
+            # Test connection
+            from direct_db_import import DirectDatabaseImporter
+            with DirectDatabaseImporter() as importer:
+                if importer.connect_to_external_db(connection_string):
+                    tables = importer.list_tables()
+                    session['available_tables'] = tables
+                    flash(f'Connected successfully! Found {len(tables)} tables.', 'success')
+                    return render_template('direct_db_import.html', 
+                                         connected=True, 
+                                         tables=tables)
+                else:
+                    flash('Failed to connect to database. Check connection string.', 'error')
+                    return render_template('direct_db_import.html')
+        
+        elif action == 'preview':
+            table_name = request.form.get('table_name')
+            connection_string = session.get('db_connection')
+            
+            if not connection_string:
+                flash('No database connection. Please connect first.', 'error')
+                return redirect(url_for('direct_db_import'))
+            
+            from direct_db_import import DirectDatabaseImporter
+            with DirectDatabaseImporter() as importer:
+                if importer.connect_to_external_db(connection_string):
+                    preview_data = importer.preview_table(table_name)
+                    return render_template('direct_db_import.html',
+                                         connected=True,
+                                         tables=session.get('available_tables', []),
+                                         preview_table=table_name,
+                                         preview_data=preview_data)
+        
+        elif action == 'import':
+            table_name = request.form.get('table_name')
+            import_type = request.form.get('import_type')
+            connection_string = session.get('db_connection')
+            
+            # Get field mappings from form
+            field_mapping = {}
+            for key in request.form.keys():
+                if key.startswith('mapping_'):
+                    source_field = key.replace('mapping_', '')
+                    target_field = request.form.get(key)
+                    if target_field and target_field != 'skip':
+                        field_mapping[source_field] = target_field
+            
+            if not field_mapping:
+                flash('Please map at least one field.', 'error')
+                return redirect(url_for('direct_db_import'))
+            
+            from direct_db_import import DirectDatabaseImporter
+            with DirectDatabaseImporter() as importer:
+                if importer.connect_to_external_db(connection_string):
+                    if import_type == 'customers':
+                        result = importer.import_customers_from_table(table_name, field_mapping)
+                    else:
+                        result = importer.import_cylinders_from_table(table_name, field_mapping)
+                    
+                    if result['success']:
+                        flash(f'Import successful! Imported: {result["imported"]}, Updated: {result["updated"]}', 'success')
+                    else:
+                        flash(f'Import completed with errors: {result.get("error", "Unknown error")}', 'warning')
+                        if result.get('errors'):
+                            for error in result['errors'][:5]:  # Show first 5 errors
+                                flash(f'Error: {error}', 'info')
+                    
+                    return redirect(url_for('direct_db_import'))
+    
+    # GET request
+    return render_template('direct_db_import.html')
+
+@app.route('/migrate_to_render', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def migrate_to_render():
+    """Export data for Render migration"""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'export_all':
+            from migrate_to_render import ReplitToRenderMigrator
+            
+            migrator = ReplitToRenderMigrator()
+            result = migrator.create_render_migration_package()
+            
+            if result.get('success'):
+                flash(f'Migration package created successfully in {result["migration_dir"]}/', 'success')
+                flash(f'Exported {result["stats"]["total_customers"]} customers and {result["stats"]["total_cylinders"]} cylinders', 'info')
+                return render_template('migrate_to_render.html', 
+                                     export_result=result,
+                                     show_download=True)
+            else:
+                flash(f'Export failed: {result.get("error")}', 'error')
+                return render_template('migrate_to_render.html')
+        
+        elif action == 'get_connection_info':
+            from migrate_to_render import ReplitToRenderMigrator
+            
+            migrator = ReplitToRenderMigrator()
+            connection_info = migrator.get_render_connection_info()
+            
+            return render_template('migrate_to_render.html',
+                                 connection_info=connection_info,
+                                 show_connection_info=True)
+    
+    # GET request
+    return render_template('migrate_to_render.html')
