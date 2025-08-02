@@ -423,11 +423,11 @@ class JSONImporter:
             return None
     
     def _import_rental_transactions(self, transactions: List[Dict]) -> Dict[str, Any]:
-        """Import rental transaction records with efficient batch processing"""
+        """Import rental transaction records optimized for 256MB RAM"""
         imported_count = 0
         skipped_count = 0
         errors = []
-        batch_size = 100  # Process in smaller batches
+        batch_size = 10  # Ultra-small batches for memory constraints
         
         print(f"Starting import of {len(transactions)} rental transactions...")
         
@@ -435,22 +435,7 @@ class JSONImporter:
         from db_service import RentalHistoryService
         
         with RentalHistoryService() as rental_service:
-            # Get existing record IDs for duplicate checking
-            existing_ids = set()
-            try:
-                page = 1
-                while True:
-                    existing_records, total = rental_service.get_all(page=page, per_page=5000)
-                    if not existing_records:
-                        break
-                    for record in existing_records:
-                        if hasattr(record, 'id') and record.id:
-                            existing_ids.add(record.id)
-                    page += 1
-                    if len(existing_records) < 5000:
-                        break
-            except Exception as e:
-                print(f"Warning: Could not load existing IDs: {e}")
+            # Skip pre-loading IDs for memory efficiency on 256MB systems
             
             # Process in batches
             for batch_start in range(0, len(transactions), batch_size):
@@ -464,11 +449,14 @@ class JSONImporter:
                     try:
                         processed_data = transaction_data.copy()
                         
-                        # Check for duplicates
+                        # Check for duplicates using database query
                         record_id = processed_data.get('id', '')
-                        if record_id and record_id in existing_ids:
-                            skipped_count += 1
-                            continue
+                        if record_id:
+                            from models import RentalHistory
+                            existing_record = rental_service.db.query(rental_service.db.query(RentalHistory).filter(RentalHistory.id == record_id).exists()).scalar()
+                            if existing_record:
+                                skipped_count += 1
+                                continue
                         
                         # Remove system fields
                         system_fields = ['created_at', 'updated_at']
@@ -502,34 +490,33 @@ class JSONImporter:
                         customer_info = transaction_data.get('customer_name', transaction_data.get('customer_no', 'Unknown'))
                         errors.append(f"Transaction {batch_start + i + 1} for '{customer_info}': {str(e)}")
                 
-                # Bulk insert batch
-                if batch_records:
+                # Memory-efficient individual inserts
+                for record_data in batch_records:
                     try:
                         from models import RentalHistory
-                        rental_objects = [RentalHistory(**record) for record in batch_records]
-                        
-                        rental_service.db.add_all(rental_objects)
+                        rental_history = RentalHistory(**record_data)
+                        rental_service.db.add(rental_history)
                         rental_service.db.commit()
                         
-                        imported_count += len(batch_records)
-                        print(f"Successfully imported batch of {len(batch_records)} transactions")
+                        imported_count += 1
                         
-                        # Update existing IDs set
-                        for record in rental_objects:
-                            existing_ids.add(record.id)
+                        # Clear from session to free memory
+                        rental_service.db.expunge(rental_history)
+                        del rental_history
                         
                     except Exception as e:
                         rental_service.db.rollback()
-                        print(f"Batch insert failed, trying individual inserts: {e}")
-                        
-                        for record_data in batch_records:
-                            try:
-                                rental_service.create(record_data)
-                                imported_count += 1
-                                existing_ids.add(record_data['id'])
-                            except Exception as individual_error:
-                                customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
-                                errors.append(f"Individual transaction insert for '{customer_info}': {str(individual_error)}")
+                        customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
+                        errors.append(f"Transaction insert failed for '{customer_info}': {str(e)}")
+                
+                del batch_records
+                print(f"Completed transaction batch {batch_start//batch_size + 1}: {imported_count} total imported")
+                
+                # Force garbage collection every 50 batches
+                if (batch_start // batch_size + 1) % 50 == 0:
+                    import gc
+                    gc.collect()
+                    print(f"Memory cleanup after {batch_start//batch_size + 1} transaction batches")
         
         print(f"Transaction import completed: {imported_count} imported, {skipped_count} skipped, {len(errors)} errors")
         
@@ -542,34 +529,22 @@ class JSONImporter:
         }
     
     def _import_rental_history(self, history_records: List[Dict]) -> Dict[str, Any]:
-        """Import rental history records with efficient batch processing"""
+        """Import rental history records optimized for low-memory environments (256MB RAM)"""
         imported_count = 0
         skipped_count = 0
         errors = []
-        batch_size = 100  # Process in smaller batches to prevent timeouts
+        batch_size = 10  # Ultra-small batches for 256MB RAM constraint
         
         print(f"Starting import of {len(history_records)} rental history records...")
         
+        # For very large imports on 256MB systems, warn user
+        if len(history_records) > 10000:
+            print(f"WARNING: Large import ({len(history_records)} records) on 256MB system may be slow. Consider splitting file.")
+        
         with RentalHistoryService() as rental_service:
-            # Get existing record IDs for duplicate checking (more efficient than checking each record)
-            existing_ids = set()
-            try:
-                # Get existing IDs in batches to avoid memory issues
-                page = 1
-                while True:
-                    existing_records, total = rental_service.get_all(page=page, per_page=5000)
-                    if not existing_records:
-                        break
-                    for record in existing_records:
-                        if hasattr(record, 'id') and record.id:
-                            existing_ids.add(record.id)
-                    page += 1
-                    if len(existing_records) < 5000:  # Last page
-                        break
-            except Exception as e:
-                print(f"Warning: Could not load existing IDs for duplicate check: {e}")
-            
-            print(f"Found {len(existing_ids)} existing records for duplicate checking")
+            # For 256MB RAM: Skip pre-loading all existing IDs to save memory
+            # Instead, check duplicates per-record using database queries
+            print(f"Starting memory-optimized import (checking duplicates per-record)")
             
             # Process records in batches
             for batch_start in range(0, len(history_records), batch_size):
@@ -584,11 +559,14 @@ class JSONImporter:
                         # Create a copy to avoid modifying original data
                         processed_data = history_data.copy()
                         
-                        # Check for duplicates by ID
+                        # Check for duplicates by ID using database query (memory efficient)
                         record_id = processed_data.get('id', '')
-                        if record_id and record_id in existing_ids:
-                            skipped_count += 1
-                            continue
+                        if record_id:
+                            from models import RentalHistory
+                            existing_record = rental_service.db.query(rental_service.db.query(RentalHistory).filter(RentalHistory.id == record_id).exists()).scalar()
+                            if existing_record:
+                                skipped_count += 1
+                                continue
                         
                         # Remove system fields that shouldn't be imported
                         system_fields = ['created_at', 'updated_at']
@@ -624,40 +602,35 @@ class JSONImporter:
                         customer_info = history_data.get('customer_name', history_data.get('customer_no', 'Unknown'))
                         errors.append(f"Record {batch_start + i + 1} for '{customer_info}': {str(e)}")
                 
-                # Bulk insert batch records
-                if batch_records:
+                # Ultra-efficient insert for low memory: process records one by one
+                for record_data in batch_records:
                     try:
+                        # Use direct SQL insert to minimize memory usage
                         from models import RentalHistory
-                        rental_history_objects = []
+                        rental_history = RentalHistory(**record_data)
+                        rental_service.db.add(rental_history)
+                        rental_service.db.commit()  # Commit immediately to free memory
                         
-                        for record_data in batch_records:
-                            rental_history = RentalHistory(**record_data)
-                            rental_history_objects.append(rental_history)
+                        imported_count += 1
                         
-                        # Bulk insert using SQLAlchemy
-                        rental_service.db.add_all(rental_history_objects)
-                        rental_service.db.commit()
-                        
-                        imported_count += len(batch_records)
-                        print(f"Successfully imported batch of {len(batch_records)} records")
-                        
-                        # Add new IDs to existing set for future duplicate checking
-                        for record in rental_history_objects:
-                            existing_ids.add(record.id)
+                        # Clear object from session to free memory
+                        rental_service.db.expunge(rental_history)
+                        del rental_history
                         
                     except Exception as e:
-                        # If batch fails, try individual inserts for this batch
                         rental_service.db.rollback()
-                        print(f"Batch insert failed, trying individual inserts: {e}")
-                        
-                        for record_data in batch_records:
-                            try:
-                                rental_service.create(record_data)
-                                imported_count += 1
-                                existing_ids.add(record_data['id'])
-                            except Exception as individual_error:
-                                customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
-                                errors.append(f"Individual insert for '{customer_info}': {str(individual_error)}")
+                        customer_info = record_data.get('customer_name', record_data.get('customer_no', 'Unknown'))
+                        errors.append(f"Insert failed for '{customer_info}': {str(e)}")
+                
+                # Clear processed batch from memory
+                del batch_records
+                print(f"Completed batch {batch_start//batch_size + 1}: {imported_count} total imported, {skipped_count} skipped")
+                
+                # Force garbage collection every 50 batches to manage memory on 256MB systems
+                if (batch_start // batch_size + 1) % 50 == 0:
+                    import gc
+                    gc.collect()
+                    print(f"Memory cleanup after {batch_start//batch_size + 1} batches")
         
         print(f"Import completed: {imported_count} imported, {skipped_count} skipped duplicates, {len(errors)} errors")
         
