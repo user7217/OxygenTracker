@@ -772,14 +772,62 @@ class RentalHistoryService(DatabaseService):
         customer_no = getattr(customer, 'customer_no', '') if customer else ''
         customer_service.close()
         
-        # Get past rentals from history
+        # Get past rentals from history (only completed rentals with return dates)
         past_rentals = self.db.query(RentalHistory).filter(
-            RentalHistory.customer_no == customer_no
+            and_(
+                RentalHistory.customer_no == customer_no,
+                RentalHistory.return_date.isnot(None)  # Only completed rentals
+            )
         ).order_by(desc(RentalHistory.return_date)).all()
+        
+        print(f"DEBUG: Found {len(past_rentals)} past rentals for customer_no: {customer_no}")
+        
+        # Import Customer model for lookups
+        from models import Customer
+        
+        # Convert past rentals to dictionaries for template compatibility
+        past_dict = []
+        for rental in past_rentals:
+            # If customer_name is missing, try to get it from the customers table
+            customer_name = rental.customer_name or ''
+            if not customer_name and rental.customer_no:
+                # Try to find customer name from customers table
+                try:
+                    customer_lookup = self.db.query(Customer).filter(
+                        Customer.customer_no == rental.customer_no
+                    ).first()
+                    if customer_lookup:
+                        customer_name = customer_lookup.customer_name or ''
+                except:
+                    pass
+            
+            # If still no customer name, use a placeholder based on customer_no
+            if not customer_name and rental.customer_no:
+                customer_name = f"Customer {rental.customer_no}"
+            elif not customer_name:
+                customer_name = "Unknown Customer"
+            
+            rental_dict = {
+                'id': rental.id,
+                'customer_name': customer_name,
+                'customer_no': rental.customer_no or '',
+                'cylinder_custom_id': rental.cylinder_custom_id or rental.cylinder_serial or '',
+                'cylinder_serial': rental.cylinder_serial or '',
+                'cylinder_type': rental.cylinder_type or '',
+                'cylinder_size': rental.cylinder_size or '',
+                'dispatch_date': rental.dispatch_date.isoformat() if rental.dispatch_date else '',
+                'return_date': rental.return_date.isoformat() if rental.return_date else '',
+                'rental_days': rental.rental_days or 0,
+                'type': rental.cylinder_type or '',  # Template compatibility
+                'size': rental.cylinder_size or '',   # Template compatibility
+                'date_borrowed': rental.dispatch_date.isoformat() if rental.dispatch_date else '',  # Template compatibility
+                'date_returned': rental.return_date.isoformat() if rental.return_date else ''  # Template compatibility
+            }
+            past_dict.append(rental_dict)
         
         return {
             'active': active_cylinders,
-            'past': past_rentals
+            'past': past_dict
         }
     
     def add_return_record(self, cylinder: Cylinder, return_date: str = None):

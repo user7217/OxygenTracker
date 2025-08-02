@@ -1729,6 +1729,14 @@ def execute_json_import():
         return redirect(url_for('import_json'))
     
     try:
+        # For 512MB RAM: Check file size before loading into memory
+        import os
+        file_size = os.path.getsize(data_path)
+        
+        if file_size > 100 * 1024 * 1024:  # 100MB+ files need streaming
+            flash(f'File too large ({file_size // (1024*1024)}MB) for 512MB system. Please split into smaller files (<100MB each).', 'error')
+            return redirect(url_for('import_json'))
+        
         with open(data_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except Exception as e:
@@ -3324,9 +3332,8 @@ def export_customer_report():
     try:
         # Get customer details
         with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
-        with CustomerService() as customer_service:
-            customers, _ = customer_service.get_all(page=1, per_page=10000)
+            customer = customer_service.get_by_id(customer_id)
+        
         if not customer:
             flash('Customer not found', 'error')
             return redirect(url_for('reports'))
