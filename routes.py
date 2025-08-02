@@ -1803,99 +1803,128 @@ def import_data():
 @app.route('/import/from_replit', methods=['GET', 'POST'])
 @admin_required
 def import_from_replit():
-    """Import data from another Replit Varasicyl database"""
+    """Direct migration from Replit to current database"""
     if request.method == 'GET':
         return render_template('import_from_replit.html')
     
     # Get connection details from form
     source_database_url = request.form.get('source_database_url', '').strip()
-    data_types = request.form.getlist('data_types')  # ['customers', 'cylinders', 'rental_history']
+    create_backup = request.form.get('create_backup') == 'on'
     
     if not source_database_url:
         flash('Please provide a source database URL', 'error')
         return render_template('import_from_replit.html')
     
-    if not data_types:
-        flash('Please select at least one data type to import', 'error')
-        return render_template('import_from_replit.html')
-    
     try:
-        from sqlalchemy import create_engine, text
+        # Use the migration tool
+        from replit_to_render_migrator import DatabaseMigrator
         
-        # Create connection to source database
-        source_engine = create_engine(source_database_url)
+        # Get current database URL
+        current_db_url = os.environ.get('DATABASE_URL')
+        if not current_db_url:
+            flash('Current database URL not found', 'error')
+            return render_template('import_from_replit.html')
         
-        import_results = []
-        total_imported = 0
+        # Initialize migrator
+        migrator = DatabaseMigrator(source_database_url, current_db_url)
         
-        # Import each selected data type
-        for data_type in data_types:
+        # Perform migration
+        migration_log = []
+        
+        # Connect to databases
+        if not migrator.connect():
+            flash('Failed to connect to one or both databases', 'error')
+            return render_template('import_from_replit.html')
+        
+        migration_log.append("✓ Connected to both databases")
+        
+        # Verify schema
+        if not migrator.verify_schema():
+            flash('Database schema verification failed', 'error')
+            return render_template('import_from_replit.html')
+        
+        migration_log.append("✓ Schema verification successful")
+        
+        # Create backup if requested
+        backup_file = None
+        if create_backup:
+            backup_file = migrator.create_backup()
+            if backup_file:
+                migration_log.append(f"✓ Backup created: {backup_file}")
+            else:
+                migration_log.append("⚠ Backup creation failed, continuing...")
+        
+        # Migrate data
+        tables_order = ['customers', 'cylinders', 'rental_history']
+        migration_results = {}
+        
+        for table in tables_order:
             try:
-                with source_engine.connect() as conn:
-                    # Get data from source database and convert to records
-                    if data_type == 'customers':
-                        query = text("SELECT * FROM customers")
-                        result_proxy = conn.execute(query)
-                        columns = result_proxy.keys()
-                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
-                        
-                        # Import using JSON importer
-                        from json_importer import JSONImporter
-                        importer = JSONImporter()
-                        valid_records, errors = importer.validate_data(records, 'customers', {})
-                        result = importer.import_data(valid_records, 'customers')
-                        
-                    elif data_type == 'cylinders':
-                        query = text("SELECT * FROM cylinders")
-                        result_proxy = conn.execute(query)
-                        columns = result_proxy.keys()
-                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
-                        
-                        from json_importer import JSONImporter
-                        importer = JSONImporter()
-                        valid_records, errors = importer.validate_data(records, 'cylinders', {})
-                        result = importer.import_data(valid_records, 'cylinders')
-                        
-                    elif data_type == 'rental_history':
-                        query = text("SELECT * FROM rental_history")
-                        result_proxy = conn.execute(query)
-                        columns = result_proxy.keys()
-                        records = [dict(zip(columns, row)) for row in result_proxy.fetchall()]
-                        
-                        from json_importer import JSONImporter
-                        importer = JSONImporter()
-                        valid_records, errors = importer.validate_data(records, 'rental_history', {})
-                        result = importer.import_data(valid_records, 'rental_history')
-                    
-                    import_results.append({
-                        'data_type': data_type,
-                        'imported': result.get('imported', 0),
-                        'errors': result.get('errors', []),
-                        'success': result.get('success', False)
-                    })
-                    total_imported += result.get('imported', 0)
+                # Get source data
+                records = migrator.get_table_data(table)
+                
+                if records:
+                    # Clear target table
+                    if migrator.clear_table(table):
+                        # Insert data
+                        if migrator.insert_data(table, records):
+                            migration_results[table] = {
+                                'success': True,
+                                'count': len(records),
+                                'message': f"Successfully migrated {len(records)} records"
+                            }
+                            migration_log.append(f"✓ {table}: {len(records)} records migrated")
+                        else:
+                            migration_results[table] = {
+                                'success': False,
+                                'count': 0,
+                                'message': "Failed to insert data"
+                            }
+                            migration_log.append(f"✗ {table}: Failed to insert data")
+                    else:
+                        migration_results[table] = {
+                            'success': False,
+                            'count': 0,
+                            'message': "Failed to clear target table"
+                        }
+                        migration_log.append(f"✗ {table}: Failed to clear target table")
+                else:
+                    migration_results[table] = {
+                        'success': True,
+                        'count': 0,
+                        'message': "No data to migrate"
+                    }
+                    migration_log.append(f"✓ {table}: No data found")
                     
             except Exception as e:
-                import_results.append({
-                    'data_type': data_type,
-                    'imported': 0,
-                    'errors': [f"Failed to import {data_type}: {str(e)}"],
-                    'success': False
-                })
+                migration_results[table] = {
+                    'success': False,
+                    'count': 0,
+                    'message': f"Error: {str(e)}"
+                }
+                migration_log.append(f"✗ {table}: {str(e)}")
         
-        # Display results
-        if total_imported > 0:
-            flash(f'Successfully imported {total_imported} records from Replit database', 'success')
+        # Calculate totals
+        total_migrated = sum(result['count'] for result in migration_results.values() if result['success'])
+        successful_tables = sum(1 for result in migration_results.values() if result['success'])
         
-        for result in import_results:
-            if result['errors']:
-                for error in result['errors']:
-                    flash(f"{result['data_type']}: {error}", 'warning')
+        if successful_tables == len(tables_order) and total_migrated > 0:
+            flash(f'Migration completed successfully! {total_migrated} total records migrated.', 'success')
+        elif total_migrated > 0:
+            flash(f'Partial migration completed. {total_migrated} records migrated from {successful_tables}/{len(tables_order)} tables.', 'warning')
+        else:
+            flash('Migration failed. No data was transferred.', 'error')
         
-        return render_template('import_from_replit.html', results=import_results)
+        return render_template('import_from_replit.html', 
+                             migration_results=migration_results,
+                             migration_log=migration_log,
+                             backup_file=backup_file)
         
+    except ImportError:
+        flash('Migration tool not available. Please use the command line migrator.', 'error')
+        return render_template('import_from_replit.html')
     except Exception as e:
-        flash(f'Error connecting to source database: {str(e)}', 'error')
+        flash(f'Migration failed: {str(e)}', 'error')
         return render_template('import_from_replit.html')
 
 @app.route('/import/rental-history', methods=['GET', 'POST'])

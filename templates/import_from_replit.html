@@ -13,32 +13,54 @@
                 </a>
             </div>
 
-            {% if results %}
-            <!-- Import Results -->
+            {% if migration_results %}
+            <!-- Migration Results -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h5><i class="bi bi-check-circle"></i> Import Results</h5>
+                            <h5><i class="bi bi-check-circle"></i> Migration Results</h5>
                         </div>
                         <div class="card-body">
-                            {% for result in results %}
-                            <div class="alert {% if result.success %}alert-success{% else %}alert-warning{% endif %} mb-3">
-                                <h6><strong>{{ result.data_type|title }}</strong></h6>
-                                <p>Imported: {{ result.imported }} records</p>
-                                {% if result.errors %}
-                                <ul class="mb-0">
-                                    {% for error in result.errors %}
-                                    <li>{{ error }}</li>
-                                    {% endfor %}
-                                </ul>
+                            {% for table, result in migration_results.items() %}
+                            <div class="alert {% if result.success %}alert-success{% else %}alert-danger{% endif %} mb-3">
+                                <h6><strong>{{ table|title }}</strong></h6>
+                                <p>{{ result.message }}</p>
+                                {% if result.count > 0 %}
+                                <small>Records migrated: {{ result.count }}</small>
                                 {% endif %}
                             </div>
                             {% endfor %}
+                            
+                            {% if backup_file %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-archive"></i> <strong>Backup Created:</strong> {{ backup_file }}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
+            
+            {% if migration_log %}
+            <!-- Migration Log -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-list-ul"></i> Migration Log</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="font-monospace small">
+                                {% for log_entry in migration_log %}
+                                <div class="mb-1">{{ log_entry }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
 
             <!-- Import Form -->
@@ -64,44 +86,31 @@
                                     </div>
                                 </div>
 
-                                <!-- Data Types Selection -->
+                                <!-- Migration Options -->
                                 <div class="mb-4">
-                                    <label class="form-label"><strong>Select Data Types to Import</strong></label>
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="customers" name="data_types" value="customers">
-                                                <label class="form-check-label" for="customers">
-                                                    <i class="bi bi-people"></i> Customers
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="cylinders" name="data_types" value="cylinders">
-                                                <label class="form-check-label" for="cylinders">
-                                                    <i class="bi bi-archive"></i> Cylinders
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="rental_history" name="data_types" value="rental_history">
-                                                <label class="form-check-label" for="rental_history">
-                                                    <i class="bi bi-clock-history"></i> Rental History
-                                                </label>
-                                            </div>
-                                        </div>
+                                    <label class="form-label"><strong>Migration Options</strong></label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="create_backup" name="create_backup" checked>
+                                        <label class="form-check-label" for="create_backup">
+                                            <i class="bi bi-archive"></i> Create backup before migration
+                                        </label>
                                     </div>
                                     <div class="form-text">
-                                        Select which data types you want to import from the source database.
-                                        You can select multiple types to import all at once.
+                                        This will migrate ALL data types (customers, cylinders, and rental history).
+                                        A backup will be created to protect your current data.
                                     </div>
                                 </div>
 
+                                <div class="alert alert-warning mb-3">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    <strong>Warning:</strong> This will replace ALL data in your current database with data from the source.
+                                    Make sure you have a backup if needed.
+                                </div>
+
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-warning btn-lg">
-                                        <i class="bi bi-cloud-arrow-down"></i> Import from Replit Database
+                                    <button type="submit" class="btn btn-danger btn-lg" 
+                                            onclick="return confirm('This will replace all your current data. Are you sure you want to continue?')">
+                                        <i class="bi bi-database-fill-gear"></i> Migrate All Data from Replit
                                     </button>
                                 </div>
                             </form>
