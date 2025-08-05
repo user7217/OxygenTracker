@@ -2962,28 +2962,26 @@ def customer_active_dispatches(customer_id):
 @login_required
 def reports():
     """Data reports and export page"""
-    # Use PostgreSQL services for reports
+    # Use PostgreSQL services for reports - convert to dicts within session context
     with CustomerService() as customer_service:
-        customers, _ = customer_service.get_all(page=1, per_page=10000)
+        customers_raw, _ = customer_service.get_all(page=1, per_page=10000)
+        # Convert customers to dictionaries while session is active
+        customers_dict = []
+        for customer in customers_raw:
+            customer_dict = customer if isinstance(customer, dict) else {
+                'id': customer.id,
+                'customer_name': customer.customer_name or '',
+                'customer_no': customer.customer_no or ''
+            }
+            customers_dict.append(customer_dict)
     
     with CylinderService() as cylinder_service:
-        cylinders, _ = cylinder_service.get_all(page=1, per_page=20000)
+        cylinders_dict, _ = cylinder_service.get_all(page=1, per_page=20000)
     
-    # PostgreSQL services already return dictionaries
-    cylinders_dict = cylinders
-    customers_dict = []
-    
-    for customer in customers:
-        customer_dict = customer if isinstance(customer, dict) else {
-            'id': customer.id,
-            'customer_name': customer.customer_name or '',
-            'customer_no': customer.customer_no or ''
-        }
-        
-        # Add rental count for sorting customers
+    # Add rental counts to customer dictionaries
+    for customer_dict in customers_dict:
         rented_cylinders = [c for c in cylinders_dict if c.get('rented_to') == customer_dict['id']]
         customer_dict['rental_count'] = len(rented_cylinders)
-        customers_dict.append(customer_dict)
     
     # Calculate stats
     active_rentals = len([c for c in cylinders_dict if c.get('status', '').lower() == 'rented'])
@@ -3330,23 +3328,41 @@ def export_customer_report():
         return redirect(url_for('reports'))
     
     try:
-        # Get customer details
+        # Get customer details and convert to dict within session context
         with CustomerService() as customer_service:
-            customer = customer_service.get_by_id(customer_id)
-        
-        if not customer:
-            flash('Customer not found', 'error')
-            return redirect(url_for('reports'))
+            customer_obj = customer_service.get_by_id(customer_id)
+            if not customer_obj:
+                flash('Customer not found', 'error')
+                return redirect(url_for('reports'))
+            
+            # Convert to dictionary while session is active
+            customer = {
+                'id': customer_obj.id,
+                'customer_no': customer_obj.customer_no or '',
+                'customer_name': customer_obj.customer_name or '',
+                'customer_email': customer_obj.customer_email or '',
+                'customer_phone': customer_obj.customer_phone or '',
+                'customer_address': customer_obj.customer_address or '',
+                'customer_city': customer_obj.customer_city or '',
+                'customer_state': customer_obj.customer_state or ''
+            }
         
         # Get all cylinders dispatched to this customer
         with CylinderService() as cylinder_service:
             all_cylinders, _ = cylinder_service.get_all(page=1, per_page=10000)
         
-        # Safe access for customer ID
+        # Safe access for customer ID - handle SQLAlchemy objects properly
         def safe_get(obj, attr, default=''):
-            if hasattr(obj, attr):
-                return getattr(obj, attr) or default
-            return obj.get(attr, default) if isinstance(obj, dict) else default
+            try:
+                if hasattr(obj, attr):
+                    value = getattr(obj, attr)
+                    return value if value is not None else default
+                elif isinstance(obj, dict):
+                    return obj.get(attr, default)
+                else:
+                    return default
+            except:
+                return default
         
         customer_id_val = safe_get(customer, 'id')
         customer_cylinders = [c for c in all_cylinders if safe_get(c, 'rented_to') == customer_id_val]
@@ -3379,7 +3395,7 @@ def export_customer_report():
                     setattr(cylinder, 'rental_days', 0)
         
         # Sort by rental days descending (longest rentals first)
-        customer_cylinders.sort(key=lambda x: getattr(x, 'rental_days', 0) if hasattr(x, 'rental_days') else x.get('rental_days', 0), reverse=True)
+        customer_cylinders.sort(key=lambda x: safe_get(x, 'rental_days', 0), reverse=True)
         
         customer_name = safe_get(customer, 'customer_name') or safe_get(customer, 'name') or 'Unknown Customer'
         safe_filename = customer_name.replace(' ', '_').replace('/', '_')
@@ -3401,9 +3417,16 @@ def export_customer_csv(customer, customer_cylinders, safe_filename, timestamp):
         
         # Safe attribute access for SQLAlchemy objects
         def safe_get(obj, attr, default=''):
-            if hasattr(obj, attr):
-                return getattr(obj, attr) or default
-            return obj.get(attr, default) if isinstance(obj, dict) else default
+            try:
+                if hasattr(obj, attr):
+                    value = getattr(obj, attr)
+                    return value if value is not None else default
+                elif isinstance(obj, dict):
+                    return obj.get(attr, default)
+                else:
+                    return default
+            except:
+                return default
         
         customer_name = safe_get(customer, 'customer_name') or safe_get(customer, 'name') or 'Unknown Customer'
         
@@ -3622,8 +3645,11 @@ def export_customer_pdf(customer, customer_cylinders, safe_filename, timestamp):
             headers={'Content-Disposition': f'attachment; filename=customer_report_{safe_filename}_{timestamp}.pdf'}
         )
     
-    except ImportError:
-        flash('PDF generation not available. Please use CSV format.', 'error')
+    except ImportError as e:
+        flash(f'PDF generation requires reportlab package. Please contact administrator. Error: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+    except Exception as e:
+        flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('reports'))
 
 # Data Management Routes
@@ -3852,20 +3878,183 @@ def initialize_auto_backup():
 with app.app_context():
     initialize_auto_backup()
 
-# PDF Export Routes - Temporarily disabled due to syntax errors
 @app.route('/export/customers.pdf')
 @login_required
 def export_customers_pdf():
     """Export all customers to PDF"""
-    flash('PDF generation temporarily disabled. Please use CSV format.', 'warning')
-    return redirect(url_for('reports'))
+    try:
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        import io
+        
+        # Get all customers
+        with CustomerService() as customer_service:
+            customers, _ = customer_service.get_all(page=1, per_page=10000)
+        
+        # Convert customers to dictionaries for safe access
+        customer_dicts = []
+        for customer in customers:
+            customer_dict = {
+                'id': customer.id,
+                'customer_no': customer.customer_no or '',
+                'customer_name': customer.customer_name or '',
+                'customer_email': customer.customer_email or '',
+                'customer_phone': customer.customer_phone or '',
+                'customer_address': customer.customer_address or '',
+                'customer_city': customer.customer_city or '',
+                'customer_state': customer.customer_state or ''
+            }
+            customer_dicts.append(customer_dict)
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        story.append(Paragraph("Varasicyl - Customer Directory", styles['Title']))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Paragraph(f"Total Customers: {len(customer_dicts)}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        if customer_dicts:
+            # Create table data
+            table_data = [['Customer No.', 'Name', 'Phone', 'Email', 'City', 'State']]
+            for customer in customer_dicts:
+                table_data.append([
+                    customer['customer_no'][:15],
+                    customer['customer_name'][:20],
+                    customer['customer_phone'][:15],
+                    customer['customer_email'][:25],
+                    customer['customer_city'][:15],
+                    customer['customer_state'][:10]
+                ])
+            
+            table = Table(table_data, colWidths=[1*inch, 1.5*inch, 1.2*inch, 2*inch, 1*inch, 0.8*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(table)
+        else:
+            story.append(Paragraph("No customers found", styles['Normal']))
+        
+        doc.build(story)
+        buffer.seek(0)
+        
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename=customers_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
+        )
+        
+    except ImportError as e:
+        flash(f'PDF generation requires reportlab package. Error: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+    except Exception as e:
+        flash(f'Error generating PDF: {str(e)}', 'error')
+        return redirect(url_for('reports'))
 
 @app.route('/export/cylinders.pdf')
 @login_required
 def export_cylinders_pdf():
     """Export all cylinders to PDF"""
-    flash('PDF generation temporarily disabled. Please use CSV format.', 'warning')
-    return redirect(url_for('reports'))
+    try:
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        import io
+        
+        # Get all cylinders
+        with CylinderService() as cylinder_service:
+            cylinders, _ = cylinder_service.get_all(page=1, per_page=10000)
+        
+        # Convert cylinders to dictionaries for safe access
+        cylinder_dicts = []
+        for cylinder in cylinders:
+            cylinder_dict = {
+                'id': cylinder.id,
+                'cylinder_no': cylinder.cylinder_no or '',
+                'cylinder_custom_id': cylinder.cylinder_custom_id or '',
+                'cylinder_serial': cylinder.cylinder_serial or '',
+                'cylinder_type': cylinder.cylinder_type or '',
+                'cylinder_size': cylinder.cylinder_size or '',
+                'status': cylinder.status or '',
+                'location': cylinder.location or '',
+                'pressure': cylinder.pressure or ''
+            }
+            cylinder_dicts.append(cylinder_dict)
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        story.append(Paragraph("Varasicyl - Cylinder Inventory", styles['Title']))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Paragraph(f"Total Cylinders: {len(cylinder_dicts)}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        if cylinder_dicts:
+            # Create table data
+            table_data = [['ID', 'Serial', 'Type', 'Size', 'Status', 'Location']]
+            for cylinder in cylinder_dicts:
+                display_id = cylinder['cylinder_custom_id'] or cylinder['cylinder_serial'] or cylinder['cylinder_no']
+                table_data.append([
+                    display_id[:15],
+                    cylinder['cylinder_serial'][:15],
+                    cylinder['cylinder_type'][:12],
+                    cylinder['cylinder_size'][:10],
+                    cylinder['status'][:12],
+                    cylinder['location'][:15]
+                ])
+            
+            table = Table(table_data, colWidths=[1.2*inch, 1.2*inch, 1*inch, 0.8*inch, 1*inch, 1.2*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(table)
+        else:
+            story.append(Paragraph("No cylinders found", styles['Normal']))
+        
+        doc.build(story)
+        buffer.seek(0)
+        
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename=cylinders_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'}
+        )
+        
+    except ImportError as e:
+        flash(f'PDF generation requires reportlab package. Error: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+    except Exception as e:
+        flash(f'Error generating PDF: {str(e)}', 'error')
+        return redirect(url_for('reports'))
     
     # Title
     title = Paragraph("Varasai Oxygen - Cylinder Inventory Report", styles['Title'])
