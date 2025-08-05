@@ -41,9 +41,12 @@ class UserManager:
             admin_user = {
                 'id': str(uuid.uuid4()),
                 'username': 'admin',
+                'email': 'admin@varasicyl.com',
                 'password_hash': generate_password_hash('admin123'),
                 'role': 'admin',
-                'created_at': datetime.now().isoformat()
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'last_login': None
             }
             users.append(admin_user)
             self._save_users(users)
@@ -65,25 +68,40 @@ class UserManager:
                 return user
         return None
     
-    def create_user(self, username: str, password: str, role: str = 'user') -> bool:
-        """Create a new user"""
+    def get_user_by_username(self, username: str) -> Optional[Dict]:
+        """Get user by username"""
+        users = self._load_users()
+        for user in users:
+            if user['username'] == username:
+                return user
+        return None
+    
+    def create_user(self, username: str, email: str, password: str, role: str = 'user') -> Dict:
+        """Create a new user with email support"""
         users = self._load_users()
         
         # Check if username already exists
         if any(user['username'] == username for user in users):
-            return False
+            raise ValueError(f"Username '{username}' already exists")
+        
+        # Check if email already exists
+        if any(user.get('email') == email for user in users):
+            raise ValueError(f"Email '{email}' already registered")
         
         new_user = {
             'id': str(uuid.uuid4()),
             'username': username,
+            'email': email,
             'password_hash': generate_password_hash(password),
             'role': role,
-            'created_at': datetime.now().isoformat()
+            'is_active': True,
+            'created_at': datetime.now().isoformat(),
+            'last_login': None
         }
         
         users.append(new_user)
         self._save_users(users)
-        return True
+        return new_user
     
     def get_all_users(self) -> List[Dict]:
         """Get all users (without password hashes)"""
