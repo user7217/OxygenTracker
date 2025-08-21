@@ -41,14 +41,17 @@
                                     <option value="{{ customer.id }}">{{ customer.customer_no or 'N/A' }} - {{ customer.customer_name or customer.name or 'Unknown Customer' }} ({{ customer.customer_phone or customer.phone or 'No Phone' }})</option>
                                     {% endfor %}
                                 </select>
+                                <div class="form-text" id="customerHelp">
+                                    Required only when dispatching.
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="action" class="form-label">
                                     <strong>Action</strong>
                                 </label>
-                                <select class="form-select" id="action" name="action" required onchange="toggleDateField()">
+                                <select class="form-select" id="action" name="action" required onchange="toggleCustomerField(); toggleDateField();">
                                     <option value="rent">Dispatch cylinders to customer</option>
-                                    <option value="return">Return cylinders from customer</option>
+                                    <option value="return">Return cylinders (auto-detect customer)</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -113,10 +116,10 @@ Or: CYL001, CYL002, CYL003"
                         <div class="col-md-6">
                             <h6 class="text-info">Returning Cylinders:</h6>
                             <ul class="mb-0">
-                                <li>Only cylinders dispatched to the selected customer can be returned</li>
+                                <li>Customer selection not required (system auto-detects)</li>
                                 <li>Return date can be set to any date</li>
                                 <li>Cylinders will be marked as available again</li>
-                                <li>Cylinders not dispatched to this customer will be skipped</li>
+                                <li>Invalid or mismatched cylinders will be skipped</li>
                             </ul>
                         </div>
                     </div>
@@ -163,11 +166,31 @@ function toggleDateField() {
     }
 }
 
+function toggleCustomerField() {
+    const actionSelect = document.getElementById('action');
+    const customerSelect = document.getElementById('customer_id');
+    const customerHelp = document.getElementById('customerHelp');
+
+    if (actionSelect.value === 'return') {
+        customerSelect.disabled = true;
+        customerSelect.required = false;
+        customerSelect.value = "";
+        customerHelp.textContent = "Not required when returning. The system will auto-detect the customer.";
+    } else {
+        customerSelect.disabled = false;
+        customerSelect.required = true;
+        customerHelp.textContent = "Required only when dispatching.";
+    }
+}
+
 // Set today's date as default
 document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('date');
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
+
+    toggleDateField();
+    toggleCustomerField();
 });
 </script>
 

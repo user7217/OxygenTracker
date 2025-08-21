@@ -2762,19 +2762,14 @@ def bulk_rental_management():
 @login_required
 def process_bulk_rental():
     """Process bulk cylinder rental/return operations"""
-    customer_id = request.form.get('customer_id', '').strip()
     action = request.form.get('action', 'rent')
     date = request.form.get('date', '').strip()
     cylinder_ids_text = request.form.get('cylinder_ids', '').strip()
+    customer_id = request.form.get('customer_id', '').strip() if action == 'rent' else None
     
-    if not customer_id:
+    # Rent requires customer_id
+    if action == 'rent' and not customer_id:
         flash('Please select a customer', 'error')
-        return redirect(url_for('bulk_rental_management'))
-    
-    with CustomerService() as customer_service:
-        customer = customer_service.get_by_id(customer_id)
-    if not customer:
-        flash('Customer not found', 'error')
         return redirect(url_for('bulk_rental_management'))
     
     if not cylinder_ids_text:
@@ -2785,7 +2780,7 @@ def process_bulk_rental():
         flash('Please select a date', 'error')
         return redirect(url_for('bulk_rental_management'))
     
-    # Parse cylinder IDs from text (support both comma-separated and line-separated)
+    # Parse cylinder IDs from text
     cylinder_ids = []
     for line in cylinder_ids_text.replace(',', '\n').split('\n'):
         cylinder_id = line.strip()
@@ -2810,19 +2805,16 @@ def process_bulk_rental():
             skipped += 1
             continue
         
-        # Use the actual system ID for operations
         actual_cylinder_id = cylinder.get('id')
         cylinder_display = cylinder.get('custom_id') or cylinder.get('serial_number') or actual_cylinder_id
         
         if action == 'rent':
-            # Check if cylinder is available
+            # Must be available
             if cylinder.get('status', '').lower() != 'available':
-                errors.append(f'"{cylinder_display}": Not available (current status: {cylinder.get("status", "unknown")})')
+                errors.append(f'"{cylinder_display}": Not available (status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             
-            # Rent the cylinder with custom date
-            # Convert date from YYYY-MM-DD to datetime ISO format
             rental_datetime = f"{date}T00:00:00"
             with CylinderService() as cylinder_service:
                 success = cylinder_service.rent_cylinder(actual_cylinder_id, customer_id, rental_datetime)
@@ -2834,15 +2826,15 @@ def process_bulk_rental():
                 skipped += 1
         
         elif action == 'return':
-            # Check if cylinder is rented/dispatched to this customer
+            # Auto resolve customer from cylinder
             cylinder_status = cylinder.get('status', '').lower()
-            if cylinder_status not in ['rented', 'dispatched'] or cylinder.get('rented_to') != customer_id:
-                errors.append(f'"{cylinder_display}": Not rented/dispatched to this customer (status: {cylinder.get("status", "unknown")})')
+            rented_to_customer = cylinder.get('rented_to')
+            
+            if cylinder_status not in ['rented', 'dispatched'] or not rented_to_customer:
+                errors.append(f'"{cylinder_display}": Not currently rented/dispatched (status: {cylinder.get("status", "unknown")})')
                 skipped += 1
                 continue
             
-            # Return the cylinder with custom date
-            # Convert date from YYYY-MM-DD to datetime ISO format  
             return_datetime = f"{date}T00:00:00"
             with CylinderService() as cylinder_service:
                 success = cylinder_service.return_cylinder(actual_cylinder_id, return_datetime)
@@ -2853,30 +2845,27 @@ def process_bulk_rental():
                 errors.append(f'"{cylinder_display}": Failed to return')
                 skipped += 1
     
-    # Create summary message - use safe dict access since customer is already converted to dict
-    if isinstance(customer, dict):
-        customer_name = customer.get('customer_name') or customer.get('name', 'Unknown Customer')
-    else:
-        customer_name = 'Unknown Customer'
-        
-    if action == 'rent':
-        if processed > 0:
-            flash(f'Successfully dispatched {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer_name}', 'success')
-    else:
-        if processed > 0:
-            flash(f'Successfully returned {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) from {customer_name}', 'success')
+    # Success messages
+    if action == 'rent' and processed > 0:
+        with CustomerService() as customer_service:
+            customer = customer_service.get_by_id(customer_id)
+        customer_name = customer.get('customer_name') if customer else 'Unknown Customer'
+        flash(f'Successfully dispatched {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer_name}', 'success')
+    
+    if action == 'return' and processed > 0:
+        flash(f'Successfully returned {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""})', 'success')
     
     if skipped > 0:
         flash(f'{skipped} cylinders were skipped due to errors', 'warning')
-        
-    # Show detailed errors if any
+    
     if errors:
-        error_msg = 'Details: ' + '; '.join(errors[:5])  # Show first 5 errors
+        error_msg = 'Details: ' + '; '.join(errors[:5])
         if len(errors) > 5:
             error_msg += f' and {len(errors) - 5} more...'
         flash(error_msg, 'info')
     
     return redirect(url_for('bulk_rental_management'))
+
 
 @app.route('/customers/<customer_id>/active_dispatches')
 @login_required
