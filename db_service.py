@@ -843,7 +843,11 @@ class RentalHistoryService(DatabaseService):
                 return_date_dt = datetime.utcnow()
         
         # Calculate rental days - simplified approach
-        rental_days = 1  # Default to 1 day
+        if cylinder.date_borrowed:
+            rental_days = (return_date_dt - cylinder.date_borrowed).days
+            rental_days = rental_days if rental_days > 0 else 1  # Ensure at least 1 day
+        else:
+            rental_days = 1
         
         # Create history record matching the Render database schema exactly
         history_record = RentalHistory(
