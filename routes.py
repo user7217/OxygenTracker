@@ -759,8 +759,6 @@ def customer_details(customer_id):
     # Past transactions are already dictionaries from the service
     past_transactions_dict = past_transactions[:50]  # Limit to recent 50 transactions for performance
     
-
-    
     history_data = {
         'active': active_rentals_dict,
         'past': past_transactions_dict
@@ -778,6 +776,17 @@ def customer_details(customer_id):
         cylinders_data = history_data['past']
     else:
         cylinders_data = history_data['active']
+    
+    # 🔽 Sort by dispatch date descending
+    cylinders_data.sort(
+        key=lambda x: (
+            x.get('date_borrowed') or 
+            x.get('dispatch_date') or 
+            x.get('rental_date') or 
+            ''  # fallback
+        ),
+        reverse=True
+    )
     
     # Pagination
     total_cylinders = len(cylinders_data)
@@ -817,15 +826,18 @@ def customer_details(customer_id):
         avg_rental_days = 0
         long_term_count = 0
     
-    return render_template('customer_details.html', 
-                         customer=customer, 
-                         cylinders_data=cylinders_paginated,
-                         active_count=active_count,
-                         past_count=past_count,
-                         current_tab=tab,
-                         avg_rental_days=avg_rental_days,
-                         long_term_count=long_term_count,
-                         pagination=pagination_info)
+    return render_template(
+        'customer_details.html', 
+        customer=customer, 
+        cylinders_data=cylinders_paginated,
+        active_count=active_count,
+        past_count=past_count,
+        current_tab=tab,
+        avg_rental_days=avg_rental_days,
+        long_term_count=long_term_count,
+        pagination=pagination_info
+    )
+
 
 @app.route('/customer/<customer_id>/monthly_history')
 @login_required
