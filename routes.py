@@ -2849,7 +2849,7 @@ def process_bulk_rental():
     if action == 'rent' and processed > 0:
         with CustomerService() as customer_service:
             customer = customer_service.get_by_id(customer_id)
-        customer_name = customer.get('customer_name') if customer else 'Unknown Customer'
+        customer_name = customer.customer_name if customer else 'Unknown Customer'
         flash(f'Successfully dispatched {processed} cylinders ({", ".join(success_cylinders[:5])}{", ..." if len(success_cylinders) > 5 else ""}) to {customer_name}', 'success')
     
     if action == 'return' and processed > 0:
