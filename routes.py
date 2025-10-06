@@ -24,7 +24,7 @@ Route Categories:
 - Search: Global search across customers and cylinders
 - Admin: User management and system administration
 
-Author: Development Team
+Author: 
 Date: July 2025
 Version: 2.0
 """
@@ -132,19 +132,6 @@ def admin_required(f):
     return decorated_function
 
 def user_or_admin_required(f):
-    """
-    Decorator to require user or admin role (excludes viewers)
-    
-    This decorator allows access to users with 'user' or 'admin' roles while
-    excluding viewers from operational functions like cylinder rental/return,
-    bulk operations, and data modifications.
-    
-    Args:
-        f (function): The route function to protect
-        
-    Returns:
-        function: Wrapped function with user/admin role check
-    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -160,19 +147,6 @@ def user_or_admin_required(f):
     return decorated_function
 
 def admin_or_user_can_edit(f):
-    """
-    Decorator for routes that require admin access for data modification
-    
-    This decorator restricts access to admin-only operations like adding,
-    editing, or deleting customers and cylinders. Users can only perform
-    rental/return operations but cannot modify core data.
-    
-    Args:
-        f (function): The route function to protect
-        
-    Returns:
-        function: Wrapped function with admin-only access check
-    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -195,20 +169,6 @@ def admin_or_user_can_edit(f):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    User authentication and session management
-    
-    Handles user login with username/password authentication. Creates secure
-    session with user ID, username, and role information. Supports redirect
-    to requested page after successful login.
-    
-    GET: Display login form
-    POST: Process login credentials and create session
-    
-    Returns:
-        GET: Login template
-        POST: Redirect to dashboard or requested page on success, login form on failure
-    """
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -316,24 +276,6 @@ def users():
 @app.route('/')
 @login_required
 def index():
-    """
-    Main dashboard with system overview and statistics
-    
-    Displays comprehensive system statistics including cylinder inventory,
-    customer counts, utilization rates, and operational metrics. Provides
-    quick access to key system information for all user roles.
-    
-    Features:
-    - Total customers and cylinders count
-    - Cylinder status breakdown (available, rented, maintenance)
-    - Utilization rate calculation
-    - System efficiency metrics
-    - Growth rate and operational days
-    - Role-based information display
-    
-    Returns:
-        Dashboard template with comprehensive system statistics
-    """
     # Get actual total counts from PostgreSQL database directly
     with CustomerService() as customer_service:
         customers, _ = customer_service.get_all(page=1, per_page=10000)
