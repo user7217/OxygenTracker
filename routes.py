@@ -2813,9 +2813,9 @@ def process_bulk_rental():
         flash(f'{skipped} cylinders were skipped due to errors', 'warning')
     
     if errors:
-        error_msg = 'Details: ' + '; '.join(errors[:5])
-        if len(errors) > 5:
-            error_msg += f' and {len(errors) - 5} more...'
+        error_msg = 'Details: ' + '; '.join(errors)
+        if len(errors) > 100:
+            error_msg += f' and {len(errors) - 100} more...'
         flash(error_msg, 'info')
     
     return redirect(url_for('bulk_rental_management'))
