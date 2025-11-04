@@ -347,10 +347,11 @@ class CylinderService(DatabaseService):
             }
             
             # Calculate rental days for active cylinders
-            if cylinder.status == 'rented' and cylinder.date_borrowed:
+            if cylinder.status in ['rented', 'dispatched'] and cylinder.date_borrowed:
                 rental_days = (datetime.utcnow() - cylinder.date_borrowed).days
                 cylinder_dict['rental_days'] = rental_days
                 cylinder_dict['rental_months'] = rental_days // 30
+
             else:
                 cylinder_dict['rental_days'] = 0
                 cylinder_dict['rental_months'] = 0
